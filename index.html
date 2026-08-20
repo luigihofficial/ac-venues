@@ -147,6 +147,38 @@ pre.mail{white-space:pre-wrap;background:#fbfaf5;border:1px solid var(--line);bo
 footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;text-align:center;border-top:1px solid var(--line)}
 .banner{background:var(--warn-bg);color:var(--warn);border:1px solid #eccf9c;border-radius:10px;padding:12px 14px;font-size:13.5px;margin:16px 0}
 
+/* ---------- LuigiPT assistant ---------- */
+.lp-bubble{position:fixed;right:22px;bottom:22px;width:60px;height:60px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--navy),var(--navy2));color:var(--gold-soft);font-size:26px;z-index:60;
+  box-shadow:0 6px 22px rgba(20,38,63,.35);display:grid;place-items:center;transition:transform .15s}
+.lp-bubble:hover{transform:scale(1.06)}
+.lp-panel{position:fixed;right:22px;bottom:92px;width:390px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 130px);
+  background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px rgba(20,38,63,.28);z-index:61;display:flex;flex-direction:column;overflow:hidden}
+.lp-head{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
+.lp-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.lp-title small{font-weight:500;color:#aeb9c8;font-size:11px}
+.lp-logo{width:24px;height:24px;border-radius:7px;background:var(--gold);color:#fff;display:grid;place-items:center;font-size:14px}
+.lp-x{background:transparent;border:none;color:#c8d2df;font-size:16px;cursor:pointer}
+.lp-body{flex:1;overflow-y:auto;padding:14px;background:#faf8f2;display:flex;flex-direction:column;gap:10px}
+.lp-msg{max-width:85%;padding:9px 12px;border-radius:12px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+.lp-msg.u{align-self:flex-end;background:var(--navy);color:#fff;border-bottom-right-radius:4px}
+.lp-msg.a{align-self:flex-start;background:#fff;border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:4px}
+.lp-msg.a b{color:var(--navy)}
+.lp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.lp-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--navy);cursor:pointer}
+.lp-chip:hover{background:var(--cream)}
+.lp-input{display:flex;align-items:center;gap:6px;padding:10px;border-top:1px solid var(--line);background:#fff}
+.lp-input input{flex:1;border:1px solid var(--line);border-radius:999px;padding:9px 14px;font-size:13.5px;outline:none}
+.lp-input input:focus{border-color:var(--gold)}
+.lp-mic,.lp-send{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;font-size:16px;flex:none;display:grid;place-items:center}
+.lp-mic{background:var(--cream);color:var(--navy)}
+.lp-mic.rec{background:#e5484d;color:#fff;animation:lppulse 1.2s infinite}
+@keyframes lppulse{0%{box-shadow:0 0 0 0 rgba(229,72,77,.5)}70%{box-shadow:0 0 0 8px rgba(229,72,77,0)}100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}}
+.lp-send{background:var(--navy);color:#fff}
+.lp-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 10px;background:#fff}
+.lp-attach{background:transparent;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--navy);cursor:pointer}
+@media(max-width:480px){.lp-panel{right:8px;left:8px;width:auto}}
+
 </style>
 </head>
 <body>
@@ -317,6 +349,26 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 </main>
 
 <footer>Amor Consciente · Venues · datos compartidos en vivo (Supabase) · publicado en Vercel</footer>
+
+  <!-- ===== LuigiPT assistant ===== -->
+  <button id="lpBubble" class="lp-bubble" title="LuigiPT — asistente">💬</button>
+  <div id="lpPanel" class="lp-panel hidden">
+    <div class="lp-head">
+      <div class="lp-title"><span class="lp-logo">✦</span> LuigiPT <small>tu asistente</small></div>
+      <button id="lpClose" class="lp-x" title="Cerrar">✕</button>
+    </div>
+    <div id="lpBody" class="lp-body"></div>
+    <div class="lp-input">
+      <button id="lpMic" class="lp-mic" title="Hablar">🎤</button>
+      <input id="lpText" placeholder="Escribe o habla… ej: estatus de Miami">
+      <button id="lpSend" class="lp-send" title="Enviar">➤</button>
+    </div>
+    <div class="lp-foot">
+      <button id="lpAttach" class="lp-attach">📎 Adjuntar documento</button>
+      <span class="muted" style="font-size:11px">Lectura IA + finanzas: Fase 2</span>
+    </div>
+  </div>
+  <input id="lpFile" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx">
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -689,6 +741,137 @@ document.addEventListener('DOMContentLoaded',()=>{
     await sb.from('status_notes').insert({body,author:(USER.email||'').split('@')[0]});
   });
 });
+
+/* ============================================================
+   LuigiPT — asistente (Fase 1: voz + chat sobre datos actuales)
+   ============================================================ */
+function lpNorm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+const LP_CITY_ALIASES = {
+  miami:['miami'], orlando:['orlando'], atlanta:['atlanta'], houston:['houston'],
+  dallas:['dallas'], slc:['salt lake city','salt lake','slc'], phoenix:['phoenix'],
+  la:['los angeles','l\\.a','\\bla\\b']
+};
+function lpFindCity(n){
+  for(const c of CITIES){
+    for(const a of (LP_CITY_ALIASES[c.slug]||[c.slug])){
+      try{ if(new RegExp('(^|\\s)'+a+'(\\s|$|,|\\.|\\?)').test(n)) return c; }catch(e){}
+    }
+  }
+  return null;
+}
+function lpCityStatus(c){
+  const pct=cityPct(c.slug), meta=state.meta[c.slug]||{};
+  const done=[], pend=[];
+  STEPS.forEach((s,i)=>{ (stepDone(c.slug,i)?done:pend).push(s); });
+  let out=`Estatus de ${c.name}: ${pct}% completado.`;
+  out+=`\n• Venue elegido: ${meta.chosen_venue?meta.chosen_venue:'— (sin definir)'}`;
+  out+=`\n• Hecho: ${done.length?done.join(', '):'nada aún'}`;
+  out+=`\n• Siguiente: ${pend.length?pend[0]:'¡todo listo! ✓'}`;
+  if(meta.notes) out+=`\n• Notas: ${meta.notes}`;
+  const leads=c.leads.map(l=>l.v).join(', ');
+  out+=`\n• Candidatos: ${leads}`;
+  return out;
+}
+function lpOverall(){
+  let total=CITIES.length*STEPS.length, done=0, closed=0, lines=[];
+  CITIES.forEach(c=>{ let d=0; for(let i=0;i<STEPS.length;i++) if(stepDone(c.slug,i)) d++; done+=d; if(d===STEPS.length) closed++;
+    const meta=state.meta[c.slug]||{}; lines.push(`  · ${c.name.split(',')[0]}: ${cityPct(c.slug)}%${meta.chosen_venue?' ('+meta.chosen_venue+')':''}`); });
+  return `Resumen del proyecto — ${Math.round(done/total*100)}% global, ${closed}/8 venues cerrados:\n`+lines.join('\n');
+}
+function lpContacts(c){
+  let list = state.contacts||[];
+  if(c) list = list.filter(x=> lpNorm(x.city).includes(lpNorm(c.name.split(',')[0])) );
+  if(!list.length) return c?`Aún no hay contactos guardados para ${c.name.split(',')[0]}. Los candidatos a contactar son: ${c.leads.map(l=>l.v).join(', ')}.`:'Aún no hay contactos guardados. Ve a la pestaña Contactos para agregarlos.';
+  return (c?`Contactos de ${c.name.split(',')[0]}:`:'Contactos:')+'\n'+list.map(x=>`• ${x.role||x.name||'—'} ${x.name?('· '+x.name):''} ${x.email?('· '+x.email):''} ${x.phone?('· '+x.phone):''}`).join('\n');
+}
+function lpDeadlines(){
+  if(!state.deadlines.length) return 'No hay deadlines cargados.';
+  return 'Timeline / deadlines:\n'+state.deadlines.map(d=>`${d.done?'✓':'○'} ${d.phase} — vence ${d.due}`).join('\n');
+}
+function lpPend(){
+  const g=(state.gtasks||[]).filter(t=>!t.done).map(t=>t.label);
+  let out='Pendientes globales:\n'+(g.length?g.map(x=>'• '+x).join('\n'):'• Ninguno 🎉');
+  const perCity=CITIES.map(c=>{ for(let i=0;i<STEPS.length;i++) if(!stepDone(c.slug,i)) return `  · ${c.name.split(',')[0]}: ${STEPS[i]}`; return null; }).filter(Boolean);
+  if(perCity.length) out+='\nSiguiente paso por ciudad:\n'+perCity.join('\n');
+  return out;
+}
+const LP_REQS = '8 requisitos obligatorios (deben quedar en el contrato):\n1. Estacionamiento gratis/económico\n2. Estaciones de agua sin cargo\n3. WiFi (mín. producción)\n4. Backstage para speakers/coaches\n5. Accesos carga/descarga + entrada asistentes\n6. Área de espera con A/C fuera del salón\n7. Montaje la noche anterior\n8. Sin recargo por A/V propio';
+
+function lpAnswer(raw){
+  const n=lpNorm(raw);
+  const city=lpFindCity(n);
+  const has=(...w)=>w.some(x=>n.includes(x));
+  // finanzas / documentos -> Fase 2/3
+  if(has('monto','saldo','pagar','pago','balance','factura','recibo','invoice','deber','pendiente por pagar','a favor'))
+    return 'Los montos pendientes, saldos a favor y pagos son parte del módulo de Finanzas que llega en la Fase 3 de LuigiPT. En la Fase 2 podré leer tus contratos/recibos/facturas y de ahí sacar esos números automáticamente. Por ahora te puedo dar estatus por ciudad, venues, contactos, deadlines y pendientes.';
+  if(has('contrato','documento','archivo','pdf','sube','subir','lee','interpreta','diagram'))
+    return 'La lectura e interpretación de documentos (contratos, recibos, facturas, diagramas) se activa en la Fase 2, cuando conectemos la clave de IA. Podrás adjuntarlos con el clip 📎 y yo los leo, extraigo los datos y los guardo en el lugar correcto.';
+  if(has('evento futuro','futuros eventos','proximos eventos','proximo evento'))
+    return 'El módulo de eventos futuros (con su venue, dirección, fechas y finanzas) llega en la Fase 3. Hoy el proyecto cubre el sourcing de venues en las 8 ciudades — pregúntame por el estatus de cualquiera.';
+  if(has('ayuda','que puedes','que haces','help','opciones','menu'))
+    return 'Puedo ayudarte con (Fase 1):\n• Estatus por ciudad — "¿cómo va Miami?"\n• Resumen general — "resumen"\n• Venues/candidatos — "venues en Dallas"\n• Contactos — "contactos de Houston"\n• Deadlines — "¿qué vence?"\n• Pendientes — "pendientes"\n• Requisitos — "requisitos del salón"\nUsa el 🎤 para hablarme. (Leer documentos y finanzas: Fase 2/3.)';
+  if(has('direccion','address','donde queda') && city) return `Dirección de ${city.name.split(',')[0]}: el venue aún no está confirmado, así que no hay dirección fija. Candidatos: ${city.leads.map(l=>l.v+' ('+l.area+')').join(', ')}.`;
+  if(has('venue','candidato','hotel','opcion','opciones','salon') && city) return `Candidatos en ${city.name.split(',')[0]} (por contactar):\n`+city.leads.map(l=>`• ${l.v} — ${l.area}`).join('\n');
+  if(has('contacto','correo','email','telefono','telefonos','llamar')) return lpContacts(city);
+  if(has('deadline','vence','fecha limite','timeline','cronograma','cuando')) return lpDeadlines();
+  if(has('pendiente','tarea','falta','por hacer','siguiente')) return lpPend();
+  if(has('requisito','must','especificacion','necesita el salon','que debe tener')) return LP_REQS;
+  if(city) return lpCityStatus(city);
+  if(has('estatus','status','como va','como vamos','avance','progreso','resumen','reporte','general')) return lpOverall();
+  return 'Aún no tengo eso conectado. En la Fase 1 te ayudo con: estatus por ciudad, resumen general, venues, contactos, deadlines, pendientes y requisitos. (Preguntas abiertas, finanzas y lectura de documentos llegan en Fase 2/3.) Escribe "ayuda" para ver ejemplos.';
+}
+
+function lpAddMsg(text, who){
+  const b=$('lpBody'); const d=document.createElement('div'); d.className='lp-msg '+(who==='u'?'u':'a');
+  d.textContent=text; b.appendChild(d); b.scrollTop=b.scrollHeight; return d;
+}
+function lpChips(items){
+  const b=$('lpBody'); const wrap=document.createElement('div'); wrap.className='lp-chips';
+  items.forEach(t=>{ const c=document.createElement('button'); c.className='lp-chip'; c.textContent=t;
+    c.onclick=()=>{ $('lpText').value=t; lpSend(); }; wrap.appendChild(c); });
+  b.appendChild(wrap); b.scrollTop=b.scrollHeight;
+}
+function lpSend(){
+  const t=($('lpText').value||'').trim(); if(!t) return;
+  $('lpText').value=''; lpAddMsg(t,'u');
+  setTimeout(()=>lpAddMsg(lpAnswer(t),'a'), 150);
+}
+function lpInit(){
+  const bubble=$('lpBubble'); if(!bubble) return;
+  let greeted=false;
+  const open=()=>{ $('lpPanel').classList.remove('hidden');
+    if(!greeted){ greeted=true;
+      lpAddMsg('Hola 👋 Soy LuigiPT, tu asistente. Puedo darte el estatus de cualquier ciudad, venues, contactos, deadlines y pendientes. Háblame con el 🎤 o escríbeme.','a');
+      lpChips(['Resumen','¿Cómo va Miami?','¿Qué vence?','Pendientes','Ayuda']);
+    }
+    setTimeout(()=>$('lpText').focus(),50);
+  };
+  bubble.onclick=()=>{ $('lpPanel').classList.contains('hidden')?open():$('lpPanel').classList.add('hidden'); };
+  $('lpClose').onclick=()=>$('lpPanel').classList.add('hidden');
+  $('lpSend').onclick=lpSend;
+  $('lpText').addEventListener('keydown',e=>{ if(e.key==='Enter') lpSend(); });
+  // voz
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec=null, recing=false;
+  if(SR){ rec=new SR(); rec.lang='es-US'; rec.interimResults=false; rec.maxAlternatives=1;
+    rec.onresult=e=>{ $('lpText').value=e.results[0][0].transcript; lpSend(); };
+    rec.onend=()=>{ recing=false; $('lpMic').classList.remove('rec'); };
+    rec.onerror=()=>{ recing=false; $('lpMic').classList.remove('rec'); };
+  }
+  $('lpMic').onclick=()=>{
+    if(!rec){ lpAddMsg('El dictado por voz necesita Chrome de escritorio. Puedes escribirme igual. 🙂','a'); return; }
+    if(recing){ rec.stop(); return; }
+    try{ rec.start(); recing=true; $('lpMic').classList.add('rec'); }catch(e){}
+  };
+  // adjuntar (Fase 2)
+  $('lpAttach').onclick=()=>$('lpFile').click();
+  $('lpFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return;
+    lpAddMsg(`📎 ${f.name}`,'u');
+    lpAddMsg(`Recibí "${f.name}". La lectura e interpretación con IA (contratos, recibos, facturas, diagramas) se activa en la Fase 2, cuando conectemos la clave de IA — ahí lo leo, extraigo los datos y los guardo en el lugar correcto. Por ahora quedó registrado.`,'a');
+    e.target.value='';
+  };
+}
+lpInit();
 
 </script>
 </body>
