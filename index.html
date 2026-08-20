@@ -178,6 +178,10 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 .lp-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 10px;background:#fff}
 .lp-attach{background:transparent;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--navy);cursor:pointer}
 @media(max-width:480px){.lp-panel{right:8px;left:8px;width:auto}}
+.lp-voicebar{display:flex;align-items:center;gap:8px;padding:8px 12px 0;background:#fff}
+.lp-vtoggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--navy);font-weight:600;cursor:pointer;white-space:nowrap}
+.lp-vtoggle input{accent-color:var(--gold);cursor:pointer}
+.lp-vsel{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;background:#fffdf8;color:var(--ink)}
 
 </style>
 </head>
@@ -363,9 +367,13 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
       <input id="lpText" placeholder="Escribe o habla… ej: estatus de Miami">
       <button id="lpSend" class="lp-send" title="Enviar">➤</button>
     </div>
+    <div class="lp-voicebar">
+      <label class="lp-vtoggle"><input type="checkbox" id="lpVoiceOn"> 🔊 Leer en voz alta</label>
+      <select id="lpVoiceSel" class="lp-vsel" title="Elegir voz"></select>
+    </div>
     <div class="lp-foot">
       <button id="lpAttach" class="lp-attach">📎 Adjuntar documento</button>
-      <span class="muted" style="font-size:11px">Lectura IA + finanzas: Fase 2</span>
+      <span class="muted" style="font-size:11px">Voz clonada + IA: Fase 2</span>
     </div>
   </div>
   <input id="lpFile" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx">
@@ -834,7 +842,34 @@ function lpChips(items){
 function lpSend(){
   const t=($('lpText').value||'').trim(); if(!t) return;
   $('lpText').value=''; lpAddMsg(t,'u');
-  setTimeout(()=>lpAddMsg(lpAnswer(t),'a'), 150);
+  setTimeout(()=>{ const a=lpAnswer(t); lpAddMsg(a,'a'); lpSpeak(a); }, 150);
+}
+// ---- Voz de salida (gratis, voz del sistema) ----
+let LP_VOICES=[];
+function lpLoadVoices(){
+  if(!('speechSynthesis' in window)) return;
+  LP_VOICES = speechSynthesis.getVoices();
+  const sel=$('lpVoiceSel'); if(!sel) return;
+  const es = LP_VOICES.filter(v=>/^es/i.test(v.lang));
+  const list = es.length?es:LP_VOICES;
+  sel.innerHTML = list.map((v,i)=>`<option value="${LP_VOICES.indexOf(v)}">${v.name} (${v.lang})</option>`).join('') || '<option>Sin voces disponibles</option>';
+  // preferir una voz masculina/cálida en español si existe
+  const pref = list.findIndex(v=>/(jorge|juan|diego|carlos|male|hombre)/i.test(v.name));
+  if(pref>=0) sel.value = LP_VOICES.indexOf(list[pref]);
+}
+function lpSpeak(text){
+  if(!('speechSynthesis' in window)) return;
+  const on=$('lpVoiceOn'); if(!on || !on.checked) return;
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    const idx=parseInt(($('lpVoiceSel')||{}).value,10);
+    if(!isNaN(idx) && LP_VOICES[idx]) u.voice=LP_VOICES[idx];
+    u.rate=0.9;   // más lenta = más cálida
+    u.pitch=0.85; // más grave
+    u.lang=(u.voice&&u.voice.lang)||'es-US';
+    speechSynthesis.speak(u);
+  }catch(e){}
 }
 function lpInit(){
   const bubble=$('lpBubble'); if(!bubble) return;
@@ -867,9 +902,13 @@ function lpInit(){
   $('lpAttach').onclick=()=>$('lpFile').click();
   $('lpFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return;
     lpAddMsg(`📎 ${f.name}`,'u');
-    lpAddMsg(`Recibí "${f.name}". La lectura e interpretación con IA (contratos, recibos, facturas, diagramas) se activa en la Fase 2, cuando conectemos la clave de IA — ahí lo leo, extraigo los datos y los guardo en el lugar correcto. Por ahora quedó registrado.`,'a');
+    const ack=`Recibí "${f.name}". La lectura e interpretación con IA (contratos, recibos, facturas, diagramas) se activa en la Fase 2, cuando conectemos la clave de IA — ahí lo leo, extraigo los datos y los guardo en el lugar correcto. Por ahora quedó registrado.`;
+    lpAddMsg(ack,'a'); lpSpeak(ack);
     e.target.value='';
   };
+  // voz de salida
+  if('speechSynthesis' in window){ lpLoadVoices(); speechSynthesis.onvoiceschanged=lpLoadVoices; }
+  else { const vb=document.querySelector('.lp-voicebar'); if(vb) vb.style.display='none'; }
 }
 lpInit();
 
