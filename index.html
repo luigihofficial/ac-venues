@@ -373,7 +373,7 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
     </div>
     <div class="lp-foot">
       <button id="lpAttach" class="lp-attach">📎 Adjuntar documento</button>
-      <span class="muted" style="font-size:11px">Voz clonada + IA: Fase 2</span>
+      <span class="muted" style="font-size:11px">IA + lectura de docs activa</span>
     </div>
   </div>
   <input id="lpFile" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx">
@@ -522,7 +522,7 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 
 // ---------- Estado ----------
 let sb=null, USER=null;
-const state={progress:{}, meta:{}, contacts:[], notes:[], deadlines:[], gtasks:[]};
+const state={progress:{}, meta:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[]};
 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
@@ -602,6 +602,7 @@ async function loadAll(){
   state.progress={}; (pg.data||[]).forEach(r=>{state.progress[r.city_slug+':'+r.step_index]=r.done;});
   state.meta={}; (mt.data||[]).forEach(r=>{state.meta[r.city_slug]=r;});
   state.contacts=ct.data||[]; state.notes=nt.data||[]; state.deadlines=dl.data||[]; state.gtasks=gt.data||[];
+  try{ const dc=await sb.from('documents').select('*').order('created_at',{ascending:false}); state.documents=dc.data||[]; }catch(e){ state.documents=[]; }
   renderAll();
 }
 const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
@@ -809,13 +810,27 @@ function lpAnswer(raw){
   const n=lpNorm(raw);
   const city=lpFindCity(n);
   const has=(...w)=>w.some(x=>n.includes(x));
-  // finanzas / documentos -> Fase 2/3
-  if(has('monto','saldo','pagar','pago','balance','factura','recibo','invoice','deber','pendiente por pagar','a favor'))
-    return 'Los montos pendientes, saldos a favor y pagos son parte del módulo de Finanzas que llega en la Fase 3 de LuigiPT. En la Fase 2 podré leer tus contratos/recibos/facturas y de ahí sacar esos números automáticamente. Por ahora te puedo dar estatus por ciudad, venues, contactos, deadlines y pendientes.';
-  if(has('contrato','documento','archivo','pdf','sube','subir','lee','interpreta','diagram'))
-    return 'La lectura e interpretación de documentos (contratos, recibos, facturas, diagramas) se activa en la Fase 2, cuando conectemos la clave de IA. Podrás adjuntarlos con el clip 📎 y yo los leo, extraigo los datos y los guardo en el lugar correcto.';
+  // finanzas (suma desde documentos guardados)
+  if(has('monto','saldo','pagar','pago','balance','deber','debo','a favor','pendiente por pagar')){
+    const docs=state.documents||[];
+    if(docs.length){
+      const pend=docs.reduce((s,d)=>s+(Number(d.pending)||0),0);
+      const cred=docs.reduce((s,d)=>s+(Number(d.credit)||0),0);
+      const tot=docs.reduce((s,d)=>s+(Number(d.total)||0),0);
+      return `Según los documentos guardados (${docs.length}):\n• Total facturado: ${tot}\n• Pendiente por pagar: ${pend}\n• Saldo a favor: ${cred}\n(El módulo completo de finanzas/eventos futuros llega en la Fase 3; esto suma lo que detecté en tus documentos.)`;
+    }
+    return 'Aún no hay documentos con montos. Adjunta contratos/recibos/facturas con el clip 📎 y voy sumando aquí los pendientes y saldos a favor. El módulo completo de finanzas llega en la Fase 3.';
+  }
+  // documentos
+  if(has('documento','documentos','archivo','archivos','contrato','recibo','factura','invoice','cotizacion','diagram','pdf')){
+    const docs=state.documents||[];
+    if(docs.length && has('guardado','guardados','subido','subidos','hay','lista','listado','cuales','cuantos','cuántos','tengo','ver','muestra','recientes','ultimos','últimos')){
+      return 'Documentos guardados:\n'+docs.slice(0,12).map(d=>`• ${d.doc_type||'doc'}: ${d.title||d.filename}${d.total!=null?(' — '+d.total+' '+(d.currency||'')):''}${d.pending!=null?(' · pend. '+d.pending):''}`).join('\n');
+    }
+    return 'Adjunta el documento con el clip 📎 (contrato, recibo, factura, cotización, diagrama) y lo leo al momento: extraigo los datos clave y lo guardo. También puedes preguntarme "¿qué documentos hay?".';
+  }
   if(has('evento futuro','futuros eventos','proximos eventos','proximo evento'))
-    return 'El módulo de eventos futuros (con su venue, dirección, fechas y finanzas) llega en la Fase 3. Hoy el proyecto cubre el sourcing de venues en las 8 ciudades — pregúntame por el estatus de cualquiera.';
+    return 'El módulo de eventos futuros (con su venue, dirección, fechas y finanzas) llega en la Fase 3. Hoy cubre el sourcing en las 8 ciudades y la lectura de documentos — pregúntame por el estatus de cualquiera o adjunta un documento.';
   if(has('ayuda','que puedes','que haces','help','opciones','menu'))
     return 'Puedo ayudarte con (Fase 1):\n• Estatus por ciudad — "¿cómo va Miami?"\n• Resumen general — "resumen"\n• Venues/candidatos — "venues en Dallas"\n• Contactos — "contactos de Houston"\n• Deadlines — "¿qué vence?"\n• Pendientes — "pendientes"\n• Requisitos — "requisitos del salón"\nUsa el 🎤 para hablarme. (Leer documentos y finanzas: Fase 2/3.)';
   if(has('direccion','address','donde queda') && city) return `Dirección de ${city.name.split(',')[0]}: el venue aún no está confirmado, así que no hay dirección fija. Candidatos: ${city.leads.map(l=>l.v+' ('+l.area+')').join(', ')}.`;
@@ -826,7 +841,7 @@ function lpAnswer(raw){
   if(has('requisito','must','especificacion','necesita el salon','que debe tener')) return LP_REQS;
   if(city) return lpCityStatus(city);
   if(has('estatus','status','como va','como vamos','avance','progreso','resumen','reporte','general')) return lpOverall();
-  return 'Aún no tengo eso conectado. En la Fase 1 te ayudo con: estatus por ciudad, resumen general, venues, contactos, deadlines, pendientes y requisitos. (Preguntas abiertas, finanzas y lectura de documentos llegan en Fase 2/3.) Escribe "ayuda" para ver ejemplos.';
+  return null; // -> lo maneja la IA (Gemini) con el contexto del proyecto
 }
 
 function lpAddMsg(text, who){
@@ -839,10 +854,48 @@ function lpChips(items){
     c.onclick=()=>{ $('lpText').value=t; lpSend(); }; wrap.appendChild(c); });
   b.appendChild(wrap); b.scrollTop=b.scrollHeight;
 }
-function lpSend(){
+async function lpToken(){ try{ const {data}=await sb.auth.getSession(); return data.session?data.session.access_token:''; }catch(e){ return ''; } }
+function lpContext(){
+  return {
+    proyecto:'Amor Consciente — sourcing de venues en 8 ciudades',
+    ciudades: CITIES.map(c=>({ciudad:c.name, avance:cityPct(c.slug)+'%', venue_elegido:(state.meta[c.slug]||{}).chosen_venue||'', notas:(state.meta[c.slug]||{}).notes||'', pasos_hechos:STEPS.filter((s,i)=>stepDone(c.slug,i)), candidatos:c.leads.map(l=>l.v+' ('+l.area+')')})),
+    contactos: state.contacts, deadlines: state.deadlines,
+    pendientes:(state.gtasks||[]).filter(t=>!t.done).map(t=>t.label),
+    notas_status: (state.notes||[]).slice(0,8).map(x=>x.body),
+    documentos: (state.documents||[]).slice(0,15),
+    requisitos: LP_REQS
+  };
+}
+async function lpSend(){
   const t=($('lpText').value||'').trim(); if(!t) return;
   $('lpText').value=''; lpAddMsg(t,'u');
-  setTimeout(()=>{ const a=lpAnswer(t); lpAddMsg(a,'a'); lpSpeak(a); }, 150);
+  const local = lpAnswer(t);
+  if(local){ lpAddMsg(local,'a'); lpSpeak(local); return; }
+  const typing = lpAddMsg('LuigiPT está pensando…','a');
+  try{
+    const tok = await lpToken();
+    const r = await fetch('/api/luigipt',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify({action:'chat', question:t, context:lpContext()})});
+    const j = await r.json();
+    typing.textContent = j.text || j.error || 'No pude responder.';
+    lpSpeak(typing.textContent);
+  }catch(e){ typing.textContent = 'No pude conectar con la IA. Revisa que el backend esté publicado y la clave GEMINI_API_KEY esté puesta en Vercel.'; }
+}
+function lpFileB64(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=rej; r.readAsDataURL(f); }); }
+async function lpStoreDoc(f, d, raw){
+  try{
+    const path = Date.now()+'_'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    try{ await sb.storage.from('documents').upload(path, f, {upsert:false, contentType:f.type||undefined}); }catch(se){}
+    const dateOk = d && /^\d{4}-\d{2}-\d{2}$/.test(d.fecha||'') ? d.fecha : null;
+    const num = v => (typeof v==='number' && !isNaN(v)) ? v : null;
+    await sb.from('documents').insert({
+      filename:f.name, storage_path:path,
+      doc_type:d?d.tipo:null, title:d?d.titulo:null, vendor:d?d.proveedor_o_venue:null, city:d?d.ciudad:null,
+      doc_date:dateOk, total:num(d&&d.monto_total), currency:d?d.moneda:null,
+      pending:num(d&&d.monto_pendiente), credit:num(d&&d.saldo_a_favor),
+      summary:(d&&d.resumen)||raw||null, uploaded_by:(USER.email||'').split('@')[0]
+    });
+  }catch(e){ /* tabla/bucket opcionales */ }
 }
 // ---- Voz de salida (gratis, voz del sistema) ----
 let LP_VOICES=[];
@@ -900,11 +953,34 @@ function lpInit(){
   };
   // adjuntar (Fase 2)
   $('lpAttach').onclick=()=>$('lpFile').click();
-  $('lpFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return;
+  $('lpFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; e.target.value='';
     lpAddMsg(`📎 ${f.name}`,'u');
-    const ack=`Recibí "${f.name}". La lectura e interpretación con IA (contratos, recibos, facturas, diagramas) se activa en la Fase 2, cuando conectemos la clave de IA — ahí lo leo, extraigo los datos y los guardo en el lugar correcto. Por ahora quedó registrado.`;
-    lpAddMsg(ack,'a'); lpSpeak(ack);
-    e.target.value='';
+    if(f.size > 3.6*1024*1024){ lpAddMsg(`"${f.name}" pesa más de 3.6 MB y no lo puedo procesar directo. Comprime el PDF/imagen o mándame solo las páginas clave.`,'a'); return; }
+    const typing=lpAddMsg('Leyendo el documento… 🔎','a');
+    try{
+      const b64 = await lpFileB64(f);
+      const tok = await lpToken();
+      const r = await fetch('/api/luigipt',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+        body:JSON.stringify({action:'doc', mimeType:f.type||'application/octet-stream', data:b64})});
+      const j = await r.json();
+      if(j.error){ typing.textContent='No pude leerlo: '+j.error+'  (¿ya está la clave GEMINI_API_KEY en Vercel?)'; return; }
+      const d=j.data;
+      let msg;
+      if(d){
+        msg = `📄 ${(d.tipo||'documento').toUpperCase()} — ${d.titulo||f.name}`;
+        if(d.proveedor_o_venue) msg+=`\n• Proveedor/venue: ${d.proveedor_o_venue}${d.ciudad?(' ('+d.ciudad+')'):''}`;
+        if(d.fecha) msg+=`\n• Fecha: ${d.fecha}`;
+        if(d.monto_total!=null) msg+=`\n• Total: ${d.monto_total} ${d.moneda||''}`;
+        if(d.monto_pendiente!=null) msg+=`\n• Pendiente por pagar: ${d.monto_pendiente} ${d.moneda||''}`;
+        if(d.saldo_a_favor!=null) msg+=`\n• Saldo a favor: ${d.saldo_a_favor} ${d.moneda||''}`;
+        if(d.vencimiento) msg+=`\n• Vence: ${d.vencimiento}`;
+        if(d.resumen) msg+=`\n• ${d.resumen}`;
+        msg+=`\n\n✅ Guardado.`;
+      } else { msg = j.raw || 'Documento leído.'; }
+      typing.textContent = msg;
+      lpSpeak((d&&d.resumen)||'Documento leído y guardado.');
+      await lpStoreDoc(f, d, j.raw);
+    }catch(err){ typing.textContent='No pude conectar con la IA para leer el documento. Revisa que el backend esté publicado y la clave GEMINI_API_KEY esté en Vercel.'; }
   };
   // voz de salida
   if('speechSynthesis' in window){ lpLoadVoices(); speechSynthesis.onvoiceschanged=lpLoadVoices; }
