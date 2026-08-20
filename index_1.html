@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amor Consciente — Venues</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+:root{
+  --navy:#14263f; --navy2:#1e3a5f; --gold:#b8860b; --gold-soft:#e3b23c;
+  --cream:#f6f2e9; --ink:#1c2430; --muted:#5b6472; --line:#e5dfcf;
+  --card:#ffffff; --ok:#2e7d5b; --ok-bg:#e4f1ea; --warn:#b26a12; --warn-bg:#fbeeda;
+  --pend:#6b7280; --pend-bg:#eef0f3; --danger:#b23b3b;
+  --shadow:0 1px 3px rgba(20,38,63,.08),0 6px 20px rgba(20,38,63,.06);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--cream);color:var(--ink);line-height:1.5;font-size:15px}
+a{color:var(--navy2);text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+.hidden{display:none !important}
+
+/* ---------- Login gate ---------- */
+#gate{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy2));display:grid;place-items:center;z-index:100;padding:20px}
+#gate .box{background:#fff;border-radius:16px;box-shadow:var(--shadow);max-width:420px;width:100%;padding:30px 28px;text-align:center}
+#gate small{color:var(--gold);font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+#gate h2{color:var(--navy);font-size:22px;margin:8px 0 4px}
+#gate p{color:var(--muted);font-size:14px;margin:0 0 18px}
+#gate input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:15px;margin-bottom:12px}
+#gate .msg{font-size:13px;margin-top:12px;min-height:18px}
+.btn{background:var(--navy);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-weight:600;font-size:14px;cursor:pointer;width:100%}
+.btn:hover{background:var(--navy2)}
+.btn.sm{width:auto;padding:8px 13px;font-size:12.5px;border-radius:8px}
+.btn.ghost{background:transparent;color:var(--navy);border:1px solid var(--line)}
+.btn.gold{background:var(--gold)} .btn.gold:hover{background:#9c7409}
+
+/* ---------- Header ---------- */
+header.hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:22px 0 18px}
+.hero .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.brand small{display:block;color:var(--gold-soft);font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:11px;margin-bottom:5px}
+.brand h1{font-size:23px}
+.hero .right{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.kpi{text-align:right}
+.kpi .n{font-size:22px;font-weight:800;line-height:1}
+.kpi .l{font-size:10.5px;color:#aeb9c8;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.who{font-size:12px;color:#c8d2df;text-align:right}
+.who a{color:#fff;text-decoration:underline;cursor:pointer}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#bfe6d2}
+.live .dot{width:8px;height:8px;border-radius:50%;background:#37d09a;box-shadow:0 0 0 0 rgba(55,208,154,.6);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(55,208,154,.5)}70%{box-shadow:0 0 0 7px rgba(55,208,154,0)}100%{box-shadow:0 0 0 0 rgba(55,208,154,0)}}
+
+/* ---------- Nav ---------- */
+nav.tabs{position:sticky;top:0;z-index:30;background:rgba(246,242,233,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto}
+nav.tabs a{padding:13px 14px;font-weight:600;font-size:13.5px;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs a:hover{color:var(--navy);text-decoration:none}
+
+section{padding:32px 0 8px}
+.sec-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.sec-head .num{width:30px;height:30px;border-radius:8px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
+.sec-head h2{font-size:20px;color:var(--navy)}
+.sec-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:860px){.g2,.g3{grid-template-columns:1fr}}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)}
+.p-prog{background:var(--warn-bg);color:var(--warn)}
+.p-pend{background:var(--pend-bg);color:var(--pend)}
+.p-must{background:#fdecec;color:var(--danger)}
+
+.spec-card{padding:18px}
+.spec-card h3{font-size:15px;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.spec-card .ico{width:26px;height:26px;border-radius:7px;background:var(--cream);display:grid;place-items:center;font-size:15px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;background:#faf7f0}
+tbody tr:hover{background:#fbfaf5}
+.req-list{list-style:none;padding:0;margin:0}
+.req-list li{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.req-list li:last-child{border-bottom:none}
+.req-list .rn{width:24px;height:24px;border-radius:6px;background:var(--navy);color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none}
+.req-list b{color:var(--navy)}
+.muted{color:var(--muted)}
+
+/* city cards */
+.city{padding:0;overflow:hidden}
+.city .top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff}
+.city .top h3{font-size:16px}
+.city .body{padding:14px 16px}
+.prog{height:8px;background:var(--pend-bg);border-radius:999px;overflow:hidden;margin:2px 0 10px}
+.prog > i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));border-radius:999px;transition:width .3s}
+.chk{list-style:none;padding:0;margin:0}
+.chk li{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px}
+.chk input{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex:none}
+.chk li.done span{color:var(--muted);text-decoration:line-through}
+.cand{margin-top:12px}
+.cand h4{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 6px}
+.cand table{font-size:12.5px}
+.reqmini{font-size:10.5px;color:var(--pend);font-weight:700}
+.links a{font-size:12px;margin-right:12px;white-space:nowrap}
+textarea,input.cell{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:13px;background:#fffdf8;resize:vertical;color:var(--ink)}
+input.cell{padding:6px 8px}
+.savedflash{color:var(--ok);font-size:11px;margin-left:6px;opacity:0;transition:opacity .2s}
+.savedflash.show{opacity:1}
+
+/* timeline */
+.tl{position:relative;margin-left:8px;padding-left:26px;border-left:2px solid var(--line)}
+.tl .item{position:relative;padding:0 0 16px;display:flex;gap:10px;align-items:flex-start}
+.tl .dot{position:absolute;left:-35px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--gold)}
+.tl .item.done .dot{background:var(--ok);border-color:var(--ok)}
+.tl input{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;margin-top:2px}
+.tl .ph{font-weight:700;color:var(--navy);font-size:14.5px}
+.tl .item.done .ph{text-decoration:line-through;color:var(--muted)}
+.tl .due{font-size:12px;color:var(--warn);font-weight:700;margin-left:8px}
+.tl .desc{color:var(--muted);font-size:13px;margin-top:3px}
+
+.statuslog .entry{padding:12px 14px;border-bottom:1px solid var(--line)}
+.statuslog .entry:last-child{border-bottom:none}
+.statuslog .date{font-weight:700;color:var(--navy);font-size:13px}
+.statuslog .date b{color:var(--gold);margin-right:8px}
+
+/* email template */
+.rule{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:800px){.rule{grid-template-columns:1fr}}
+.opt{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.opt img{width:100%;display:block;border-bottom:1px solid var(--line)}
+.opt .cap{padding:10px 12px}
+.opt .cap b{color:var(--navy);font-size:14px}
+.opt .cap .pax{display:inline-block;background:var(--ok-bg);color:var(--ok);font-weight:700;font-size:12px;border-radius:999px;padding:2px 9px;margin-top:4px}
+pre.mail{white-space:pre-wrap;background:#fbfaf5;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:16px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;color:var(--ink);margin:0;overflow-x:auto}
+.mailhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.mailhead b{color:var(--navy);font-size:15px}
+.tag{display:inline-block;background:var(--cream);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:12px;margin:2px 4px 2px 0;font-family:ui-monospace,monospace}
+
+.hint{font-size:12.5px;color:var(--muted);background:#fffaf0;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:10px 12px;margin:12px 0}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.addrow input{flex:1;min-width:120px}
+footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;text-align:center;border-top:1px solid var(--line)}
+.banner{background:var(--warn-bg);color:var(--warn);border:1px solid #eccf9c;border-radius:10px;padding:12px 14px;font-size:13.5px;margin:16px 0}
+
+/* ---------- LuigiPT assistant ---------- */
+.lp-bubble{position:fixed;right:22px;bottom:22px;width:60px;height:60px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--navy),var(--navy2));color:var(--gold-soft);font-size:26px;z-index:60;
+  box-shadow:0 6px 22px rgba(20,38,63,.35);display:grid;place-items:center;transition:transform .15s}
+.lp-bubble:hover{transform:scale(1.06)}
+.lp-panel{position:fixed;right:22px;bottom:92px;width:390px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 130px);
+  background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px rgba(20,38,63,.28);z-index:61;display:flex;flex-direction:column;overflow:hidden}
+.lp-head{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
+.lp-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.lp-title small{font-weight:500;color:#aeb9c8;font-size:11px}
+.lp-logo{width:24px;height:24px;border-radius:7px;background:var(--gold);color:#fff;display:grid;place-items:center;font-size:14px}
+.lp-x{background:transparent;border:none;color:#c8d2df;font-size:16px;cursor:pointer}
+.lp-body{flex:1;overflow-y:auto;padding:14px;background:#faf8f2;display:flex;flex-direction:column;gap:10px}
+.lp-msg{max-width:85%;padding:9px 12px;border-radius:12px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+.lp-msg.u{align-self:flex-end;background:var(--navy);color:#fff;border-bottom-right-radius:4px}
+.lp-msg.a{align-self:flex-start;background:#fff;border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:4px}
+.lp-msg.a b{color:var(--navy)}
+.lp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.lp-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--navy);cursor:pointer}
+.lp-chip:hover{background:var(--cream)}
+.lp-input{display:flex;align-items:center;gap:6px;padding:10px;border-top:1px solid var(--line);background:#fff}
+.lp-input input{flex:1;border:1px solid var(--line);border-radius:999px;padding:9px 14px;font-size:13.5px;outline:none}
+.lp-input input:focus{border-color:var(--gold)}
+.lp-mic,.lp-send{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;font-size:16px;flex:none;display:grid;place-items:center}
+.lp-mic{background:var(--cream);color:var(--navy)}
+.lp-mic.rec{background:#e5484d;color:#fff;animation:lppulse 1.2s infinite}
+@keyframes lppulse{0%{box-shadow:0 0 0 0 rgba(229,72,77,.5)}70%{box-shadow:0 0 0 8px rgba(229,72,77,0)}100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}}
+.lp-send{background:var(--navy);color:#fff}
+.lp-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 10px;background:#fff}
+.lp-attach{background:transparent;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--navy);cursor:pointer}
+@media(max-width:480px){.lp-panel{right:8px;left:8px;width:auto}}
+
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN GATE ===== -->
+<div id="gate">
+  <div class="box">
+    <small>Amor Consciente</small>
+    <h2>Venues — Acceso del equipo</h2>
+    <p>Ingresa tu correo y te enviamos un enlace mágico para entrar. Sin contraseñas.</p>
+    <input id="gateEmail" type="email" placeholder="tu@correo.com" autocomplete="email">
+    <button class="btn" id="gateBtn">Enviar enlace de acceso</button>
+    <div class="msg muted" id="gateMsg"></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app" class="hidden">
+<header class="hero">
+  <div class="wrap">
+    <div class="brand"><small>Sourcing de Venues · Panel del equipo</small><h1 id="appTitle">Amor Consciente — Venues</h1></div>
+    <div class="right">
+      <span class="live"><span class="dot"></span> En vivo</span>
+      <div class="kpi"><div class="n" id="kpiConf">0/8</div><div class="l">Venues cerrados</div></div>
+      <div class="kpi"><div class="n" id="kpiProg">0%</div><div class="l">Avance global</div></div>
+      <div class="who">Conectado: <span id="whoEmail">—</span><br><a id="logoutBtn">Salir</a></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs"><div class="wrap">
+  <a href="#specs">Especificaciones</a>
+  <a href="#metas">Metas</a>
+  <a href="#timeline">Timeline</a>
+  <a href="#pendientes">Pendientes</a>
+  <a href="#ciudades">Ciudades</a>
+  <a href="#matriz">Matriz</a>
+  <a href="#contactos">Contactos</a>
+  <a href="#plantilla">Plantilla correo</a>
+  <a href="#status">Status</a>
+</div></nav>
+
+<main class="wrap">
+  <div id="configBanner" class="banner hidden"></div>
+
+  <!-- ESPECIFICACIONES (estático) -->
+  <section id="specs">
+    <div class="sec-head"><div class="num">✓</div><div><h2>Especificaciones del venue</h2><p>Criterios de sala/layout y requisitos obligatorios (deben quedar por escrito en el contrato).</p></div></div>
+    <div class="grid g2">
+      <div class="card spec-card">
+        <h3><span class="ico">📐</span> Sala &amp; layout</h3>
+        <table><thead><tr><th>Layout</th><th>Capacidad</th><th>Superficie</th></tr></thead><tbody>
+          <tr><td>Doble U</td><td>≈100</td><td>2,500 SF mín · 2,800–3,200 ideal</td></tr>
+          <tr><td>Triple U</td><td>≈150–200</td><td>≈3,800–4,800 SF</td></tr>
+          <tr><td>Cuádruple U</td><td>≈250–300</td><td>5,400+ SF (≈73.5'×73.5')</td></tr>
+        </tbody></table>
+        <ul class="req-list" style="margin-top:12px">
+          <li><span class="rn">↕</span><div><b>Techo:</b> mínimo 12 ft.</div></li>
+          <li><span class="rn">⇆</span><div><b>Pasillos:</b> 3.5–4' entre filas · 6' central al escenario · 4' perímetro.</div></li>
+          <li><span class="rn">▮</span><div><b>Escenario/pantalla</b> al frente, línea de visión limpia.</div></li>
+        </ul>
+      </div>
+      <div class="card spec-card">
+        <h3><span class="ico">🔑</span> Must-haves (incluir en contrato)</h3>
+        <ul class="req-list">
+          <li><span class="rn">1</span><div><b>Estacionamiento</b> gratis o económico (attendees + staff) <span class="pill p-must">MUST</span></div></li>
+          <li><span class="rn">2</span><div><b>Estaciones de agua</b> incluidas sin cargo <span class="pill p-must">MUST</span></div></li>
+          <li><span class="rn">3</span><div><b>WiFi</b> (al menos producción) <span class="pill p-must">MUST</span></div></li>
+          <li><span class="rn">4</span><div><b>Backstage</b> para speakers y coaches <span class="pill p-must">MUST</span></div></li>
+          <li><span class="rn">5</span><div><b>Accesos</b> de carga/descarga (staff) + entrada de asistentes <span class="pill p-must">MUST</span></div></li>
+          <li><span class="rn">6</span><div><b>Área de espera con A/C</b> fuera del salón <span class="pill p-must">MUST</span></div></li>
+          <li><span class="rn">7</span><div><b>Montaje la noche anterior</b> <span class="pill p-must">MUST</span></div></li>
+          <li><span class="rn">8</span><div><b>Sin recargo por A/V propio</b> <span class="pill p-must">MUST</span></div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- METAS (estático) -->
+  <section id="metas">
+    <div class="sec-head"><div class="num">◎</div><div><h2>Metas</h2><p>Resultados que definen el éxito.</p></div></div>
+    <div class="grid g3">
+      <div class="card spec-card"><h3><span class="ico">📝</span> Meta 1</h3><p>8 venues confirmados (contrato firmado) que cumplan must-haves + layout.</p></div>
+      <div class="card spec-card"><h3><span class="ico">💵</span> Meta 2</h3><p>Costo dentro de presupuesto; parking $0/mínimo; agua/WiFi/A-V propio sin cargos ocultos.</p></div>
+      <div class="card spec-card"><h3><span class="ico">📅</span> Meta 3</h3><p>Fechas confirmadas por ciudad y bloqueadas con depósito.</p></div>
+      <div class="card spec-card"><h3><span class="ico">📋</span> Meta 4</h3><p>Ficha técnica completa por venue.</p></div>
+      <div class="card spec-card"><h3><span class="ico">🤝</span> Meta 5</h3><p>2–3 opciones comparadas por ciudad con scoring homogéneo.</p></div>
+      <div class="card spec-card"><h3><span class="ico">🗂️</span> Meta 6</h3><p>Directorio de contactos actualizado y accesible al equipo.</p></div>
+    </div>
+  </section>
+
+  <!-- TIMELINE (dinámico) -->
+  <section id="timeline">
+    <div class="sec-head"><div class="num">⏱</div><div><h2>Timeline &amp; Deadlines</h2><p>Marca fases completadas. Se guarda para todo el equipo.</p></div></div>
+    <div class="card" style="padding:20px 22px"><div class="tl" id="timelineBox"></div></div>
+  </section>
+
+  <!-- PENDIENTES (dinámico) -->
+  <section id="pendientes">
+    <div class="sec-head"><div class="num">☑</div><div><h2>Pendientes globales</h2><p>Tareas de todo el proyecto.</p></div></div>
+    <div class="card" style="padding:16px 18px"><ul class="chk" id="globalTasks"></ul></div>
+  </section>
+
+  <!-- CIUDADES (dinámico) -->
+  <section id="ciudades">
+    <div class="sec-head"><div class="num">◧</div><div><h2>Ciudades</h2><p>Pipeline por ciudad, candidatos y notas. Cambios en vivo.</p></div></div>
+    <div class="grid g2" id="cityGrid"></div>
+  </section>
+
+  <!-- MATRIZ (dinámico) -->
+  <section id="matriz">
+    <div class="sec-head"><div class="num">▦</div><div><h2>Matriz de requisitos</h2><p>Venue elegido + estado por ciudad. ⧗ = por confirmar.</p></div></div>
+    <div class="card" style="overflow-x:auto"><table>
+      <thead><tr><th>Ciudad</th><th>Venue elegido</th><th>Parking</th><th>Agua</th><th>WiFi</th><th>Backstage</th><th>A/C espera</th><th>Estado</th></tr></thead>
+      <tbody id="matrixBody"></tbody>
+    </table></div>
+  </section>
+
+  <!-- CONTACTOS (dinámico) -->
+  <section id="contactos">
+    <div class="sec-head"><div class="num">☎</div><div><h2>Directorio de contactos</h2><p>Compartido con el equipo. Agrega, edita y elimina.</p></div></div>
+    <div class="card" style="overflow-x:auto"><table>
+      <thead><tr><th>Ciudad</th><th>Venue / Rol</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Notas</th><th></th></tr></thead>
+      <tbody id="contactBody"></tbody>
+    </table>
+    <div class="addrow" style="padding:12px 14px">
+      <input id="cCity" class="cell" placeholder="Ciudad">
+      <input id="cRole" class="cell" placeholder="Venue / Rol">
+      <input id="cName" class="cell" placeholder="Contacto">
+      <input id="cEmail" class="cell" placeholder="Email">
+      <input id="cPhone" class="cell" placeholder="Teléfono">
+      <button class="btn sm gold" id="addContact">+ Agregar</button>
+    </div></div>
+  </section>
+
+  <!-- PLANTILLA CORREO (estático) -->
+  <section id="plantilla">
+    <div class="sec-head"><div class="num">✉</div><div><h2>Plantilla de correo / RFP</h2><p>Adjunta la imagen de layout según la asistencia. Botones para copiar.</p></div></div>
+    <div class="rule">
+      <div class="opt"><svg viewBox="0 0 300 250" width="100%" xmlns="http://www.w3.org/2000/svg" role="img"><rect x="6" y="6" width="288" height="238" rx="10" fill="#faf8f2" stroke="#b9c0cb" stroke-width="2"/><rect x="44" y="34" width="212" height="7" fill="#1e3a5f"/><rect x="44" y="34" width="7" height="162" fill="#1e3a5f"/><rect x="249" y="34" width="7" height="162" fill="#1e3a5f"/><circle cx="51" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="64" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="77" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="103" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="116" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="129" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="142" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="155" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="168" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="181" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="194" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="207" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="220" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="233" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="246" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="43" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="43" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="56" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="56" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="69" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="69" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="82" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="82" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="95" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="95" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="108" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="108" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="121" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="121" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="134" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="134" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="147" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="147" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="160" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="160" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="173" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="173" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="186" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="186" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="69" y="59" width="162" height="7" fill="#1e3a5f"/><rect x="69" y="59" width="7" height="121" fill="#1e3a5f"/><rect x="224" y="59" width="7" height="121" fill="#1e3a5f"/><circle cx="76" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="89" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="102" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="115" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="128" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="141" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="154" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="167" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="180" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="193" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="206" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="219" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="68" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="68" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="81" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="81" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="94" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="94" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="107" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="107" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="120" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="120" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="133" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="133" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="146" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="146" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="159" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="159" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="172" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="172" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="118" y="216" width="64" height="20" rx="3" fill="#3a3f47"/><rect x="147" y="219" width="6" height="5" fill="#c9a24a"/><text x="150" y="246" font-family="Arial" font-size="9" font-weight="bold" fill="#14263f" text-anchor="middle">STAGE / SCREEN</text></svg><div class="cap"><b>Double U</b><br><span class="pax">≤ 120 personas</span></div></div>
+      <div class="opt"><svg viewBox="0 0 300 250" width="100%" xmlns="http://www.w3.org/2000/svg" role="img"><rect x="6" y="6" width="288" height="238" rx="10" fill="#faf8f2" stroke="#b9c0cb" stroke-width="2"/><rect x="44" y="34" width="212" height="7" fill="#1e3a5f"/><rect x="44" y="34" width="7" height="162" fill="#1e3a5f"/><rect x="249" y="34" width="7" height="162" fill="#1e3a5f"/><circle cx="51" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="64" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="77" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="103" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="116" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="129" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="142" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="155" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="168" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="181" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="194" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="207" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="220" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="233" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="246" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="43" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="43" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="56" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="56" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="69" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="69" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="82" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="82" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="95" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="95" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="108" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="108" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="121" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="121" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="134" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="134" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="147" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="147" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="160" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="160" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="173" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="173" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="186" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="186" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="69" y="59" width="162" height="7" fill="#1e3a5f"/><rect x="69" y="59" width="7" height="121" fill="#1e3a5f"/><rect x="224" y="59" width="7" height="121" fill="#1e3a5f"/><circle cx="76" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="89" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="102" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="115" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="128" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="141" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="154" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="167" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="180" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="193" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="206" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="219" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="68" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="68" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="81" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="81" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="94" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="94" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="107" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="107" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="120" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="120" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="133" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="133" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="146" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="146" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="159" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="159" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="172" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="172" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="94" y="84" width="112" height="7" fill="#1e3a5f"/><rect x="94" y="84" width="7" height="80" fill="#1e3a5f"/><rect x="199" y="84" width="7" height="80" fill="#1e3a5f"/><circle cx="101" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="114" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="127" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="140" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="153" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="166" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="179" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="192" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="93" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="93" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="106" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="106" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="119" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="119" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="132" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="132" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="145" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="145" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="158" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="158" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="118" y="216" width="64" height="20" rx="3" fill="#3a3f47"/><rect x="147" y="219" width="6" height="5" fill="#c9a24a"/><text x="150" y="246" font-family="Arial" font-size="9" font-weight="bold" fill="#14263f" text-anchor="middle">STAGE / SCREEN</text></svg><div class="cap"><b>Triple U</b><br><span class="pax">120–200 personas</span></div></div>
+      <div class="opt"><svg viewBox="0 0 300 250" width="100%" xmlns="http://www.w3.org/2000/svg" role="img"><rect x="6" y="6" width="288" height="238" rx="10" fill="#faf8f2" stroke="#b9c0cb" stroke-width="2"/><rect x="44" y="34" width="212" height="7" fill="#1e3a5f"/><rect x="44" y="34" width="7" height="162" fill="#1e3a5f"/><rect x="249" y="34" width="7" height="162" fill="#1e3a5f"/><circle cx="51" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="64" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="77" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="103" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="116" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="129" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="142" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="155" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="168" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="181" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="194" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="207" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="220" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="233" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="246" cy="30" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="43" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="43" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="56" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="56" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="69" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="69" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="82" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="82" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="95" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="95" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="108" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="108" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="121" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="121" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="134" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="134" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="147" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="147" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="160" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="160" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="173" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="173" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="40" cy="186" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="260" cy="186" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="69" y="59" width="162" height="7" fill="#1e3a5f"/><rect x="69" y="59" width="7" height="121" fill="#1e3a5f"/><rect x="224" y="59" width="7" height="121" fill="#1e3a5f"/><circle cx="76" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="89" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="102" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="115" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="128" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="141" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="154" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="167" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="180" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="193" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="206" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="219" cy="55" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="68" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="68" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="81" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="81" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="94" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="94" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="107" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="107" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="120" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="120" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="133" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="133" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="146" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="146" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="159" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="159" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="65" cy="172" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="235" cy="172" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="94" y="84" width="112" height="7" fill="#1e3a5f"/><rect x="94" y="84" width="7" height="80" fill="#1e3a5f"/><rect x="199" y="84" width="7" height="80" fill="#1e3a5f"/><circle cx="101" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="114" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="127" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="140" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="153" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="166" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="179" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="192" cy="80" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="93" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="93" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="106" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="106" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="119" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="119" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="132" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="132" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="145" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="145" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="90" cy="158" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="210" cy="158" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="119" y="109" width="62" height="7" fill="#1e3a5f"/><rect x="119" y="109" width="7" height="39" fill="#1e3a5f"/><rect x="174" y="109" width="7" height="39" fill="#1e3a5f"/><circle cx="126" cy="105" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="139" cy="105" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="152" cy="105" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="165" cy="105" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="115" cy="118" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="185" cy="118" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="115" cy="131" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="185" cy="131" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="115" cy="144" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><circle cx="185" cy="144" r="3" fill="#e3b23c" stroke="#b8860b" stroke-width="0.6"/><rect x="118" y="216" width="64" height="20" rx="3" fill="#3a3f47"/><rect x="147" y="219" width="6" height="5" fill="#c9a24a"/><text x="150" y="246" font-family="Arial" font-size="9" font-weight="bold" fill="#14263f" text-anchor="middle">STAGE / SCREEN</text></svg><div class="cap"><b>Quadruple U</b><br><span class="pax">200–300 personas</span></div></div>
+    </div>
+    <div class="hint">Regla: <b>≤120 → Double</b> · <b>120–200 → Triple</b> · <b>200–300 → Quadruple</b>. Los diagramas de arriba son la referencia a adjuntar en el correo.</div>
+    <div class="card spec-card" style="margin-top:6px">
+      <div class="mailhead"><b>✉️ Venue inquiry (EN — send-ready)</b><button class="btn sm" data-copy="mailEN">Copiar</button></div>
+      <pre class="mail" id="mailEN"></pre>
+    </div>
+    <div class="card spec-card" style="margin-top:14px">
+      <div class="mailhead"><b>✉️ Consulta de salón (ES)</b><button class="btn sm" data-copy="mailES">Copiar</button></div>
+      <pre class="mail" id="mailES"></pre>
+    </div>
+    <div class="card spec-card" style="margin-top:14px">
+      <div class="mailhead"><b>✉️ Follow-up (EN)</b><button class="btn sm" data-copy="mailFU">Copiar</button></div>
+      <pre class="mail" id="mailFU"></pre>
+    </div>
+  </section>
+
+  <!-- STATUS (dinámico) -->
+  <section id="status">
+    <div class="sec-head"><div class="num">✎</div><div><h2>Notas de status</h2><p>Bitácora compartida. Lo más reciente arriba.</p></div></div>
+    <div class="card spec-card">
+      <textarea id="noteInput" rows="3" placeholder="Escribe una actualización para el equipo..."></textarea>
+      <div class="toolbar" style="margin-top:8px"><button class="btn sm gold" id="addNote">Publicar nota</button></div>
+    </div>
+    <div class="card statuslog" id="statusLog" style="margin-top:12px"></div>
+  </section>
+</main>
+
+<footer>Amor Consciente · Venues · datos compartidos en vivo (Supabase) · publicado en Vercel</footer>
+
+  <!-- ===== LuigiPT assistant ===== -->
+  <button id="lpBubble" class="lp-bubble" title="LuigiPT — asistente">💬</button>
+  <div id="lpPanel" class="lp-panel hidden">
+    <div class="lp-head">
+      <div class="lp-title"><span class="lp-logo">✦</span> LuigiPT <small>tu asistente</small></div>
+      <button id="lpClose" class="lp-x" title="Cerrar">✕</button>
+    </div>
+    <div id="lpBody" class="lp-body"></div>
+    <div class="lp-input">
+      <button id="lpMic" class="lp-mic" title="Hablar">🎤</button>
+      <input id="lpText" placeholder="Escribe o habla… ej: estatus de Miami">
+      <button id="lpSend" class="lp-send" title="Enviar">➤</button>
+    </div>
+    <div class="lp-foot">
+      <button id="lpAttach" class="lp-attach">📎 Adjuntar documento</button>
+      <span class="muted" style="font-size:11px">Lectura IA + finanzas: Fase 2</span>
+    </div>
+  </div>
+  <input id="lpFile" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+window.AC_CONFIG = {
+  SUPABASE_URL: "https://dwhwbcplgcqvuvnzqmne.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa",
+  APP_TITLE: "Amor Consciente - Venues",
+  ALLOWED_EMAILS: []
+};
+</script>
+<script>
+/* ============================================================
+   AC-Venues · Amor Consciente — App (Vercel + Supabase)
+   Datos compartidos en vivo + login por magic link.
+   ============================================================ */
+
+// ---------- Contenido estático ----------
+const CITIES = [
+  {slug:"miami",   name:"Miami, FL", leads:[
+    {v:"Kimpton EPIC Hotel", area:"Downtown / Brickell", url:"https://www.epichotel.com/event-space-miami/"},
+    {v:"Four Seasons Hotel Miami", area:"Brickell", url:"https://www.fourseasons.com/miami/meetings-and-events/"},
+    {v:"Trump National Doral", area:"Doral", url:"https://www.trumphotels.com/miami/meetings/miami-event-space"}],
+   search:[["Cvent","https://www.cvent.com/meeting-event-planning/usa/fl/miami/venues"],["Peerspace","https://www.peerspace.com/venues/miami--fl/ballroom"],["Tagvenue","https://www.tagvenue.com/us/hire/ballrooms/miami"]]},
+  {slug:"orlando", name:"Orlando, FL", leads:[
+    {v:"Rosen Centre Hotel", area:"Int'l Drive", url:"https://www.rosencentre.com/meeting-and-events/"},
+    {v:"The Florida Hotel & Conf. Center", area:"Millenia", url:"https://www.thefloridahotelorlando.com/meet"},
+    {v:"Hilton Orlando", area:"Convention", url:"https://thehiltonorlando.com/gather/meetings-and-events/venues/"}],
+   search:[["Cvent","https://www.cvent.com/meeting-event-planning/usa/fl/orlando/venues"],["Eventective","https://www.eventective.com/orlando-fl/meeting-venues/"],["Unique Venues","https://www.uniquevenues.com/event-venues/usa/florida/orlando/"]]},
+  {slug:"atlanta", name:"Atlanta, GA", leads:[
+    {v:"Kimpton Overland (Airport)", area:"ATL Airport", url:"https://www.kimptonoverlandhotel.com/meetings-and-events/spaces/"},
+    {v:"(Ampliar en directorios →)", area:"Midtown / Buckhead", url:"https://www.cvent.com/meeting-event-planning/usa/ga/atlanta/venues"}],
+   search:[["Cvent","https://www.cvent.com/meeting-event-planning/usa/ga/atlanta/venues"],["Tagvenue","https://www.tagvenue.com/us/hire/hotel-ballrooms/atlanta"],["Unique Venues","https://www.uniquevenues.com/event-venues/usa/georgia/atlanta/"]]},
+  {slug:"houston", name:"Houston, TX", leads:[
+    {v:"Hyatt Regency Houston West", area:"West Houston", url:"https://www.hyatt.com/hyatt-regency/en-US/houro-hyatt-regency-houston-west/meetings"},
+    {v:"Omni Houston Hotel", area:"Uptown / Galleria", url:"https://www.omnihotels.com/hotels/houston/meetings"},
+    {v:"C. Baldwin (Curio)", area:"Downtown", url:"https://www.cbaldwinhotel.com/events/"}],
+   search:[["Cvent","https://www.cvent.com/meeting-event-planning/usa/tx/houston/venues"],["Tagvenue","https://www.tagvenue.com/us/hire/hotel-ballrooms/houston"],["Peerspace","https://www.peerspace.com/venues/houston--tx/ballroom"]]},
+  {slug:"dallas",  name:"Dallas, TX", leads:[
+    {v:"Omni Dallas Hotel", area:"Downtown", url:"https://www.omnihotels.com/hotels/dallas/meetings"},
+    {v:"Hilton Anatole", area:"Design District", url:"https://www.hilton.com/en/hotels/dfwanhh-hilton-anatole/events/"},
+    {v:"Virgin Hotels Dallas", area:"Design District", url:"https://virginhotels.com/dallas/meetings-events/"}],
+   search:[["Cvent","https://www.cvent.com/meeting-event-planning/usa/tx/dallas/venues"],["Unique Venues","https://www.uniquevenues.com/event-venues/usa/texas/dallas/"],["Peerspace","https://www.peerspace.com/venues/dallas--tx/event-venue"]]},
+  {slug:"slc",     name:"Salt Lake City, UT", leads:[
+    {v:"Little America Hotel", area:"Downtown", url:"https://saltlake.littleamerica.com/meetings-events"},
+    {v:"SLC Marriott City Center", area:"Downtown", url:"https://www.marriott.com/en-us/hotels/slccc-salt-lake-city-marriott-city-center/events/"},
+    {v:"DoubleTree SLC Airport", area:"Airport", url:"https://www.hilton.com/en/hotels/slcardt-doubletree-salt-lake-city-airport/events/"}],
+   search:[["Cvent","https://www.cvent.com/meeting-event-planning/usa/ut/salt-lake-city/venues"],["Unique Venues","https://www.uniquevenues.com/event-venues/usa/utah/salt-lake-city/"],["Eventective","https://www.eventective.com/salt-lake-city-ut/party-event-venues/"]]},
+  {slug:"phoenix", name:"Phoenix, AZ", leads:[
+    {v:"Renaissance Phoenix Downtown", area:"Downtown", url:"https://www.marriott.com/en-us/hotels/phxbd-renaissance-phoenix-downtown-hotel/events/"},
+    {v:"Sheraton Phoenix Downtown", area:"Downtown", url:"https://www.marriott.com/en-us/hotels/phxgp-sheraton-phoenix-downtown/events/"}],
+   search:[["Unique Venues","https://www.uniquevenues.com/event-venues/usa/arizona/phoenix/"],["Peerspace","https://www.peerspace.com/venues/phoenix--az/ballroom"],["Cvent","https://www.cvent.com/meeting-event-planning/usa/az/phoenix/venues"]]},
+  {slug:"la",      name:"Los Angeles, CA", leads:[
+    {v:"Millennium Biltmore", area:"Downtown LA", url:"https://www.millenniumhotels.com/en/meetings-events/united-states/los-angeles/millennium-biltmore-hotel-los-angeles/"},
+    {v:"Fairmont Century Plaza", area:"Century City", url:"https://www.fairmontcenturyplaza.com/gather/venues/"},
+    {v:"DTLA Proper Hotel", area:"Downtown LA", url:"https://www.properhotel.com/downtown-la/meetings-events/"}],
+   search:[["Tagvenue","https://www.tagvenue.com/us/hire/hotel-venues/los-angeles"],["Peerspace","https://www.peerspace.com/venues/los-angeles--ca/ballroom"],["Storefront","https://www.thestorefront.com/search/los-angeles/event"]]}
+];
+const STEPS = ["Shortlist 3–5 venues","Enviar RFP / contactar","Recibir cotización + ficha","Verificar must-haves","Site visit","Seleccionar venue","Firmar contrato + depósito"];
+
+const MAIL_EN = `Subject: Event space inquiry — [MONTH/DATES] · [CITY] · ~[#] guests (U-shape seating)
+
+Hi [Contact name],
+
+I'm organizing an event in [City] and [Venue name] looks like a great fit. I'd like to check availability and request a proposal. Key details:
+
+• Event date(s): [date, or flexible]
+• Attendance: [#] guests, seated
+• Seating layout: [Double / Triple / Quadruple] U-shape — rectangular 6'x30" tables, 3 chairs each, everyone facing a stage/screen at the front (diagram attached for reference)
+• Room needed: approx. [2,800-3,200 / 3,800-4,800 / 5,400+] sq ft, ceiling 12 ft or more, ideally a square room
+• Timing: [load-in time]-[end time] on [day]
+
+To confirm the space works for us, could you please let me know:
+
+1. Parking — is complimentary or low-cost parking available for both guests and staff? Approx. rate and capacity?
+2. Water stations — can filtered/ice water stations be set up in the room at no additional charge?
+3. Wi-Fi — is Wi-Fi available (at minimum for our production/AV team)? Bandwidth and any cost?
+4. Backstage / green room — is a private room available for our speakers and coaches, near the main hall?
+5. Access — loading/unloading access for staff and production, and convenient entry/flow for guests?
+6. Waiting area — is there a climate-controlled (A/C) pre-function/waiting area outside the main hall where guests can gather before doors open?
+7. Set-up — can we access the room the night before to set up?
+8. AV equipment — is there any surcharge for using our own AV/production equipment? We plan to bring our own and would need any such fee waived.
+9. A quote including room rental, any food & beverage minimums, and A/V options.
+
+Please note: whatever we agree on — parking, water stations, Wi-Fi, attendee and staff access, the climate-controlled (A/C) waiting area, night-before set-up, and the use of our own AV at no surcharge — will need to be included in writing in the contract.
+
+I've attached a layout diagram for reference. I'd be glad to jump on a quick call. Could you share availability for [dates] and a proposal?
+
+Thank you,
+[Your name]
+[Amor Consciente / Company]
+[Phone] · [Email]`;
+
+const MAIL_ES = `Asunto: Consulta de salón para evento — [MES/FECHAS] · [CIUDAD] · ~[#] personas (layout en U)
+
+Hola [Nombre del contacto]:
+
+Estoy organizando un evento en [Ciudad] y [Nombre del venue] parece una excelente opción. Me gustaría confirmar disponibilidad y solicitar una cotización. Detalles principales:
+
+• Fecha(s) del evento: [fecha, o flexible]
+• Asistencia: [#] personas, sentadas
+• Distribución: [Doble / Triple / Cuádruple] U — mesas rectangulares de 6'x30", 3 sillas cada una, todos de frente a un escenario/pantalla (adjunto diagrama de referencia)
+• Salón requerido: aprox. [2,800-3,200 / 3,800-4,800 / 5,400+] sq ft, techo de 12 ft o más, preferiblemente cuadrado
+• Horario: [hora de montaje]-[hora fin] el [día]
+
+Para confirmar que el espacio nos funciona, ¿me podrían indicar por favor?:
+
+1. Estacionamiento — ¿hay parqueo gratuito o económico para asistentes y staff? ¿Tarifa aproximada y capacidad?
+2. Estaciones de agua — ¿se pueden colocar estaciones de agua filtrada/con hielo en el salón sin cargo adicional?
+3. Wi-Fi — ¿hay Wi-Fi disponible (al menos para nuestro equipo de producción/AV)? ¿Ancho de banda y costo?
+4. Backstage / green room — ¿hay una sala privada para nuestros speakers y coaches, cerca del salón principal?
+5. Accesos — ¿acceso de carga/descarga para staff y producción, y entrada/flujo cómodo para los asistentes?
+6. Área de espera — ¿hay un área de espera / pre-function con clima controlado (A/C) fuera del salón principal donde los asistentes puedan esperar antes de abrir puertas?
+7. Montaje — ¿podemos acceder al salón la noche anterior para montar?
+8. Equipo de A/V — ¿hay algún recargo por usar nuestro propio equipo de A/V/producción? Llevaremos el nuestro y necesitaríamos que no aplique ningún recargo.
+9. Una cotización que incluya renta del salón, mínimos de alimentos y bebidas (si aplican) y opciones de A/V.
+
+Importante: todo lo que acordemos — estacionamiento, estaciones de agua, Wi-Fi, accesos de asistentes y staff, el área de espera con clima controlado (A/C), el montaje la noche anterior y el uso de nuestro propio A/V sin recargo — deberá quedar incluido por escrito en el contrato.
+
+Adjunto un diagrama del layout como referencia. Con gusto agendo una llamada breve. ¿Me pueden compartir disponibilidad para [fechas] y una propuesta?
+
+Gracias,
+[Tu nombre]
+[Amor Consciente / Empresa]
+[Teléfono] · [Email]`;
+
+const MAIL_FU = `Subject: Following up — event space inquiry ([City], ~[#] guests)
+
+Hi [Contact name],
+
+Just following up on my note below about a [#]-guest event in [Month]. We're comparing a few venues this week — would you be able to share availability for [dates] and a quick quote? A few points that matter for us (and that we'd need reflected in the contract): complimentary/low-cost parking, water stations at no charge, Wi-Fi for production, a backstage room, a climate-controlled waiting area outside the hall, night-before set-up, and use of our own AV with no surcharge. Happy to answer any questions.
+
+Thanks so much,
+[Your name]`;
+
+// ---------- Helpers ----------
+const $ = (id)=>document.getElementById(id);
+const cityName = (slug)=>{const c=CITIES.find(x=>x.slug===slug);return c?c.name:slug;};
+const esc = (s)=>String(s==null?"":s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const MONTHS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fmtDate(iso){const d=new Date(iso);return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;}
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+
+// ---------- Estado ----------
+let sb=null, USER=null;
+const state={progress:{}, meta:{}, contacts:[], notes:[], deadlines:[], gtasks:[]};
+
+// ---------- Arranque ----------
+document.addEventListener('DOMContentLoaded', init);
+
+function configured(){
+  const c=window.AC_CONFIG||{};
+  return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
+    !c.SUPABASE_URL.includes("TU-PROYECTO") && !c.SUPABASE_ANON_KEY.includes("TU-ANON");
+}
+
+function init(){
+  // Contenido estático que no depende de la base de datos
+  $('mailEN').textContent=MAIL_EN; $('mailES').textContent=MAIL_ES; $('mailFU').textContent=MAIL_FU;
+  document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>{
+    const t=$(b.dataset.copy).innerText;
+    navigator.clipboard.writeText(t).then(()=>{const o=b.textContent;b.textContent='¡Copiado!';setTimeout(()=>b.textContent=o,1400);});
+  }));
+  if(window.AC_CONFIG&&window.AC_CONFIG.APP_TITLE){$('appTitle').textContent=window.AC_CONFIG.APP_TITLE;}
+
+  if(!configured()){
+    // Modo vista previa (sin base de datos configurada)
+    $('gate').classList.add('hidden'); $('app').classList.remove('hidden');
+    const b=$('configBanner'); b.classList.remove('hidden');
+    b.innerHTML='⚙️ <b>App en modo vista previa.</b> Falta conectar Supabase: edita <span class="tag">config.js</span> con tu <b>SUPABASE_URL</b> y <b>anon key</b> (ver README-DEPLOY.md). Mientras tanto, las especificaciones y la plantilla de correo funcionan; los datos compartidos se activan al configurar.';
+    renderStaticCities();
+    return;
+  }
+
+  sb = window.supabase.createClient(window.AC_CONFIG.SUPABASE_URL, window.AC_CONFIG.SUPABASE_ANON_KEY);
+  wireAuthUI();
+  sb.auth.onAuthStateChange((_e,session)=>handleSession(session));
+  sb.auth.getSession().then(({data})=>handleSession(data.session));
+}
+
+// ---------- Auth ----------
+function wireAuthUI(){
+  $('gateBtn').addEventListener('click', sendMagicLink);
+  $('gateEmail').addEventListener('keydown',e=>{if(e.key==='Enter')sendMagicLink();});
+  $('logoutBtn').addEventListener('click', async()=>{await sb.auth.signOut();location.reload();});
+}
+async function sendMagicLink(){
+  const email=($('gateEmail').value||'').trim().toLowerCase();
+  const msg=$('gateMsg');
+  if(!email||!email.includes('@')){msg.style.color='#b23b3b';msg.textContent='Escribe un correo válido.';return;}
+  const allow=(window.AC_CONFIG.ALLOWED_EMAILS||[]).map(x=>x.toLowerCase());
+  if(allow.length && !allow.includes(email)){msg.style.color='#b23b3b';msg.textContent='Ese correo no está autorizado para este panel.';return;}
+  $('gateBtn').disabled=true;
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  $('gateBtn').disabled=false;
+  if(error){msg.style.color='#b23b3b';msg.textContent='Error: '+error.message;}
+  else{msg.style.color='#2e7d5b';msg.textContent='✅ Revisa tu correo y abre el enlace para entrar.';}
+}
+async function handleSession(session){
+  if(!session){$('app').classList.add('hidden');$('gate').classList.remove('hidden');return;}
+  const email=(session.user.email||'').toLowerCase();
+  const allow=(window.AC_CONFIG.ALLOWED_EMAILS||[]).map(x=>x.toLowerCase());
+  if(allow.length && !allow.includes(email)){
+    await sb.auth.signOut();
+    $('gateMsg').style.color='#b23b3b';$('gateMsg').textContent='Ese correo no está autorizado.';
+    $('app').classList.add('hidden');$('gate').classList.remove('hidden');return;
+  }
+  USER=session.user; $('whoEmail').textContent=email;
+  $('gate').classList.add('hidden'); $('app').classList.remove('hidden');
+  await loadAll(); subscribeRealtime();
+}
+
+// ---------- Carga de datos ----------
+async function loadAll(){
+  const [pg,mt,ct,nt,dl,gt]=await Promise.all([
+    sb.from('city_progress').select('*'),
+    sb.from('city_meta').select('*'),
+    sb.from('contacts').select('*').order('created_at',{ascending:true}),
+    sb.from('status_notes').select('*').order('created_at',{ascending:false}),
+    sb.from('deadlines').select('*').order('sort',{ascending:true}),
+    sb.from('global_tasks').select('*').order('sort',{ascending:true})
+  ]);
+  state.progress={}; (pg.data||[]).forEach(r=>{state.progress[r.city_slug+':'+r.step_index]=r.done;});
+  state.meta={}; (mt.data||[]).forEach(r=>{state.meta[r.city_slug]=r;});
+  state.contacts=ct.data||[]; state.notes=nt.data||[]; state.deadlines=dl.data||[]; state.gtasks=gt.data||[];
+  renderAll();
+}
+const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
+function subscribeRealtime(){
+  sb.channel('ac-venues-live')
+    .on('postgres_changes',{event:'*',schema:'public'},reload)
+    .subscribe();
+}
+
+// ---------- Render ----------
+function renderAll(){ renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); }
+
+function stepDone(slug,i){return !!state.progress[slug+':'+i];}
+function cityPct(slug){let d=0;for(let i=0;i<STEPS.length;i++)if(stepDone(slug,i))d++;return Math.round(d/STEPS.length*100);}
+
+function renderStaticCities(){
+  // vista previa sin DB: candidatos y pasos sin marcar
+  const grid=$('cityGrid'); grid.innerHTML='';
+  CITIES.forEach(c=>{
+    grid.appendChild(cityCard(c,0,()=>false,true));
+  });
+}
+function cityCard(c,pct,isDone,disabled){
+  const card=document.createElement('div'); card.className='card city';
+  const steps=STEPS.map((s,i)=>`<li class="${isDone(i)?'done':''}"><input type="checkbox" ${isDone(i)?'checked':''} ${disabled?'disabled':''} data-step="${c.slug}:${i}"><span>${esc(s)}</span></li>`).join('');
+  const leads=c.leads.map(l=>`<tr><td><a href="${l.url}" target="_blank" rel="noopener">${esc(l.v)}</a></td><td class="muted">${esc(l.area)}</td><td class="reqmini">⧗ tamaño · parking · agua · wifi · backstage · A/C</td></tr>`).join('');
+  const links=c.search.map(s=>`<a href="${s[1]}" target="_blank" rel="noopener">${esc(s[0])} ↗</a>`).join('');
+  const meta=state.meta[c.slug]||{};
+  card.innerHTML=`
+   <div class="top"><h3>${esc(c.name)}</h3><div style="font-size:22px;font-weight:800">${pct}%</div></div>
+   <div class="body">
+     <div class="prog"><i style="width:${pct}%"></i></div>
+     <ul class="chk">${steps}</ul>
+     <div style="margin-top:10px">
+       <label class="muted" style="font-size:12px;font-weight:700">Venue elegido</label>
+       <input class="cell" data-meta="${c.slug}:chosen_venue" placeholder="—" value="${esc(meta.chosen_venue||'')}" ${disabled?'disabled':''}>
+     </div>
+     <div class="cand"><h4>Candidatos (leads a contactar)</h4><table><tbody>${leads}</tbody></table>
+       <div class="links" style="margin-top:8px">${links}</div></div>
+     <div style="margin-top:10px"><textarea data-meta="${c.slug}:notes" rows="2" placeholder="Notas de ${esc(c.name)}..." ${disabled?'disabled':''}>${esc(meta.notes||'')}</textarea></div>
+   </div>`;
+  return card;
+}
+function renderCities(){
+  const grid=$('cityGrid'); grid.innerHTML='';
+  CITIES.forEach(c=>grid.appendChild(cityCard(c,cityPct(c.slug),(i)=>stepDone(c.slug,i),false)));
+}
+function renderTimeline(){
+  $('timelineBox').innerHTML = state.deadlines.map(d=>`
+   <div class="item ${d.done?'done':''}">
+     <input type="checkbox" ${d.done?'checked':''} data-deadline="${d.id}">
+     <div><div class="dot"></div><span class="ph">${esc(d.phase)}</span><span class="due">vence ${esc(d.due)}</span>
+     <div class="desc">${esc(d.descr||'')}</div></div>
+   </div>`).join('');
+}
+function renderGlobalTasks(){
+  $('globalTasks').innerHTML = state.gtasks.map(t=>`
+   <li class="${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} data-gtask="${t.id}"><span>${esc(t.label)}</span></li>`).join('');
+}
+function renderMatrix(){
+  $('matrixBody').innerHTML = CITIES.map(c=>{
+    const pct=cityPct(c.slug), meta=state.meta[c.slug]||{};
+    let label='Pendiente',cls='p-pend';
+    if(pct===100){label='Cerrado ✓';cls='p-ok';} else if(pct>0){label='En proceso';cls='p-prog';}
+    return `<tr><td><b>${esc(c.name.split(',')[0])}</b></td>
+      <td class="muted">${esc(meta.chosen_venue||'—')}</td>
+      <td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td>
+      <td><span class="pill ${cls}">${label}</span></td></tr>`;
+  }).join('');
+}
+function renderContacts(){
+  $('contactBody').innerHTML = state.contacts.map(c=>`
+   <tr data-cid="${c.id}">
+     <td><input class="cell" data-cfield="city" value="${esc(c.city)}"></td>
+     <td><input class="cell" data-cfield="role" value="${esc(c.role)}"></td>
+     <td><input class="cell" data-cfield="name" value="${esc(c.name)}"></td>
+     <td><input class="cell" data-cfield="email" value="${esc(c.email)}"></td>
+     <td><input class="cell" data-cfield="phone" value="${esc(c.phone)}"></td>
+     <td><input class="cell" data-cfield="notes" value="${esc(c.notes)}"></td>
+     <td><button class="btn sm ghost" data-delc="${c.id}">✕</button></td>
+   </tr>`).join('') || `<tr><td colspan="7" class="muted" style="padding:14px">Sin contactos todavía. Agrega el primero abajo.</td></tr>`;
+}
+function renderStatus(){
+  $('statusLog').innerHTML = state.notes.map(n=>`
+   <div class="entry"><div class="date"><b>${fmtDate(n.created_at)}</b> ${esc(n.author||'')}</div>
+   <div class="muted">${esc(n.body)}</div></div>`).join('') || '<div class="entry muted">Sin notas.</div>';
+}
+function renderKPIs(){
+  let allDone=0,total=CITIES.length*STEPS.length,closed=0;
+  CITIES.forEach(c=>{let d=0;for(let i=0;i<STEPS.length;i++)if(stepDone(c.slug,i))d++;allDone+=d;if(d===STEPS.length)closed++;});
+  $('kpiProg').textContent=Math.round(allDone/total*100)+'%';
+  $('kpiConf').textContent=closed+'/8';
+}
+
+// ---------- Escritura (event delegation) ----------
+document.addEventListener('change', async (e)=>{
+  const t=e.target;
+  if(!sb||!USER) return;
+  if(t.dataset.step){
+    const [slug,i]=t.dataset.step.split(':');
+    state.progress[t.dataset.step]=t.checked;
+    t.closest('li').classList.toggle('done',t.checked);
+    renderKPIs();
+    await sb.from('city_progress').upsert({city_slug:slug,step_index:+i,done:t.checked,updated_at:new Date().toISOString()},{onConflict:'city_slug,step_index'});
+  }
+  else if(t.dataset.deadline){
+    await sb.from('deadlines').update({done:t.checked}).eq('id',t.dataset.deadline);
+  }
+  else if(t.dataset.gtask){
+    await sb.from('global_tasks').update({done:t.checked}).eq('id',t.dataset.gtask);
+  }
+});
+// inputs de texto (venue elegido, notas, celdas de contacto) — guardar al salir/blur
+document.addEventListener('input', debounce(async (e)=>{
+  const t=e.target; if(!sb||!USER) return;
+  if(t.dataset.meta){
+    const [slug,field]=t.dataset.meta.split(':');
+    const patch={city_slug:slug}; patch[field]=t.value; patch.updated_at=new Date().toISOString();
+    await sb.from('city_meta').upsert(patch,{onConflict:'city_slug'});
+  }
+  else if(t.dataset.cfield){
+    const id=t.closest('tr').dataset.cid;
+    await sb.from('contacts').update({[t.dataset.cfield]:t.value}).eq('id',id);
+  }
+}, 700));
+
+document.addEventListener('click', async (e)=>{
+  const t=e.target;
+  if(t.dataset.delc){ if(sb&&USER){await sb.from('contacts').delete().eq('id',t.dataset.delc);} }
+});
+
+// Agregar contacto
+document.addEventListener('DOMContentLoaded',()=>{
+  const add=$('addContact'); if(add) add.addEventListener('click', async ()=>{
+    if(!sb||!USER) return;
+    const row={city:$('cCity').value,role:$('cRole').value,name:$('cName').value,email:$('cEmail').value,phone:$('cPhone').value,notes:''};
+    if(!row.city&&!row.role&&!row.name) return;
+    ['cCity','cRole','cName','cEmail','cPhone'].forEach(id=>$(id).value='');
+    await sb.from('contacts').insert(row);
+  });
+  const addN=$('addNote'); if(addN) addN.addEventListener('click', async ()=>{
+    if(!sb||!USER) return;
+    const body=$('noteInput').value.trim(); if(!body) return;
+    $('noteInput').value='';
+    await sb.from('status_notes').insert({body,author:(USER.email||'').split('@')[0]});
+  });
+});
+
+/* ============================================================
+   LuigiPT — asistente (Fase 1: voz + chat sobre datos actuales)
+   ============================================================ */
+function lpNorm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+const LP_CITY_ALIASES = {
+  miami:['miami'], orlando:['orlando'], atlanta:['atlanta'], houston:['houston'],
+  dallas:['dallas'], slc:['salt lake city','salt lake','slc'], phoenix:['phoenix'],
+  la:['los angeles','l\\.a','\\bla\\b']
+};
+function lpFindCity(n){
+  for(const c of CITIES){
+    for(const a of (LP_CITY_ALIASES[c.slug]||[c.slug])){
+      try{ if(new RegExp('(^|\\s)'+a+'(\\s|$|,|\\.|\\?)').test(n)) return c; }catch(e){}
+    }
+  }
+  return null;
+}
+function lpCityStatus(c){
+  const pct=cityPct(c.slug), meta=state.meta[c.slug]||{};
+  const done=[], pend=[];
+  STEPS.forEach((s,i)=>{ (stepDone(c.slug,i)?done:pend).push(s); });
+  let out=`Estatus de ${c.name}: ${pct}% completado.`;
+  out+=`\n• Venue elegido: ${meta.chosen_venue?meta.chosen_venue:'— (sin definir)'}`;
+  out+=`\n• Hecho: ${done.length?done.join(', '):'nada aún'}`;
+  out+=`\n• Siguiente: ${pend.length?pend[0]:'¡todo listo! ✓'}`;
+  if(meta.notes) out+=`\n• Notas: ${meta.notes}`;
+  const leads=c.leads.map(l=>l.v).join(', ');
+  out+=`\n• Candidatos: ${leads}`;
+  return out;
+}
+function lpOverall(){
+  let total=CITIES.length*STEPS.length, done=0, closed=0, lines=[];
+  CITIES.forEach(c=>{ let d=0; for(let i=0;i<STEPS.length;i++) if(stepDone(c.slug,i)) d++; done+=d; if(d===STEPS.length) closed++;
+    const meta=state.meta[c.slug]||{}; lines.push(`  · ${c.name.split(',')[0]}: ${cityPct(c.slug)}%${meta.chosen_venue?' ('+meta.chosen_venue+')':''}`); });
+  return `Resumen del proyecto — ${Math.round(done/total*100)}% global, ${closed}/8 venues cerrados:\n`+lines.join('\n');
+}
+function lpContacts(c){
+  let list = state.contacts||[];
+  if(c) list = list.filter(x=> lpNorm(x.city).includes(lpNorm(c.name.split(',')[0])) );
+  if(!list.length) return c?`Aún no hay contactos guardados para ${c.name.split(',')[0]}. Los candidatos a contactar son: ${c.leads.map(l=>l.v).join(', ')}.`:'Aún no hay contactos guardados. Ve a la pestaña Contactos para agregarlos.';
+  return (c?`Contactos de ${c.name.split(',')[0]}:`:'Contactos:')+'\n'+list.map(x=>`• ${x.role||x.name||'—'} ${x.name?('· '+x.name):''} ${x.email?('· '+x.email):''} ${x.phone?('· '+x.phone):''}`).join('\n');
+}
+function lpDeadlines(){
+  if(!state.deadlines.length) return 'No hay deadlines cargados.';
+  return 'Timeline / deadlines:\n'+state.deadlines.map(d=>`${d.done?'✓':'○'} ${d.phase} — vence ${d.due}`).join('\n');
+}
+function lpPend(){
+  const g=(state.gtasks||[]).filter(t=>!t.done).map(t=>t.label);
+  let out='Pendientes globales:\n'+(g.length?g.map(x=>'• '+x).join('\n'):'• Ninguno 🎉');
+  const perCity=CITIES.map(c=>{ for(let i=0;i<STEPS.length;i++) if(!stepDone(c.slug,i)) return `  · ${c.name.split(',')[0]}: ${STEPS[i]}`; return null; }).filter(Boolean);
+  if(perCity.length) out+='\nSiguiente paso por ciudad:\n'+perCity.join('\n');
+  return out;
+}
+const LP_REQS = '8 requisitos obligatorios (deben quedar en el contrato):\n1. Estacionamiento gratis/económico\n2. Estaciones de agua sin cargo\n3. WiFi (mín. producción)\n4. Backstage para speakers/coaches\n5. Accesos carga/descarga + entrada asistentes\n6. Área de espera con A/C fuera del salón\n7. Montaje la noche anterior\n8. Sin recargo por A/V propio';
+
+function lpAnswer(raw){
+  const n=lpNorm(raw);
+  const city=lpFindCity(n);
+  const has=(...w)=>w.some(x=>n.includes(x));
+  // finanzas / documentos -> Fase 2/3
+  if(has('monto','saldo','pagar','pago','balance','factura','recibo','invoice','deber','pendiente por pagar','a favor'))
+    return 'Los montos pendientes, saldos a favor y pagos son parte del módulo de Finanzas que llega en la Fase 3 de LuigiPT. En la Fase 2 podré leer tus contratos/recibos/facturas y de ahí sacar esos números automáticamente. Por ahora te puedo dar estatus por ciudad, venues, contactos, deadlines y pendientes.';
+  if(has('contrato','documento','archivo','pdf','sube','subir','lee','interpreta','diagram'))
+    return 'La lectura e interpretación de documentos (contratos, recibos, facturas, diagramas) se activa en la Fase 2, cuando conectemos la clave de IA. Podrás adjuntarlos con el clip 📎 y yo los leo, extraigo los datos y los guardo en el lugar correcto.';
+  if(has('evento futuro','futuros eventos','proximos eventos','proximo evento'))
+    return 'El módulo de eventos futuros (con su venue, dirección, fechas y finanzas) llega en la Fase 3. Hoy el proyecto cubre el sourcing de venues en las 8 ciudades — pregúntame por el estatus de cualquiera.';
+  if(has('ayuda','que puedes','que haces','help','opciones','menu'))
+    return 'Puedo ayudarte con (Fase 1):\n• Estatus por ciudad — "¿cómo va Miami?"\n• Resumen general — "resumen"\n• Venues/candidatos — "venues en Dallas"\n• Contactos — "contactos de Houston"\n• Deadlines — "¿qué vence?"\n• Pendientes — "pendientes"\n• Requisitos — "requisitos del salón"\nUsa el 🎤 para hablarme. (Leer documentos y finanzas: Fase 2/3.)';
+  if(has('direccion','address','donde queda') && city) return `Dirección de ${city.name.split(',')[0]}: el venue aún no está confirmado, así que no hay dirección fija. Candidatos: ${city.leads.map(l=>l.v+' ('+l.area+')').join(', ')}.`;
+  if(has('venue','candidato','hotel','opcion','opciones','salon') && city) return `Candidatos en ${city.name.split(',')[0]} (por contactar):\n`+city.leads.map(l=>`• ${l.v} — ${l.area}`).join('\n');
+  if(has('contacto','correo','email','telefono','telefonos','llamar')) return lpContacts(city);
+  if(has('deadline','vence','fecha limite','timeline','cronograma','cuando')) return lpDeadlines();
+  if(has('pendiente','tarea','falta','por hacer','siguiente')) return lpPend();
+  if(has('requisito','must','especificacion','necesita el salon','que debe tener')) return LP_REQS;
+  if(city) return lpCityStatus(city);
+  if(has('estatus','status','como va','como vamos','avance','progreso','resumen','reporte','general')) return lpOverall();
+  return 'Aún no tengo eso conectado. En la Fase 1 te ayudo con: estatus por ciudad, resumen general, venues, contactos, deadlines, pendientes y requisitos. (Preguntas abiertas, finanzas y lectura de documentos llegan en Fase 2/3.) Escribe "ayuda" para ver ejemplos.';
+}
+
+function lpAddMsg(text, who){
+  const b=$('lpBody'); const d=document.createElement('div'); d.className='lp-msg '+(who==='u'?'u':'a');
+  d.textContent=text; b.appendChild(d); b.scrollTop=b.scrollHeight; return d;
+}
+function lpChips(items){
+  const b=$('lpBody'); const wrap=document.createElement('div'); wrap.className='lp-chips';
+  items.forEach(t=>{ const c=document.createElement('button'); c.className='lp-chip'; c.textContent=t;
+    c.onclick=()=>{ $('lpText').value=t; lpSend(); }; wrap.appendChild(c); });
+  b.appendChild(wrap); b.scrollTop=b.scrollHeight;
+}
+function lpSend(){
+  const t=($('lpText').value||'').trim(); if(!t) return;
+  $('lpText').value=''; lpAddMsg(t,'u');
+  setTimeout(()=>lpAddMsg(lpAnswer(t),'a'), 150);
+}
+function lpInit(){
+  const bubble=$('lpBubble'); if(!bubble) return;
+  let greeted=false;
+  const open=()=>{ $('lpPanel').classList.remove('hidden');
+    if(!greeted){ greeted=true;
+      lpAddMsg('Hola 👋 Soy LuigiPT, tu asistente. Puedo darte el estatus de cualquier ciudad, venues, contactos, deadlines y pendientes. Háblame con el 🎤 o escríbeme.','a');
+      lpChips(['Resumen','¿Cómo va Miami?','¿Qué vence?','Pendientes','Ayuda']);
+    }
+    setTimeout(()=>$('lpText').focus(),50);
+  };
+  bubble.onclick=()=>{ $('lpPanel').classList.contains('hidden')?open():$('lpPanel').classList.add('hidden'); };
+  $('lpClose').onclick=()=>$('lpPanel').classList.add('hidden');
+  $('lpSend').onclick=lpSend;
+  $('lpText').addEventListener('keydown',e=>{ if(e.key==='Enter') lpSend(); });
+  // voz
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec=null, recing=false;
+  if(SR){ rec=new SR(); rec.lang='es-US'; rec.interimResults=false; rec.maxAlternatives=1;
+    rec.onresult=e=>{ $('lpText').value=e.results[0][0].transcript; lpSend(); };
+    rec.onend=()=>{ recing=false; $('lpMic').classList.remove('rec'); };
+    rec.onerror=()=>{ recing=false; $('lpMic').classList.remove('rec'); };
+  }
+  $('lpMic').onclick=()=>{
+    if(!rec){ lpAddMsg('El dictado por voz necesita Chrome de escritorio. Puedes escribirme igual. 🙂','a'); return; }
+    if(recing){ rec.stop(); return; }
+    try{ rec.start(); recing=true; $('lpMic').classList.add('rec'); }catch(e){}
+  };
+  // adjuntar (Fase 2)
+  $('lpAttach').onclick=()=>$('lpFile').click();
+  $('lpFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return;
+    lpAddMsg(`📎 ${f.name}`,'u');
+    lpAddMsg(`Recibí "${f.name}". La lectura e interpretación con IA (contratos, recibos, facturas, diagramas) se activa en la Fase 2, cuando conectemos la clave de IA — ahí lo leo, extraigo los datos y los guardo en el lugar correcto. Por ahora quedó registrado.`,'a');
+    e.target.value='';
+  };
+}
+lpInit();
+
+</script>
+</body>
+</html>
