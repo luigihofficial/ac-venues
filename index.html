@@ -210,6 +210,23 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 .pw-box h3{color:var(--navy);font-size:18px;margin-bottom:4px}
 .pw-box input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;margin-bottom:8px}
 
+/* ---------- Fases / pendientes por evento + evaluación de venue ---------- */
+.dsub{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:800;margin:14px 0 5px}
+.datebody > .dsub:first-child{margin-top:2px}
+.dsubn{font-weight:600;text-transform:none;letter-spacing:0;color:var(--pend);margin-left:6px}
+.evalsec{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+.evalcard{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:#fffdf8}
+.evalhead{display:flex;align-items:center;gap:8px}
+.evalhead .cell{flex:1}
+.evavg{font-weight:800;color:var(--navy);font-size:15px;white-space:nowrap}
+.evavg small{color:var(--muted);font-weight:600;font-size:11px}
+.evgrid{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;margin-top:8px}
+@media(max-width:520px){.evgrid{grid-template-columns:1fr}}
+.evrow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:2px 0}
+.evsel{border:1px solid var(--line);border-radius:6px;padding:2px 6px;font:inherit;font-size:12.5px;background:#fff;color:var(--ink);cursor:pointer}
+.cntbadge{display:inline-grid;place-items:center;min-width:36px;height:20px;padding:0 7px;border-radius:999px;color:#fff;font-weight:800;font-size:11px;flex:none}
+.chk.rollup li{gap:9px;align-items:center}
+
 </style>
 </head>
 <body>
@@ -244,10 +261,10 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 <nav class="tabs"><div class="wrap">
   <a href="#specs">Especificaciones</a>
   <a href="#metas">Metas</a>
-  <a href="#timeline">Timeline</a>
+  <a href="#timeline">Fases</a>
   <a href="#pendientes">Pendientes</a>
   <a href="#ciudades">Ciudades</a>
-  <a href="#matriz">Matriz</a>
+  <a href="#matriz">Evaluación</a>
   <a href="#contactos">Contactos</a>
   <a href="#plantilla">Plantilla correo</a>
   <a href="#status">Status</a>
@@ -304,14 +321,14 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 
   <!-- TIMELINE (dinámico) -->
   <section id="timeline">
-    <div class="sec-head"><div class="num">⏱</div><div><h2>Timeline &amp; Deadlines</h2><p>Marca fases completadas. Se guarda para todo el equipo.</p></div></div>
+    <div class="sec-head"><div class="num">⏱</div><div><h2>Avance de fases</h2><p>Resumen de todas las fechas: cuántos eventos completaron cada fase. Se actualiza solo al marcar pasos dentro de cada evento.</p></div></div>
     <div class="card" style="padding:20px 22px"><div class="tl" id="timelineBox"></div></div>
   </section>
 
   <!-- PENDIENTES (dinámico) -->
   <section id="pendientes">
-    <div class="sec-head"><div class="num">☑</div><div><h2>Pendientes globales</h2><p>Tareas de todo el proyecto.</p></div></div>
-    <div class="card" style="padding:16px 18px"><ul class="chk" id="globalTasks"></ul></div>
+    <div class="sec-head"><div class="num">☑</div><div><h2>Pendientes por evento (resumen)</h2><p>Cuántos eventos tienen cada pendiente resuelto. El detalle se marca dentro de cada evento.</p></div></div>
+    <div class="card" style="padding:16px 18px"><ul class="chk rollup" id="globalTasks"></ul></div>
   </section>
 
   <!-- CIUDADES (dinámico) -->
@@ -322,9 +339,9 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 
   <!-- MATRIZ (dinámico) -->
   <section id="matriz">
-    <div class="sec-head"><div class="num">▦</div><div><h2>Matriz de requisitos</h2><p>Venue elegido + estado por ciudad. ⧗ = por confirmar.</p></div></div>
+    <div class="sec-head"><div class="num">▦</div><div><h2>Matriz de evaluación de venues</h2><p>Todas las evaluaciones (1–5, 5 = me gusta mucho) con su promedio y recomendación de regresar. Se llenan dentro de cada evento.</p></div></div>
     <div class="card" style="overflow-x:auto"><table>
-      <thead><tr><th>Ciudad</th><th>Venue elegido</th><th>Parking</th><th>Agua</th><th>WiFi</th><th>Backstage</th><th>A/C espera</th><th>Estado</th></tr></thead>
+      <thead><tr><th>Ciudad · Evento</th><th>Venue</th><th>Promedio</th><th>Recomendación</th><th>Comentarios</th></tr></thead>
       <tbody id="matrixBody"></tbody>
     </table></div>
   </section>
@@ -479,7 +496,19 @@ const CITIES = [
     {v:"DTLA Proper Hotel", area:"Downtown LA", url:"https://www.properhotel.com/downtown-la/meetings-events/"}],
    search:[["Tagvenue","https://www.tagvenue.com/us/hire/hotel-venues/los-angeles"],["Peerspace","https://www.peerspace.com/venues/los-angeles--ca/ballroom"],["Storefront","https://www.thestorefront.com/search/los-angeles/event"]]}
 ];
-const STEPS = ["Shortlist 3–5 venues","Enviar RFP / contactar","Recibir cotización + ficha","Verificar must-haves","Site visit","Seleccionar venue","Firmar contrato + depósito"];
+// Fases del evento (mueven el % y el estado). Índices 0..6 en date_progress.
+const FASES = ["Setup & criterios","Shortlist 3–5 venues","RFP / contactar","Cotizaciones & fichas","Site visit & comparativa","Negociación & selección","Contrato & depósito"];
+const STEPS = FASES; // compat interno: el avance del evento se calcula sobre las fases
+// Pendientes del evento (checklist operativo). Se guardan en date_progress con índices 100+.
+const PEND_EVENTO = ["Presupuesto del evento confirmado","Responsable del evento asignado","Criterios / scoring definidos","Requisitos A/V confirmados","RFP enviado a la shortlist","Must-haves por escrito en el contrato"];
+const PEND_BASE = 100;
+// Criterios de la matriz de evaluación de venue (1–5, 5 = me gusta mucho)
+const EVAL_CRITERIA = [
+  {k:'espacio',l:'Espacio (tamaño)'},{k:'estado',l:'Estado del salón'},{k:'accesibilidad',l:'Accesibilidad'},
+  {k:'ac',l:'A/C (clima)'},{k:'iluminacion',l:'Iluminación'},{k:'greenroom',l:'Green room / backstage'},
+  {k:'banos',l:'Baños (calidad y cercanía)'},{k:'staff',l:'Servicio del staff'},{k:'registro',l:'Registro / lobby'},
+  {k:'estacionamiento',l:'Estacionamiento'},{k:'carga',l:'Carga y descarga'},{k:'sonido',l:'Sonido / acústica'}
+];
 
 const MAIL_EN = `Subject: Event space inquiry — [MONTH/DATES] · [CITY] · ~[#] guests (U-shape seating)
 
@@ -566,7 +595,7 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 
 // ---------- Estado ----------
 let sb=null, USER=null;
-const state={dates:{}, dprogress:{}, dmeta:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[]};
+const state={dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[]};
 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
@@ -649,6 +678,9 @@ async function loadAll(){
   state.dmeta={}; (dm.data||[]).forEach(r=>{ state.dmeta[r.date_id]=r; });
   state.contacts=ct.data||[]; state.notes=nt.data||[]; state.deadlines=dl.data||[]; state.gtasks=gt.data||[];
   try{ const dc=await sb.from('documents').select('*').order('created_at',{ascending:false}); state.documents=dc.data||[]; }catch(e){ state.documents=[]; }
+  try{ const ve=await sb.from('venue_evals').select('*').order('created_at',{ascending:true});
+       state.evals={}; (ve.data||[]).forEach(r=>{ (state.evals[r.date_id]=state.evals[r.date_id]||[]).push(r); }); }
+  catch(e){ state.evals={}; }
   renderAll();
 }
 const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
@@ -667,11 +699,38 @@ function citiesDates(slug){ return state.dates[slug]||[]; }
 function dateDone(id,i){ return !!state.dprogress[id+':'+i]; }
 function datePct(id){ let d=0; for(let i=0;i<STEPS.length;i++) if(dateDone(id,i)) d++; return Math.round(d/STEPS.length*100); }
 function dateStatus(id){ const p=datePct(id); if(p===100)return['Cerrado ✓','p-ok']; if(p>0)return['En proceso','p-prog']; return['Pendiente','p-pend']; }
+function pendDone(id,i){ return !!state.dprogress[id+':'+(PEND_BASE+i)]; }
+function pendCount(id){ let d=0; for(let i=0;i<PEND_EVENTO.length;i++) if(pendDone(id,i)) d++; return d; }
+function evalsFor(id){ return state.evals[id]||[]; }
+function evalAvg(ev){ const s=ev&&ev.scores||{}; const vals=EVAL_CRITERIA.map(c=>+s[c.k]).filter(v=>v>=1&&v<=5); return vals.length? (vals.reduce((a,b)=>a+b,0)/vals.length):0; }
+function evalRec(avg){ if(!avg) return null; if(avg>=4)return['Regresar ✓','p-ok']; if(avg>=3)return['Tal vez','p-prog']; return['No regresar','p-must']; }
 function allDates(){ const out=[]; CITIES.forEach(c=>citiesDates(c.slug).forEach(d=>out.push({city:c, d}))); return out; }
 
+function evalCard(ev){
+  const avg=evalAvg(ev); const rec=evalRec(avg);
+  const rows=EVAL_CRITERIA.map(c=>{
+    const v=+((ev.scores||{})[c.k]||0);
+    const opts=[1,2,3,4,5].map(n=>`<option value="${n}" ${v===n?'selected':''}>${n}</option>`).join('');
+    return `<div class="evrow"><span>${esc(c.l)}</span><select class="evsel" data-evalscore="${ev.id}:${c.k}"><option value="0" ${!v?'selected':''}>–</option>${opts}</select></div>`;
+  }).join('');
+  return `<div class="evalcard">
+    <div class="evalhead">
+      <input class="cell" data-evalvenue="${ev.id}" value="${esc(ev.venue_name||'')}" placeholder="Nombre del venue">
+      ${rec?`<span class="pill ${rec[1]}" style="flex:none">${rec[0]}</span>`:''}
+      <span class="evavg">${avg?avg.toFixed(1):'—'}<small>/5</small></span>
+      <button class="dxs" data-deleval="${ev.id}" title="Eliminar evaluación">✕</button>
+    </div>
+    <div class="evgrid">${rows}</div>
+    <textarea data-evalnotes="${ev.id}" rows="2" placeholder="Comentarios / ¿regresamos a este venue?..." style="margin-top:6px">${esc(ev.notes||'')}</textarea>
+  </div>`;
+}
 function dateBlock(d, cityName){
   const pct=datePct(d.id); const st=dateStatus(d.id); const meta=state.dmeta[d.id]||{};
-  const steps=STEPS.map((s,i)=>`<li class="${dateDone(d.id,i)?'done':''}"><input type="checkbox" ${dateDone(d.id,i)?'checked':''} data-dstep="${d.id}:${i}"><span>${esc(s)}</span></li>`).join('');
+  const fases=FASES.map((s,i)=>`<li class="${dateDone(d.id,i)?'done':''}"><input type="checkbox" ${dateDone(d.id,i)?'checked':''} data-dstep="${d.id}:${i}"><span>${esc(s)}</span></li>`).join('');
+  const pend=PEND_EVENTO.map((s,i)=>`<li class="${pendDone(d.id,i)?'done':''}"><input type="checkbox" ${pendDone(d.id,i)?'checked':''} data-dstep="${d.id}:${PEND_BASE+i}"><span>${esc(s)}</span></li>`).join('');
+  const pc=pendCount(d.id);
+  const evs=evalsFor(d.id);
+  const evalsHtml = evs.length ? evs.map(evalCard).join('') : `<div class="muted" style="font-size:12px;padding:4px 0">Sin evaluaciones todavía. Agrega una tras la visita 👇</div>`;
   return `<div class="dateblk">
     <div class="datehead" data-dtoggle="1">
       <span class="dcaret">▸</span>
@@ -682,10 +741,18 @@ function dateBlock(d, cityName){
     </div>
     <div class="prog"><i style="width:${pct}%"></i></div>
     <div class="datebody">
-      <ul class="chk">${steps}</ul>
+      <h5 class="dsub">Fases del evento</h5>
+      <ul class="chk">${fases}</ul>
+      <h5 class="dsub">Pendientes del evento <span class="dsubn">${pc}/${PEND_EVENTO.length}</span></h5>
+      <ul class="chk">${pend}</ul>
       <label class="muted" style="font-size:12px;font-weight:700">Venue elegido</label>
       <input class="cell" data-dmeta="${d.id}:chosen_venue" placeholder="—" value="${esc(meta.chosen_venue||'')}">
       <textarea data-dmeta="${d.id}:notes" rows="2" placeholder="Notas de esta fecha..." style="margin-top:6px">${esc(meta.notes||'')}</textarea>
+      <div class="evalsec">
+        <h5 class="dsub">Evaluación de venues <span class="dsubn">1–5 · 5 = me gusta mucho</span></h5>
+        ${evalsHtml}
+        <button class="btn sm gold" data-addeval="${d.id}" style="margin-top:6px">+ Evaluar venue</button>
+      </div>
     </div>
   </div>`;
 }
@@ -715,26 +782,37 @@ function renderCities(){
   open.forEach(id=>{ const el=grid.querySelector(`[data-dlabel="${id}"]`); if(el){const b=el.closest('.dateblk'); if(b)b.classList.add('open');} });
 }
 function renderTimeline(){
-  $('timelineBox').innerHTML = state.deadlines.map(d=>`
-   <div class="item ${d.done?'done':''}">
-     <input type="checkbox" ${d.done?'checked':''} data-deadline="${d.id}">
-     <div><div class="dot"></div><span class="ph">${esc(d.phase)}</span><span class="due">vence ${esc(d.due)}</span>
-     <div class="desc">${esc(d.descr||'')}</div></div>
-   </div>`).join('');
+  const dates=allDates(); const n=dates.length;
+  $('timelineBox').innerHTML = FASES.map((f,i)=>{
+    const done = dates.filter(({d})=>dateDone(d.id,i)).length;
+    const pct = n? Math.round(done/n*100):0;
+    return `<div class="item ${n&&done===n?'done':''}">
+      <div style="flex:1"><div class="dot"></div>
+        <span class="ph">${esc(f)}</span><span class="due">${done}/${n} eventos</span>
+        <div class="prog" style="margin-top:6px"><i style="width:${pct}%"></i></div></div>
+    </div>`;
+  }).join('');
 }
 function renderGlobalTasks(){
-  $('globalTasks').innerHTML = state.gtasks.map(t=>`
-   <li class="${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} data-gtask="${t.id}"><span>${esc(t.label)}</span></li>`).join('');
+  const dates=allDates(); const n=dates.length;
+  $('globalTasks').innerHTML = n ? PEND_EVENTO.map((p,i)=>{
+    const done = dates.filter(({d})=>pendDone(d.id,i)).length; const ok=done===n;
+    return `<li class="${ok?'done':''}"><span class="cntbadge" style="background:${ok?'var(--ok)':'var(--navy)'}">${done}/${n}</span><span>${esc(p)}</span></li>`;
+  }).join('') : '<li class="muted" style="padding:6px 0">Agrega eventos (fechas) para ver el resumen de pendientes.</li>';
 }
 function renderMatrix(){
-  const rows=allDates();
-  $('matrixBody').innerHTML = rows.length ? rows.map(({city,d})=>{
-    const st=dateStatus(d.id), meta=state.dmeta[d.id]||{};
-    return `<tr><td><b>${esc(city.name.split(',')[0])}</b> <span class="muted">· ${esc(d.label||'—')}</span></td>
-      <td class="muted">${esc(meta.chosen_venue||'—')}</td>
-      <td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td>
-      <td><span class="pill ${st[1]}">${st[0]}</span></td></tr>`;
-  }).join('') : `<tr><td colspan="8" class="muted" style="padding:14px">Aún no hay fechas. Agrégalas en cada ciudad.</td></tr>`;
+  const all=[];
+  allDates().forEach(({city,d})=> evalsFor(d.id).forEach(ev=> all.push({city,d,ev})));
+  all.sort((a,b)=> evalAvg(b.ev)-evalAvg(a.ev));
+  $('matrixBody').innerHTML = all.length ? all.map(({city,d,ev})=>{
+    const avg=evalAvg(ev), rec=evalRec(avg);
+    return `<tr>
+      <td><b>${esc(city.name.split(',')[0])}</b> <span class="muted">· ${esc(d.label||'—')}</span></td>
+      <td>${esc(ev.venue_name||'—')}</td>
+      <td><b>${avg?avg.toFixed(1):'—'}</b> <span class="muted">/5</span></td>
+      <td>${rec?`<span class="pill ${rec[1]}">${rec[0]}</span>`:'<span class="muted">—</span>'}</td>
+      <td class="muted">${esc((ev.notes||'').slice(0,90))}</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="muted" style="padding:14px">Aún no hay evaluaciones. Ábrelas dentro de cada evento (sección Ciudades → “+ Evaluar venue”).</td></tr>`;
 }
 function renderContacts(){
   $('contactBody').innerHTML = state.contacts.map(c=>`
@@ -776,6 +854,14 @@ document.addEventListener('change', async (e)=>{
   else if(t.dataset.gtask){
     await sb.from('global_tasks').update({done:t.checked}).eq('id',t.dataset.gtask);
   }
+  else if(t.dataset.evalscore){
+    const [id,key]=t.dataset.evalscore.split(':');
+    let ev=null; for(const k in state.evals){ const f=state.evals[k].find(x=>x.id===id); if(f){ev=f;break;} }
+    if(ev){ ev.scores=Object.assign({}, ev.scores||{}); if(+t.value){ ev.scores[key]=+t.value; } else { delete ev.scores[key]; }
+      renderCities(); renderMatrix();
+      await sb.from('venue_evals').update({scores:ev.scores, updated_at:new Date().toISOString()}).eq('id',id);
+    }
+  }
 });
 // inputs de texto (venue elegido, notas, celdas de contacto) — guardar al salir/blur
 document.addEventListener('input', debounce(async (e)=>{
@@ -797,6 +883,17 @@ document.addEventListener('input', debounce(async (e)=>{
     const id=t.closest('tr').dataset.cid;
     await sb.from('contacts').update({[t.dataset.cfield]:t.value}).eq('id',id);
   }
+  else if(t.dataset.evalvenue){
+    let ev=null; for(const k in state.evals){ const f=state.evals[k].find(x=>x.id===t.dataset.evalvenue); if(f){ev=f;break;} }
+    if(ev) ev.venue_name=t.value;
+    await sb.from('venue_evals').update({venue_name:t.value, updated_at:new Date().toISOString()}).eq('id',t.dataset.evalvenue);
+    renderMatrix();
+  }
+  else if(t.dataset.evalnotes){
+    let ev=null; for(const k in state.evals){ const f=state.evals[k].find(x=>x.id===t.dataset.evalnotes); if(f){ev=f;break;} }
+    if(ev) ev.notes=t.value;
+    await sb.from('venue_evals').update({notes:t.value, updated_at:new Date().toISOString()}).eq('id',t.dataset.evalnotes);
+  }
 }, 700));
 
 document.addEventListener('click', async (e)=>{
@@ -813,6 +910,18 @@ document.addEventListener('click', async (e)=>{
   }
   if(t.dataset.deldate){
     await sb.from('event_dates').delete().eq('id',t.dataset.deldate);
+    await loadAll(); return;
+  }
+  if(t.dataset.addeval){
+    const dateId=t.dataset.addeval;
+    let slug=''; for(const k in state.dates){ if(state.dates[k].some(d=>d.id===dateId)){ slug=k; break; } }
+    await sb.from('venue_evals').insert({date_id:dateId, city_slug:slug, venue_name:'', scores:{}, notes:''});
+    await loadAll();
+    const el=document.querySelector(`[data-dlabel="${dateId}"]`); if(el){const b=el.closest('.dateblk'); if(b)b.classList.add('open');}
+    return;
+  }
+  if(t.dataset.deleval){
+    await sb.from('venue_evals').delete().eq('id',t.dataset.deleval);
     await loadAll(); return;
   }
 });
@@ -946,9 +1055,15 @@ function lpContext(){
   return {
     proyecto:'Amor Consciente — sourcing de venues en 8 ciudades',
     ciudades: CITIES.map(c=>({ciudad:c.name, candidatos:c.leads.map(l=>l.v+' ('+l.area+')'),
-      fechas: citiesDates(c.slug).map(d=>({fecha:d.label, avance:datePct(d.id)+'%', venue_elegido:(state.dmeta[d.id]||{}).chosen_venue||'', notas:(state.dmeta[d.id]||{}).notes||'', pasos_hechos:STEPS.filter((s,i)=>dateDone(d.id,i))}))})),
-    contactos: state.contacts, deadlines: state.deadlines,
-    pendientes:(state.gtasks||[]).filter(t=>!t.done).map(t=>t.label),
+      fechas: citiesDates(c.slug).map(d=>({
+        fecha:d.label, avance:datePct(d.id)+'%',
+        fases_hechas:FASES.filter((s,i)=>dateDone(d.id,i)),
+        pendientes_faltan:PEND_EVENTO.filter((p,i)=>!pendDone(d.id,i)),
+        venue_elegido:(state.dmeta[d.id]||{}).chosen_venue||'',
+        notas:(state.dmeta[d.id]||{}).notes||'',
+        evaluaciones: evalsFor(d.id).map(ev=>({venue:ev.venue_name, promedio:+evalAvg(ev).toFixed(1), recomendacion:(evalRec(evalAvg(ev))||['sin calificar'])[0], puntajes:ev.scores, comentarios:ev.notes}))
+      }))})),
+    contactos: state.contacts,
     notas_status: (state.notes||[]).slice(0,8).map(x=>x.body),
     documentos: (state.documents||[]).slice(0,15),
     requisitos: LP_REQS
