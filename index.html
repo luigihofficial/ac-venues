@@ -238,6 +238,14 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 .corow .cox{flex:none;padding:6px 9px}
 @media(max-width:600px){.corow{flex-wrap:wrap}.corow .colabel,.corow .coval{flex:1 1 100%;max-width:100%}}
 
+/* ---------- Hoteles / venues editables por ciudad ---------- */
+.vrow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.vrow .vname{flex:1.4;font-weight:600}
+.vrow .varea{flex:1}
+.vrow .vnotes{flex:1.2}
+.vrow .cox{flex:none;padding:6px 9px}
+@media(max-width:640px){.vrow{flex-wrap:wrap}.vrow .vname,.vrow .varea,.vrow .vnotes{flex:1 1 100%}}
+
 </style>
 </head>
 <body>
@@ -621,7 +629,7 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 
 // ---------- Estado ----------
 let sb=null, USER=null;
-const state={company:[], dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[]};
+const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[]};
 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
@@ -710,6 +718,9 @@ async function loadAll(){
   try{ const co=await sb.from('company_info').select('*').order('category',{ascending:true}).order('sort',{ascending:true});
        state.company=co.data||[]; }
   catch(e){ state.company=[]; }
+  try{ const vn=await sb.from('venues').select('*').order('sort',{ascending:true});
+       state.venues={}; (vn.data||[]).forEach(r=>{ (state.venues[r.city_slug]=state.venues[r.city_slug]||[]).push(r); }); }
+  catch(e){ state.venues={}; }
   renderAll();
 }
 const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
@@ -742,7 +753,18 @@ function renderCompany(){
   }).join('');
 }
 
-function citiesDates(slug){ return state.dates[slug]||[]; }
+// Parseo de fecha de inicio desde el label (ej. "Despertar · 2–6 sep", "30 sep–4 oct", "28 oct–1 nov")
+const MESES={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12,
+             jan:1,apr:4,aug:8,dec:12};
+function parseEventDate(label){
+  const s=(label||'').toLowerCase();
+  const day=(s.match(/\d{1,2}/)||[])[0];
+  const mon=(s.match(/\b(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic|jan|apr|aug|dec)/)||[])[1];
+  if(!day||!mon||!MESES[mon]) return null;
+  return MESES[mon]*100 + (+day);   // comparable dentro del año
+}
+function dateKey(d){ const v=parseEventDate(d.label); return v==null ? (100000+(d.sort||0)) : v; }
+function citiesDates(slug){ return (state.dates[slug]||[]).slice().sort((a,b)=>dateKey(a)-dateKey(b)); }
 function dateDone(id,i){ return !!state.dprogress[id+':'+i]; }
 function datePct(id){ let d=0; for(let i=0;i<STEPS.length;i++) if(dateDone(id,i)) d++; return Math.round(d/STEPS.length*100); }
 function dateStatus(id){ const p=datePct(id); if(p===100)return['Cerrado ✓','p-ok']; if(p>0)return['En proceso','p-prog']; return['Pendiente','p-pend']; }
@@ -771,7 +793,7 @@ function evalCard(ev){
     <textarea data-evalnotes="${ev.id}" rows="2" placeholder="Comentarios / ¿regresamos a este venue?..." style="margin-top:6px">${esc(ev.notes||'')}</textarea>
   </div>`;
 }
-function dateBlock(d, cityName){
+function dateBlock(d, citySlug){
   const pct=datePct(d.id); const st=dateStatus(d.id); const meta=state.dmeta[d.id]||{};
   const fases=FASES.map((s,i)=>`<li class="${dateDone(d.id,i)?'done':''}"><input type="checkbox" ${dateDone(d.id,i)?'checked':''} data-dstep="${d.id}:${i}"><span>${esc(s)}</span></li>`).join('');
   const pend=PEND_EVENTO.map((s,i)=>`<li class="${pendDone(d.id,i)?'done':''}"><input type="checkbox" ${pendDone(d.id,i)?'checked':''} data-dstep="${d.id}:${PEND_BASE+i}"><span>${esc(s)}</span></li>`).join('');
@@ -793,7 +815,7 @@ function dateBlock(d, cityName){
       <h5 class="dsub">Pendientes del evento <span class="dsubn">${pc}/${PEND_EVENTO.length}</span></h5>
       <ul class="chk">${pend}</ul>
       <label class="muted" style="font-size:12px;font-weight:700">Venue elegido</label>
-      <input class="cell" data-dmeta="${d.id}:chosen_venue" placeholder="—" value="${esc(meta.chosen_venue||'')}">
+      <input class="cell" list="dl-${citySlug}" data-dmeta="${d.id}:chosen_venue" placeholder="— elige o escribe —" value="${esc(meta.chosen_venue||'')}">
       <textarea data-dmeta="${d.id}:notes" rows="2" placeholder="Notas de esta fecha..." style="margin-top:6px">${esc(meta.notes||'')}</textarea>
       <div class="evalsec">
         <h5 class="dsub">Evaluación de venues <span class="dsubn">1–5 · 5 = me gusta mucho</span></h5>
@@ -803,21 +825,35 @@ function dateBlock(d, cityName){
     </div>
   </div>`;
 }
+function cityVenues(slug){ return (state.venues[slug]||[]).slice().sort((a,b)=>(a.sort||0)-(b.sort||0)); }
 function cityCard(c, disabled){
   const card=document.createElement('div'); card.className='card city';
   const dates = disabled?[]:citiesDates(c.slug);
-  const leads=c.leads.map(l=>`<tr><td><a href="${l.url}" target="_blank" rel="noopener">${esc(l.v)}</a></td><td class="muted">${esc(l.area)}</td><td class="reqmini">⧗ tamaño · parking · agua · wifi · backstage · A/C</td></tr>`).join('');
+  const vlist = disabled?[]:cityVenues(c.slug);
+  const venuesHtml = vlist.length ? vlist.map(v=>`
+    <div class="vrow">
+      <input class="cell vname" data-vfield="name" data-vid="${v.id}" value="${esc(v.name||'')}" placeholder="Hotel / venue">
+      <input class="cell varea" data-vfield="area" data-vid="${v.id}" value="${esc(v.area||'')}" placeholder="Zona">
+      <input class="cell vnotes" data-vfield="notes" data-vid="${v.id}" value="${esc(v.notes||'')}" placeholder="Notas">
+      <button class="btn sm ghost cox" data-delvenue="${v.id}" title="Eliminar">✕</button>
+    </div>`).join('') : `<div class="muted" style="font-size:12.5px;padding:2px 0 4px">Sin hoteles aún. Agrega el primero 👇</div>`;
+  const datalist = `<datalist id="dl-${c.slug}">${vlist.map(v=>`<option value="${esc(v.name||'')}">`).join('')}</datalist>`;
   const links=c.search.map(s=>`<a href="${s[1]}" target="_blank" rel="noopener">${esc(s[0])} ↗</a>`).join('');
-  const datesHtml = dates.length ? dates.map(d=>dateBlock(d,c.name)).join('')
+  const datesHtml = dates.length ? dates.map(d=>dateBlock(d,c.slug)).join('')
     : `<div class="muted" style="font-size:13px;padding:6px 0">Sin fechas todavía. Agrega la primera del año 👇</div>`;
   const avg = dates.length? Math.round(dates.reduce((s,d)=>s+datePct(d.id),0)/dates.length):0;
   card.innerHTML=`
+   ${datalist}
    <div class="top"><h3>${esc(c.name)}</h3><div style="font-size:12px;color:#c8d2df">${dates.length} fecha(s) · ${avg}%</div></div>
    <div class="body">
      <div class="dates">${datesHtml}</div>
      ${disabled?'':`<button class="btn sm gold" data-adddate="${c.slug}" style="margin-top:4px">+ Agregar fecha</button>`}
-     <div class="cand"><h4>Candidatos (leads a contactar)</h4><table><tbody>${leads}</tbody></table>
-       <div class="links" style="margin-top:8px">${links}</div></div>
+     <div class="cand">
+       <h4>Hoteles / venues</h4>
+       <div class="vlist">${venuesHtml}</div>
+       ${disabled?'':`<button class="btn sm gold" data-addvenue="${c.slug}" style="margin-top:4px">+ Agregar hotel</button>`}
+       <div class="links" style="margin-top:10px">${links}</div>
+     </div>
    </div>`;
   return card;
 }
@@ -946,6 +982,11 @@ document.addEventListener('input', debounce(async (e)=>{
     const r=(state.company||[]).find(x=>x.id===id); if(r) r[field]=t.value;
     await sb.from('company_info').update({[field]:t.value}).eq('id',id);
   }
+  else if(t.dataset.vfield){
+    const id=t.dataset.vid, field=t.dataset.vfield;
+    for(const k in state.venues){ const v=state.venues[k].find(x=>x.id===id); if(v){ v[field]=t.value; break; } }
+    await sb.from('venues').update({[field]:t.value}).eq('id',id);
+  }
 }, 700));
 
 document.addEventListener('click', async (e)=>{
@@ -983,6 +1024,15 @@ document.addEventListener('click', async (e)=>{
   }
   if(t.dataset.delco){
     await sb.from('company_info').delete().eq('id',t.dataset.delco);
+    await loadAll(); return;
+  }
+  if(t.dataset.addvenue){
+    const slug=t.dataset.addvenue; const n=(state.venues[slug]||[]).length;
+    await sb.from('venues').insert({city_slug:slug, name:'', area:'', notes:'', sort:n});
+    await loadAll(); return;
+  }
+  if(t.dataset.delvenue){
+    await sb.from('venues').delete().eq('id',t.dataset.delvenue);
     await loadAll(); return;
   }
 });
@@ -1116,7 +1166,7 @@ function lpContext(){
   return {
     proyecto:'Amor Consciente — sourcing de venues en 8 ciudades',
     empresa: (state.company||[]).map(r=>({tipo:r.category, etiqueta:r.label, valor:r.value})),
-    ciudades: CITIES.map(c=>({ciudad:c.name, candidatos:c.leads.map(l=>l.v+' ('+l.area+')'),
+    ciudades: CITIES.map(c=>({ciudad:c.name, candidatos:(cityVenues(c.slug).length? cityVenues(c.slug).map(v=>v.name+(v.area?' ('+v.area+')':'')) : c.leads.map(l=>l.v+' ('+l.area+')')),
       fechas: citiesDates(c.slug).map(d=>({
         fecha:d.label, avance:datePct(d.id)+'%',
         fases_hechas:FASES.filter((s,i)=>dateDone(d.id,i)),
