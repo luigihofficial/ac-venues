@@ -11,7 +11,7 @@ const SUPA_ANON = "sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa";
 const ALLOWED   = ["global@amorconsciente.com", "noris@amorconsciente.com"];
 // Modelos preferidos (se intentan primero). Si ninguno existe para esta clave,
 // se descubre automáticamente uno disponible con ListModels (ver pickModel()).
-const MODELS    = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+const MODELS    = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.1-flash", "gemini-3-flash-preview", "gemini-2.0-flash", "gemini-pro-latest"];
 let DISCOVERED  = null; // cache en caliente del modelo descubierto
 
 async function listModels(key){
@@ -24,18 +24,23 @@ async function listModels(key){
       .map(m => (m.name||"").replace(/^models\//,""));
   }catch(e){ return []; }
 }
+// Devuelve una lista de modelos candidatos (ordenados), no solo uno: el listado
+// de Google incluye modelos que no siempre aceptan generateContent, así que hay
+// que probar hasta que uno responda 200.
+function rankModels(avail){
+  const usable = avail.filter(n => !/(image|tts|embed|vision|aqa)/i.test(n));
+  const flash  = usable.filter(n => /flash/.test(n) && !/lite/.test(n));
+  const lite   = usable.filter(n => /flash/.test(n) && /lite/.test(n));
+  const latest = usable.filter(n => /-latest$/.test(n));
+  const rest   = usable.filter(n => !/flash/.test(n));
+  // preferir alias -latest y flash; dejar pro/otros al final
+  const ordered = [...new Set([...latest, ...flash, ...lite, ...rest])];
+  return ordered;
+}
 async function pickModel(key){
-  if (DISCOVERED) return DISCOVERED;
   const avail = await listModels(key);
-  if(!avail.length) return null;
-  const pref =
-    avail.find(n => /gemini-2\.5-flash$/.test(n)) ||
-    avail.find(n => /gemini-2\.0-flash$/.test(n)) ||
-    avail.find(n => /flash-latest$/.test(n)) ||
-    avail.find(n => /flash/.test(n)) ||
-    avail[0];
-  DISCOVERED = pref;
-  return pref;
+  const ranked = rankModels(avail);
+  return ranked[0] || null;
 }
 
 function readBody(req){
@@ -65,26 +70,26 @@ async function callModel(key, m, parts){
 }
 async function gemini(key, parts){
   let lastErr = "";
-  // 1) Intentar el modelo ya descubierto (si lo hay) primero.
-  const order = [];
-  if (DISCOVERED) order.push(DISCOVERED);
-  for (const m of MODELS) if (!order.includes(m)) order.push(m);
-  for (const m of order){
-    try {
-      const res = await callModel(key, m, parts);
-      if (res.ok){ DISCOVERED = m; return res.text; }
-      lastErr = res.err;
-    } catch (e) { lastErr = String(e && e.message || e); }
+  const tried = new Set();
+  async function tryList(list){
+    for (const m of list){
+      if (!m || tried.has(m)) continue;
+      tried.add(m);
+      try {
+        const res = await callModel(key, m, parts);
+        if (res.ok){ DISCOVERED = m; return res.text; }
+        lastErr = res.err;
+      } catch (e) { lastErr = String(e && e.message || e); }
+    }
+    return null;
   }
-  // 2) Si todos fallan, descubrir un modelo válido con ListModels y reintentar.
-  const discovered = await pickModel(key);
-  if (discovered){
-    try {
-      const res = await callModel(key, discovered, parts);
-      if (res.ok) return res.text;
-      lastErr = res.err;
-    } catch (e) { lastErr = String(e && e.message || e); }
-  }
+  // 1) modelo ya descubierto (cache) + lista preferida
+  let out = await tryList([DISCOVERED, ...MODELS].filter(Boolean));
+  if (out !== null) return out;
+  // 2) descubrir con ListModels y probar TODOS los candidatos hasta que uno responda
+  const avail = await listModels(key);
+  out = await tryList(rankModels(avail));
+  if (out !== null) return out;
   throw new Error(lastErr || "Gemini no respondió");
 }
 
@@ -111,8 +116,10 @@ module.exports = async function handler(req, res){
   try {
     if (body.action === "diag"){
       const avail = await listModels(KEY);
-      const chosen = await pickModel(KEY);
-      res.status(200).json({ ok: true, keyPresent: true, chosen, available: avail.slice(0, 60) });
+      let works = false, text = "", err = "";
+      try { text = await gemini(KEY, [{ text: "Responde solo: OK" }]); works = true; }
+      catch(e){ err = String(e && e.message || e).slice(0, 300); }
+      res.status(200).json({ ok: true, keyPresent: true, works, modeloEnUso: DISCOVERED, respuesta: text.slice(0,80), error: err, ranked: rankModels(avail).slice(0, 12) });
       return;
     }
     if (body.action === "chat"){
