@@ -1024,13 +1024,20 @@ function _dlBlob(blob, name){
 }
 function _flash(btn, msg){ const old=btn.dataset._old||btn.textContent; btn.dataset._old=old; btn.textContent=msg; setTimeout(()=>{btn.textContent=old;},1700); }
 async function copyLayoutImage(svg, btn){
+  const fname=(btn.closest('.opt')&&btn.closest('.opt').dataset.fname)||'layout';
   try{
-    const blob=await layoutPngBlob(svg);
     if(navigator.clipboard && window.ClipboardItem){
-      await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+      // pasar la Promesa del blob a ClipboardItem: se llama dentro del gesto del usuario (robusto)
+      await navigator.clipboard.write([new ClipboardItem({'image/png': layoutPngBlob(svg)})]);
       _flash(btn,'✓ Copiado');
-    } else { _dlBlob(blob,'layout.png'); _flash(btn,'⬇ Descargado'); }
-  }catch(e){ _flash(btn,'✕ Error'); }
+      return;
+    }
+    throw new Error('sin clipboard');
+  }catch(e){
+    // fallback: descargar el PNG
+    try{ const blob=await layoutPngBlob(svg); _dlBlob(blob, fname+'.png'); _flash(btn,'⬇ Descargado'); }
+    catch(_){ _flash(btn,'✕ Error'); }
+  }
 }
 async function downloadLayoutImage(svg, fname, btn){
   try{ const blob=await layoutPngBlob(svg); _dlBlob(blob, fname+'.png'); _flash(btn,'✓ Descargado'); }
