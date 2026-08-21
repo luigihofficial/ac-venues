@@ -652,8 +652,10 @@ async function loadAll(){
   renderAll();
 }
 const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
+let RT_CH=null;
 function subscribeRealtime(){
-  sb.channel('ac-venues-live')
+  if(RT_CH) return;                       // ya suscrito: evita re-agregar callbacks tras subscribe()
+  RT_CH = sb.channel('ac-venues-live')
     .on('postgres_changes',{event:'*',schema:'public'},reload)
     .subscribe();
 }
