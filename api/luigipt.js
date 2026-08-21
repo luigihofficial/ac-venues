@@ -9,7 +9,34 @@
 const SUPA_URL  = "https://dwhwbcplgcqvuvnzqmne.supabase.co";
 const SUPA_ANON = "sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa";
 const ALLOWED   = ["global@amorconsciente.com", "noris@amorconsciente.com"];
-const MODELS    = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest"];
+// Modelos preferidos (se intentan primero). Si ninguno existe para esta clave,
+// se descubre automáticamente uno disponible con ListModels (ver pickModel()).
+const MODELS    = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+let DISCOVERED  = null; // cache en caliente del modelo descubierto
+
+async function listModels(key){
+  try{
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=200`);
+    if(!r.ok) return [];
+    const j = await r.json();
+    return (j.models||[])
+      .filter(m => (m.supportedGenerationMethods||[]).includes("generateContent"))
+      .map(m => (m.name||"").replace(/^models\//,""));
+  }catch(e){ return []; }
+}
+async function pickModel(key){
+  if (DISCOVERED) return DISCOVERED;
+  const avail = await listModels(key);
+  if(!avail.length) return null;
+  const pref =
+    avail.find(n => /gemini-2\.5-flash$/.test(n)) ||
+    avail.find(n => /gemini-2\.0-flash$/.test(n)) ||
+    avail.find(n => /flash-latest$/.test(n)) ||
+    avail.find(n => /flash/.test(n)) ||
+    avail[0];
+  DISCOVERED = pref;
+  return pref;
+}
 
 function readBody(req){
   return new Promise((resolve) => {
@@ -21,22 +48,41 @@ function readBody(req){
   });
 }
 
+async function callModel(key, m, parts){
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.3, maxOutputTokens: 1024 } })
+  });
+  if (r.ok){
+    const j = await r.json();
+    const text = (j.candidates && j.candidates[0] && j.candidates[0].content &&
+            j.candidates[0].content.parts && j.candidates[0].content.parts[0] &&
+            j.candidates[0].content.parts[0].text) || "";
+    return { ok: true, text };
+  }
+  return { ok: false, err: (await r.text()).slice(0, 300) };
+}
 async function gemini(key, parts){
   let lastErr = "";
-  for (const m of MODELS){
+  // 1) Intentar el modelo ya descubierto (si lo hay) primero.
+  const order = [];
+  if (DISCOVERED) order.push(DISCOVERED);
+  for (const m of MODELS) if (!order.includes(m)) order.push(m);
+  for (const m of order){
     try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.3, maxOutputTokens: 1024 } })
-      });
-      if (r.ok){
-        const j = await r.json();
-        return (j.candidates && j.candidates[0] && j.candidates[0].content &&
-                j.candidates[0].content.parts && j.candidates[0].content.parts[0] &&
-                j.candidates[0].content.parts[0].text) || "";
-      }
-      lastErr = (await r.text()).slice(0, 300);
+      const res = await callModel(key, m, parts);
+      if (res.ok){ DISCOVERED = m; return res.text; }
+      lastErr = res.err;
+    } catch (e) { lastErr = String(e && e.message || e); }
+  }
+  // 2) Si todos fallan, descubrir un modelo válido con ListModels y reintentar.
+  const discovered = await pickModel(key);
+  if (discovered){
+    try {
+      const res = await callModel(key, discovered, parts);
+      if (res.ok) return res.text;
+      lastErr = res.err;
     } catch (e) { lastErr = String(e && e.message || e); }
   }
   throw new Error(lastErr || "Gemini no respondió");
@@ -63,6 +109,12 @@ module.exports = async function handler(req, res){
   const body = await readBody(req);
 
   try {
+    if (body.action === "diag"){
+      const avail = await listModels(KEY);
+      const chosen = await pickModel(KEY);
+      res.status(200).json({ ok: true, keyPresent: true, chosen, available: avail.slice(0, 60) });
+      return;
+    }
     if (body.action === "chat"){
       const ctx = JSON.stringify(body.context || {}).slice(0, 14000);
       const prompt =
