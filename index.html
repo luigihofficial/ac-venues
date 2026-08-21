@@ -183,6 +183,33 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 .lp-vtoggle input{accent-color:var(--gold);cursor:pointer}
 .lp-vsel{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;background:#fffdf8;color:var(--ink)}
 
+/* ---------- Fechas por ciudad ---------- */
+.dates{margin-bottom:6px}
+.dateblk{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fffdf8}
+.datehead{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;background:#fff}
+.datehead .dcaret{color:var(--muted);font-size:12px;transition:transform .15s;flex:none}
+.dateblk.open .datehead .dcaret{transform:rotate(90deg)}
+.datehead .dlabel{flex:1;min-width:0;border:none;background:transparent;font-weight:700;color:var(--navy);padding:4px 6px;font-size:13.5px}
+.datehead .dlabel:focus{background:#fffaf0;border-radius:6px}
+.datehead .dpct{font-weight:800;font-size:13px;flex:none;color:var(--navy)}
+.dxs{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;flex:none;padding:2px 4px;line-height:1}
+.dxs:hover{color:var(--danger)}
+.dateblk > .prog{margin:0 10px 8px}
+.dateblk .datebody{display:none;padding:2px 12px 12px}
+.dateblk.open .datebody{display:block}
+
+/* ---------- LuigiPT textarea + detener ---------- */
+#lpText{flex:1;min-width:0;border:1px solid var(--line);border-radius:16px;padding:9px 14px;font:inherit;font-size:13.5px;outline:none;resize:none;max-height:110px;line-height:1.35;background:#fff}
+#lpText:focus{border-color:var(--gold)}
+.lp-stopbtn{background:#fdecec;color:#b23b3b;border:none;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer}
+.lp-stopbtn:hover{background:#f7d7d7}
+
+/* ---------- Modal cambiar contraseña ---------- */
+.pw-overlay{position:fixed;inset:0;background:rgba(20,38,63,.55);z-index:120;display:grid;place-items:center;padding:20px}
+.pw-box{background:#fff;border-radius:14px;box-shadow:var(--shadow);max-width:380px;width:100%;padding:22px}
+.pw-box h3{color:var(--navy);font-size:18px;margin-bottom:4px}
+.pw-box input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;margin-bottom:8px}
+
 </style>
 </head>
 <body>
@@ -192,9 +219,10 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
   <div class="box">
     <small>Amor Consciente</small>
     <h2>Venues — Acceso del equipo</h2>
-    <p>Ingresa tu correo y te enviamos un enlace mágico para entrar. Sin contraseñas.</p>
+    <p>Ingresa con tu correo y contraseña del equipo.</p>
     <input id="gateEmail" type="email" placeholder="tu@correo.com" autocomplete="email">
-    <button class="btn" id="gateBtn">Enviar enlace de acceso</button>
+    <input id="gatePass" type="password" placeholder="contraseña" autocomplete="current-password">
+    <button class="btn" id="gateBtn">Entrar</button>
     <div class="msg muted" id="gateMsg"></div>
   </div>
 </div>
@@ -206,9 +234,9 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
     <div class="brand"><small>Sourcing de Venues · Panel del equipo</small><h1 id="appTitle">Amor Consciente — Venues</h1></div>
     <div class="right">
       <span class="live"><span class="dot"></span> En vivo</span>
-      <div class="kpi"><div class="n" id="kpiConf">0/8</div><div class="l">Venues cerrados</div></div>
-      <div class="kpi"><div class="n" id="kpiProg">0%</div><div class="l">Avance global</div></div>
-      <div class="who">Conectado: <span id="whoEmail">—</span><br><a id="logoutBtn">Salir</a></div>
+      <div class="kpi"><div class="n" id="kpiConf">0/0</div><div class="l">Fechas cerradas</div></div>
+      <div class="kpi"><div class="n" id="kpiProg">0%</div><div class="l">Avance promedio</div></div>
+      <div class="who">Conectado: <span id="whoEmail">—</span><br><a id="pwBtn">Cambiar contraseña</a> · <a id="logoutBtn">Salir</a></div>
     </div>
   </div>
 </header>
@@ -364,12 +392,13 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
     <div id="lpBody" class="lp-body"></div>
     <div class="lp-input">
       <button id="lpMic" class="lp-mic" title="Hablar">🎤</button>
-      <input id="lpText" placeholder="Escribe o habla… ej: estatus de Miami">
+      <textarea id="lpText" rows="1" placeholder="Escribe o habla…  (Enter envía · Shift+Enter salto de línea)"></textarea>
       <button id="lpSend" class="lp-send" title="Enviar">➤</button>
     </div>
     <div class="lp-voicebar">
       <label class="lp-vtoggle"><input type="checkbox" id="lpVoiceOn"> 🔊 Leer en voz alta</label>
-      <select id="lpVoiceSel" class="lp-vsel" title="Elegir voz"></select>
+      <button id="lpStop" class="lp-stopbtn" title="Detener voz">⏹ Detener</button>
+      <span class="muted" style="font-size:11px;margin-left:auto">voz: Google es-US</span>
     </div>
     <div class="lp-foot">
       <button id="lpAttach" class="lp-attach">📎 Adjuntar documento</button>
@@ -377,6 +406,21 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
     </div>
   </div>
   <input id="lpFile" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx">
+
+  <!-- ===== Cambiar contraseña ===== -->
+  <div id="pwModal" class="hidden pw-overlay">
+    <div class="pw-box">
+      <h3>Cambiar contraseña</h3>
+      <p class="muted" style="font-size:13px;margin:0 0 12px">Se aplicará a tu cuenta (<span id="pwWho">—</span>).</p>
+      <input id="pwNew" type="password" placeholder="Nueva contraseña (mín. 6 caracteres)" autocomplete="new-password">
+      <input id="pwNew2" type="password" placeholder="Repite la nueva contraseña" autocomplete="new-password">
+      <div id="pwMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:6px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button class="btn sm ghost" id="pwCancel">Cancelar</button>
+        <button class="btn sm gold" id="pwSave">Guardar</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -522,7 +566,7 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 
 // ---------- Estado ----------
 let sb=null, USER=null;
-const state={progress:{}, meta:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[]};
+const state={dates:{}, dprogress:{}, dmeta:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[]};
 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
@@ -559,21 +603,21 @@ function init(){
 
 // ---------- Auth ----------
 function wireAuthUI(){
-  $('gateBtn').addEventListener('click', sendMagicLink);
-  $('gateEmail').addEventListener('keydown',e=>{if(e.key==='Enter')sendMagicLink();});
+  $('gateBtn').addEventListener('click', doLogin);
+  $('gateEmail').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  $('gatePass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
   $('logoutBtn').addEventListener('click', async()=>{await sb.auth.signOut();location.reload();});
 }
-async function sendMagicLink(){
+async function doLogin(){
   const email=($('gateEmail').value||'').trim().toLowerCase();
+  const password=($('gatePass').value||'');
   const msg=$('gateMsg');
-  if(!email||!email.includes('@')){msg.style.color='#b23b3b';msg.textContent='Escribe un correo válido.';return;}
-  const allow=(window.AC_CONFIG.ALLOWED_EMAILS||[]).map(x=>x.toLowerCase());
-  if(allow.length && !allow.includes(email)){msg.style.color='#b23b3b';msg.textContent='Ese correo no está autorizado para este panel.';return;}
-  $('gateBtn').disabled=true;
-  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  if(!email||!email.includes('@')||!password){msg.style.color='#b23b3b';msg.textContent='Escribe tu correo y contraseña.';return;}
+  $('gateBtn').disabled=true; msg.style.color='#5b6472'; msg.textContent='Entrando…';
+  const {error}=await sb.auth.signInWithPassword({email,password});
   $('gateBtn').disabled=false;
-  if(error){msg.style.color='#b23b3b';msg.textContent='Error: '+error.message;}
-  else{msg.style.color='#2e7d5b';msg.textContent='✅ Revisa tu correo y abre el enlace para entrar.';}
+  if(error){ msg.style.color='#b23b3b'; msg.textContent='Correo o contraseña incorrectos.'; }
+  else{ msg.textContent=''; }
 }
 async function handleSession(session){
   if(!session){$('app').classList.add('hidden');$('gate').classList.remove('hidden');return;}
@@ -591,16 +635,18 @@ async function handleSession(session){
 
 // ---------- Carga de datos ----------
 async function loadAll(){
-  const [pg,mt,ct,nt,dl,gt]=await Promise.all([
-    sb.from('city_progress').select('*'),
-    sb.from('city_meta').select('*'),
+  const [ed,dp,dm,ct,nt,dl,gt]=await Promise.all([
+    sb.from('event_dates').select('*').order('sort',{ascending:true}),
+    sb.from('date_progress').select('*'),
+    sb.from('date_meta').select('*'),
     sb.from('contacts').select('*').order('created_at',{ascending:true}),
     sb.from('status_notes').select('*').order('created_at',{ascending:false}),
     sb.from('deadlines').select('*').order('sort',{ascending:true}),
     sb.from('global_tasks').select('*').order('sort',{ascending:true})
   ]);
-  state.progress={}; (pg.data||[]).forEach(r=>{state.progress[r.city_slug+':'+r.step_index]=r.done;});
-  state.meta={}; (mt.data||[]).forEach(r=>{state.meta[r.city_slug]=r;});
+  state.dates={}; (ed.data||[]).forEach(r=>{ (state.dates[r.city_slug]=state.dates[r.city_slug]||[]).push(r); });
+  state.dprogress={}; (dp.data||[]).forEach(r=>{ state.dprogress[r.date_id+':'+r.step_index]=r.done; });
+  state.dmeta={}; (dm.data||[]).forEach(r=>{ state.dmeta[r.date_id]=r; });
   state.contacts=ct.data||[]; state.notes=nt.data||[]; state.deadlines=dl.data||[]; state.gtasks=gt.data||[];
   try{ const dc=await sb.from('documents').select('*').order('created_at',{ascending:false}); state.documents=dc.data||[]; }catch(e){ state.documents=[]; }
   renderAll();
@@ -615,40 +661,56 @@ function subscribeRealtime(){
 // ---------- Render ----------
 function renderAll(){ renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); }
 
-function stepDone(slug,i){return !!state.progress[slug+':'+i];}
-function cityPct(slug){let d=0;for(let i=0;i<STEPS.length;i++)if(stepDone(slug,i))d++;return Math.round(d/STEPS.length*100);}
+function citiesDates(slug){ return state.dates[slug]||[]; }
+function dateDone(id,i){ return !!state.dprogress[id+':'+i]; }
+function datePct(id){ let d=0; for(let i=0;i<STEPS.length;i++) if(dateDone(id,i)) d++; return Math.round(d/STEPS.length*100); }
+function dateStatus(id){ const p=datePct(id); if(p===100)return['Cerrado ✓','p-ok']; if(p>0)return['En proceso','p-prog']; return['Pendiente','p-pend']; }
+function allDates(){ const out=[]; CITIES.forEach(c=>citiesDates(c.slug).forEach(d=>out.push({city:c, d}))); return out; }
 
-function renderStaticCities(){
-  // vista previa sin DB: candidatos y pasos sin marcar
-  const grid=$('cityGrid'); grid.innerHTML='';
-  CITIES.forEach(c=>{
-    grid.appendChild(cityCard(c,0,()=>false,true));
-  });
+function dateBlock(d, cityName){
+  const pct=datePct(d.id); const st=dateStatus(d.id); const meta=state.dmeta[d.id]||{};
+  const steps=STEPS.map((s,i)=>`<li class="${dateDone(d.id,i)?'done':''}"><input type="checkbox" ${dateDone(d.id,i)?'checked':''} data-dstep="${d.id}:${i}"><span>${esc(s)}</span></li>`).join('');
+  return `<div class="dateblk">
+    <div class="datehead" data-dtoggle="1">
+      <span class="dcaret">▸</span>
+      <input class="cell dlabel" data-dlabel="${d.id}" value="${esc(d.label||'')}" placeholder="Fecha / evento" onclick="event.stopPropagation()">
+      <span class="pill ${st[1]}" style="flex:none">${st[0]}</span>
+      <span class="dpct">${pct}%</span>
+      <button class="dxs" data-deldate="${d.id}" title="Eliminar fecha" onclick="event.stopPropagation()">✕</button>
+    </div>
+    <div class="prog"><i style="width:${pct}%"></i></div>
+    <div class="datebody">
+      <ul class="chk">${steps}</ul>
+      <label class="muted" style="font-size:12px;font-weight:700">Venue elegido</label>
+      <input class="cell" data-dmeta="${d.id}:chosen_venue" placeholder="—" value="${esc(meta.chosen_venue||'')}">
+      <textarea data-dmeta="${d.id}:notes" rows="2" placeholder="Notas de esta fecha..." style="margin-top:6px">${esc(meta.notes||'')}</textarea>
+    </div>
+  </div>`;
 }
-function cityCard(c,pct,isDone,disabled){
+function cityCard(c, disabled){
   const card=document.createElement('div'); card.className='card city';
-  const steps=STEPS.map((s,i)=>`<li class="${isDone(i)?'done':''}"><input type="checkbox" ${isDone(i)?'checked':''} ${disabled?'disabled':''} data-step="${c.slug}:${i}"><span>${esc(s)}</span></li>`).join('');
+  const dates = disabled?[]:citiesDates(c.slug);
   const leads=c.leads.map(l=>`<tr><td><a href="${l.url}" target="_blank" rel="noopener">${esc(l.v)}</a></td><td class="muted">${esc(l.area)}</td><td class="reqmini">⧗ tamaño · parking · agua · wifi · backstage · A/C</td></tr>`).join('');
   const links=c.search.map(s=>`<a href="${s[1]}" target="_blank" rel="noopener">${esc(s[0])} ↗</a>`).join('');
-  const meta=state.meta[c.slug]||{};
+  const datesHtml = dates.length ? dates.map(d=>dateBlock(d,c.name)).join('')
+    : `<div class="muted" style="font-size:13px;padding:6px 0">Sin fechas todavía. Agrega la primera del año 👇</div>`;
+  const avg = dates.length? Math.round(dates.reduce((s,d)=>s+datePct(d.id),0)/dates.length):0;
   card.innerHTML=`
-   <div class="top"><h3>${esc(c.name)}</h3><div style="font-size:22px;font-weight:800">${pct}%</div></div>
+   <div class="top"><h3>${esc(c.name)}</h3><div style="font-size:12px;color:#c8d2df">${dates.length} fecha(s) · ${avg}%</div></div>
    <div class="body">
-     <div class="prog"><i style="width:${pct}%"></i></div>
-     <ul class="chk">${steps}</ul>
-     <div style="margin-top:10px">
-       <label class="muted" style="font-size:12px;font-weight:700">Venue elegido</label>
-       <input class="cell" data-meta="${c.slug}:chosen_venue" placeholder="—" value="${esc(meta.chosen_venue||'')}" ${disabled?'disabled':''}>
-     </div>
+     <div class="dates">${datesHtml}</div>
+     ${disabled?'':`<button class="btn sm gold" data-adddate="${c.slug}" style="margin-top:4px">+ Agregar fecha</button>`}
      <div class="cand"><h4>Candidatos (leads a contactar)</h4><table><tbody>${leads}</tbody></table>
        <div class="links" style="margin-top:8px">${links}</div></div>
-     <div style="margin-top:10px"><textarea data-meta="${c.slug}:notes" rows="2" placeholder="Notas de ${esc(c.name)}..." ${disabled?'disabled':''}>${esc(meta.notes||'')}</textarea></div>
    </div>`;
   return card;
 }
+function renderStaticCities(){ const grid=$('cityGrid'); grid.innerHTML=''; CITIES.forEach(c=>grid.appendChild(cityCard(c,true))); }
 function renderCities(){
-  const grid=$('cityGrid'); grid.innerHTML='';
-  CITIES.forEach(c=>grid.appendChild(cityCard(c,cityPct(c.slug),(i)=>stepDone(c.slug,i),false)));
+  const grid=$('cityGrid');
+  const open=new Set([...grid.querySelectorAll('.dateblk.open [data-dlabel]')].map(el=>el.dataset.dlabel));
+  grid.innerHTML=''; CITIES.forEach(c=>grid.appendChild(cityCard(c,false)));
+  open.forEach(id=>{ const el=grid.querySelector(`[data-dlabel="${id}"]`); if(el){const b=el.closest('.dateblk'); if(b)b.classList.add('open');} });
 }
 function renderTimeline(){
   $('timelineBox').innerHTML = state.deadlines.map(d=>`
@@ -663,15 +725,14 @@ function renderGlobalTasks(){
    <li class="${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} data-gtask="${t.id}"><span>${esc(t.label)}</span></li>`).join('');
 }
 function renderMatrix(){
-  $('matrixBody').innerHTML = CITIES.map(c=>{
-    const pct=cityPct(c.slug), meta=state.meta[c.slug]||{};
-    let label='Pendiente',cls='p-pend';
-    if(pct===100){label='Cerrado ✓';cls='p-ok';} else if(pct>0){label='En proceso';cls='p-prog';}
-    return `<tr><td><b>${esc(c.name.split(',')[0])}</b></td>
+  const rows=allDates();
+  $('matrixBody').innerHTML = rows.length ? rows.map(({city,d})=>{
+    const st=dateStatus(d.id), meta=state.dmeta[d.id]||{};
+    return `<tr><td><b>${esc(city.name.split(',')[0])}</b> <span class="muted">· ${esc(d.label||'—')}</span></td>
       <td class="muted">${esc(meta.chosen_venue||'—')}</td>
       <td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td><td class="reqmini">⧗</td>
-      <td><span class="pill ${cls}">${label}</span></td></tr>`;
-  }).join('');
+      <td><span class="pill ${st[1]}">${st[0]}</span></td></tr>`;
+  }).join('') : `<tr><td colspan="8" class="muted" style="padding:14px">Aún no hay fechas. Agrégalas en cada ciudad.</td></tr>`;
 }
 function renderContacts(){
   $('contactBody').innerHTML = state.contacts.map(c=>`
@@ -691,22 +752,21 @@ function renderStatus(){
    <div class="muted">${esc(n.body)}</div></div>`).join('') || '<div class="entry muted">Sin notas.</div>';
 }
 function renderKPIs(){
-  let allDone=0,total=CITIES.length*STEPS.length,closed=0;
-  CITIES.forEach(c=>{let d=0;for(let i=0;i<STEPS.length;i++)if(stepDone(c.slug,i))d++;allDone+=d;if(d===STEPS.length)closed++;});
-  $('kpiProg').textContent=Math.round(allDone/total*100)+'%';
-  $('kpiConf').textContent=closed+'/8';
+  const rows=allDates(); const total=rows.length; let closed=0, sum=0;
+  rows.forEach(({d})=>{ const p=datePct(d.id); sum+=p; if(p===100)closed++; });
+  $('kpiProg').textContent=(total?Math.round(sum/total):0)+'%';
+  $('kpiConf').textContent=closed+'/'+total;
 }
 
 // ---------- Escritura (event delegation) ----------
 document.addEventListener('change', async (e)=>{
   const t=e.target;
   if(!sb||!USER) return;
-  if(t.dataset.step){
-    const [slug,i]=t.dataset.step.split(':');
-    state.progress[t.dataset.step]=t.checked;
-    t.closest('li').classList.toggle('done',t.checked);
-    renderKPIs();
-    await sb.from('city_progress').upsert({city_slug:slug,step_index:+i,done:t.checked,updated_at:new Date().toISOString()},{onConflict:'city_slug,step_index'});
+  if(t.dataset.dstep){
+    const [id,i]=t.dataset.dstep.split(':');
+    state.dprogress[t.dataset.dstep]=t.checked;
+    renderCities(); renderMatrix(); renderKPIs();
+    await sb.from('date_progress').upsert({date_id:id,step_index:+i,done:t.checked},{onConflict:'date_id,step_index'});
   }
   else if(t.dataset.deadline){
     await sb.from('deadlines').update({done:t.checked}).eq('id',t.dataset.deadline);
@@ -718,10 +778,18 @@ document.addEventListener('change', async (e)=>{
 // inputs de texto (venue elegido, notas, celdas de contacto) — guardar al salir/blur
 document.addEventListener('input', debounce(async (e)=>{
   const t=e.target; if(!sb||!USER) return;
-  if(t.dataset.meta){
-    const [slug,field]=t.dataset.meta.split(':');
-    const patch={city_slug:slug}; patch[field]=t.value; patch.updated_at=new Date().toISOString();
-    await sb.from('city_meta').upsert(patch,{onConflict:'city_slug'});
+  if(t.dataset.dmeta){
+    const [id,field]=t.dataset.dmeta.split(':');
+    const patch={date_id:id}; patch[field]=t.value; patch.updated_at=new Date().toISOString();
+    if(!state.dmeta[id]) state.dmeta[id]={date_id:id}; state.dmeta[id][field]=t.value;
+    await sb.from('date_meta').upsert(patch,{onConflict:'date_id'});
+    if(field==='chosen_venue') renderMatrix();
+  }
+  else if(t.dataset.dlabel){
+    await sb.from('event_dates').update({label:t.value}).eq('id',t.dataset.dlabel);
+    const c=Object.keys(state.dates).find(k=>state.dates[k].some(d=>d.id===t.dataset.dlabel));
+    if(c){ const dd=state.dates[c].find(d=>d.id===t.dataset.dlabel); if(dd)dd.label=t.value; }
+    renderMatrix();
   }
   else if(t.dataset.cfield){
     const id=t.closest('tr').dataset.cid;
@@ -731,7 +799,20 @@ document.addEventListener('input', debounce(async (e)=>{
 
 document.addEventListener('click', async (e)=>{
   const t=e.target;
-  if(t.dataset.delc){ if(sb&&USER){await sb.from('contacts').delete().eq('id',t.dataset.delc);} }
+  // expandir/colapsar fecha (UI, sin DB)
+  const head=t.closest ? t.closest('.datehead') : null;
+  if(head && !t.dataset.deldate && !t.dataset.dlabel){ const blk=head.closest('.dateblk'); if(blk) blk.classList.toggle('open'); return; }
+  if(!sb||!USER) return;
+  if(t.dataset.delc){ await sb.from('contacts').delete().eq('id',t.dataset.delc); return; }
+  if(t.dataset.adddate){
+    const slug=t.dataset.adddate; const n=(state.dates[slug]||[]).length;
+    await sb.from('event_dates').insert({city_slug:slug, label:'Fecha '+(n+1), sort:n});
+    await loadAll(); return;
+  }
+  if(t.dataset.deldate){
+    await sb.from('event_dates').delete().eq('id',t.dataset.deldate);
+    await loadAll(); return;
+  }
 });
 
 // Agregar contacto
@@ -769,23 +850,26 @@ function lpFindCity(n){
   return null;
 }
 function lpCityStatus(c){
-  const pct=cityPct(c.slug), meta=state.meta[c.slug]||{};
-  const done=[], pend=[];
-  STEPS.forEach((s,i)=>{ (stepDone(c.slug,i)?done:pend).push(s); });
-  let out=`Estatus de ${c.name}: ${pct}% completado.`;
-  out+=`\n• Venue elegido: ${meta.chosen_venue?meta.chosen_venue:'— (sin definir)'}`;
-  out+=`\n• Hecho: ${done.length?done.join(', '):'nada aún'}`;
-  out+=`\n• Siguiente: ${pend.length?pend[0]:'¡todo listo! ✓'}`;
-  if(meta.notes) out+=`\n• Notas: ${meta.notes}`;
-  const leads=c.leads.map(l=>l.v).join(', ');
-  out+=`\n• Candidatos: ${leads}`;
+  const dates=citiesDates(c.slug);
+  let out=`Estatus de ${c.name}:`;
+  if(!dates.length){ out+=`\n• Sin fechas agendadas todavía. Agrega una en la tarjeta de la ciudad.`; }
+  else dates.forEach(d=>{
+    const pct=datePct(d.id), meta=state.dmeta[d.id]||{};
+    const next=STEPS.find((s,i)=>!dateDone(d.id,i));
+    out+=`\n• ${d.label||'Fecha'}: ${pct}%${meta.chosen_venue?(' · '+meta.chosen_venue):''}${next?(' · sigue: '+next):' · ¡lista! ✓'}`;
+  });
+  out+=`\n• Candidatos: ${c.leads.map(l=>l.v).join(', ')}`;
   return out;
 }
 function lpOverall(){
-  let total=CITIES.length*STEPS.length, done=0, closed=0, lines=[];
-  CITIES.forEach(c=>{ let d=0; for(let i=0;i<STEPS.length;i++) if(stepDone(c.slug,i)) d++; done+=d; if(d===STEPS.length) closed++;
-    const meta=state.meta[c.slug]||{}; lines.push(`  · ${c.name.split(',')[0]}: ${cityPct(c.slug)}%${meta.chosen_venue?' ('+meta.chosen_venue+')':''}`); });
-  return `Resumen del proyecto — ${Math.round(done/total*100)}% global, ${closed}/8 venues cerrados:\n`+lines.join('\n');
+  const rows=allDates(); const total=rows.length; let sum=0, closed=0, lines=[];
+  CITIES.forEach(c=>{ const ds=citiesDates(c.slug); if(!ds.length) return;
+    const avg=Math.round(ds.reduce((s,d)=>s+datePct(d.id),0)/ds.length);
+    lines.push(`  · ${c.name.split(',')[0]} (${ds.length} fecha/s): ${avg}%`);
+  });
+  rows.forEach(({d})=>{ const p=datePct(d.id); sum+=p; if(p===100)closed++; });
+  if(!total) return 'Aún no hay fechas agendadas. Agrega fechas en cada ciudad para empezar a dar seguimiento.';
+  return `Resumen — ${Math.round(sum/total)}% promedio, ${closed}/${total} fechas cerradas:\n`+lines.join('\n');
 }
 function lpContacts(c){
   let list = state.contacts||[];
@@ -800,8 +884,9 @@ function lpDeadlines(){
 function lpPend(){
   const g=(state.gtasks||[]).filter(t=>!t.done).map(t=>t.label);
   let out='Pendientes globales:\n'+(g.length?g.map(x=>'• '+x).join('\n'):'• Ninguno 🎉');
-  const perCity=CITIES.map(c=>{ for(let i=0;i<STEPS.length;i++) if(!stepDone(c.slug,i)) return `  · ${c.name.split(',')[0]}: ${STEPS[i]}`; return null; }).filter(Boolean);
-  if(perCity.length) out+='\nSiguiente paso por ciudad:\n'+perCity.join('\n');
+  const next=[];
+  allDates().forEach(({city,d})=>{ const s=STEPS.find((x,i)=>!dateDone(d.id,i)); if(s) next.push(`  · ${city.name.split(',')[0]} — ${d.label}: ${s}`); });
+  if(next.length) out+='\nSiguiente paso por fecha:\n'+next.slice(0,12).join('\n');
   return out;
 }
 const LP_REQS = '8 requisitos obligatorios (deben quedar en el contrato):\n1. Estacionamiento gratis/económico\n2. Estaciones de agua sin cargo\n3. WiFi (mín. producción)\n4. Backstage para speakers/coaches\n5. Accesos carga/descarga + entrada asistentes\n6. Área de espera con A/C fuera del salón\n7. Montaje la noche anterior\n8. Sin recargo por A/V propio';
@@ -858,7 +943,8 @@ async function lpToken(){ try{ const {data}=await sb.auth.getSession(); return d
 function lpContext(){
   return {
     proyecto:'Amor Consciente — sourcing de venues en 8 ciudades',
-    ciudades: CITIES.map(c=>({ciudad:c.name, avance:cityPct(c.slug)+'%', venue_elegido:(state.meta[c.slug]||{}).chosen_venue||'', notas:(state.meta[c.slug]||{}).notes||'', pasos_hechos:STEPS.filter((s,i)=>stepDone(c.slug,i)), candidatos:c.leads.map(l=>l.v+' ('+l.area+')')})),
+    ciudades: CITIES.map(c=>({ciudad:c.name, candidatos:c.leads.map(l=>l.v+' ('+l.area+')'),
+      fechas: citiesDates(c.slug).map(d=>({fecha:d.label, avance:datePct(d.id)+'%', venue_elegido:(state.dmeta[d.id]||{}).chosen_venue||'', notas:(state.dmeta[d.id]||{}).notes||'', pasos_hechos:STEPS.filter((s,i)=>dateDone(d.id,i))}))})),
     contactos: state.contacts, deadlines: state.deadlines,
     pendientes:(state.gtasks||[]).filter(t=>!t.done).map(t=>t.label),
     notas_status: (state.notes||[]).slice(0,8).map(x=>x.body),
@@ -898,29 +984,26 @@ async function lpStoreDoc(f, d, raw){
   }catch(e){ /* tabla/bucket opcionales */ }
 }
 // ---- Voz de salida (gratis, voz del sistema) ----
-let LP_VOICES=[];
+let LP_VOICE=null;
 function lpLoadVoices(){
   if(!('speechSynthesis' in window)) return;
-  LP_VOICES = speechSynthesis.getVoices();
-  const sel=$('lpVoiceSel'); if(!sel) return;
-  const es = LP_VOICES.filter(v=>/^es/i.test(v.lang));
-  const list = es.length?es:LP_VOICES;
-  sel.innerHTML = list.map((v,i)=>`<option value="${LP_VOICES.indexOf(v)}">${v.name} (${v.lang})</option>`).join('') || '<option>Sin voces disponibles</option>';
-  // preferir una voz masculina/cálida en español si existe
-  const pref = list.findIndex(v=>/(jorge|juan|diego|carlos|male|hombre)/i.test(v.name));
-  if(pref>=0) sel.value = LP_VOICES.indexOf(list[pref]);
+  const vs = speechSynthesis.getVoices();
+  // Fijo: "Google español de Estados Unidos" (es-US). Fallbacks si no está.
+  LP_VOICE = vs.find(v=>v.name==='Google español de Estados Unidos')
+          || vs.find(v=>/google/i.test(v.name) && /^es[-_]US/i.test(v.lang))
+          || vs.find(v=>/^es[-_]US/i.test(v.lang))
+          || vs.find(v=>/^es/i.test(v.lang)) || null;
 }
 function lpSpeak(text){
   if(!('speechSynthesis' in window)) return;
   const on=$('lpVoiceOn'); if(!on || !on.checked) return;
   try{
     speechSynthesis.cancel();
+    if(!LP_VOICE) lpLoadVoices();
     const u=new SpeechSynthesisUtterance(text);
-    const idx=parseInt(($('lpVoiceSel')||{}).value,10);
-    if(!isNaN(idx) && LP_VOICES[idx]) u.voice=LP_VOICES[idx];
-    u.rate=0.9;   // más lenta = más cálida
-    u.pitch=0.85; // más grave
-    u.lang=(u.voice&&u.voice.lang)||'es-US';
+    if(LP_VOICE) u.voice=LP_VOICE;
+    u.lang=(LP_VOICE&&LP_VOICE.lang)||'es-US';
+    u.rate=0.95; u.pitch=1;
     speechSynthesis.speak(u);
   }catch(e){}
 }
@@ -937,7 +1020,25 @@ function lpInit(){
   bubble.onclick=()=>{ $('lpPanel').classList.contains('hidden')?open():$('lpPanel').classList.add('hidden'); };
   $('lpClose').onclick=()=>$('lpPanel').classList.add('hidden');
   $('lpSend').onclick=lpSend;
-  $('lpText').addEventListener('keydown',e=>{ if(e.key==='Enter') lpSend(); });
+  $('lpText').addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); lpSend(); } });
+  $('lpText').addEventListener('input',e=>{ const el=e.target; el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,110)+'px'; });
+  // detener voz
+  $('lpStop').onclick=()=>{ try{ speechSynthesis.cancel(); }catch(x){} };
+  $('lpVoiceOn').addEventListener('change',e=>{ if(!e.target.checked){ try{ speechSynthesis.cancel(); }catch(x){} } });
+  // cambiar contraseña
+  $('pwBtn').onclick=()=>{ $('pwWho').textContent=(USER&&USER.email)||'—'; $('pwNew').value=''; $('pwNew2').value=''; $('pwMsg').textContent=''; $('pwModal').classList.remove('hidden'); };
+  $('pwCancel').onclick=()=>$('pwModal').classList.add('hidden');
+  $('pwSave').onclick=async ()=>{
+    if(!sb||!USER) return;
+    const a=$('pwNew').value, b=$('pwNew2').value, m=$('pwMsg');
+    if((a||'').length<6){ m.style.color='#b23b3b'; m.textContent='Mínimo 6 caracteres.'; return; }
+    if(a!==b){ m.style.color='#b23b3b'; m.textContent='Las contraseñas no coinciden.'; return; }
+    m.style.color='#5b6472'; m.textContent='Guardando…'; $('pwSave').disabled=true;
+    try{ const {error}=await sb.auth.updateUser({password:a}); $('pwSave').disabled=false;
+      if(error){ m.style.color='#b23b3b'; m.textContent='Error: '+error.message; }
+      else{ m.style.color='#2e7d5b'; m.textContent='✅ Contraseña actualizada.'; setTimeout(()=>$('pwModal').classList.add('hidden'),1200); }
+    }catch(e){ $('pwSave').disabled=false; m.style.color='#b23b3b'; m.textContent='No se pudo actualizar.'; }
+  };
   // voz
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let rec=null, recing=false;
