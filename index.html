@@ -1393,11 +1393,20 @@ let LP_VOICE=null;
 function lpLoadVoices(){
   if(!('speechSynthesis' in window)) return;
   const vs = speechSynthesis.getVoices();
-  // Fijo: "Google español de Estados Unidos" (es-US). Fallbacks si no está.
-  LP_VOICE = vs.find(v=>v.name==='Google español de Estados Unidos')
-          || vs.find(v=>/google/i.test(v.name) && /^es[-_]US/i.test(v.lang))
-          || vs.find(v=>/^es[-_]US/i.test(v.lang))
-          || vs.find(v=>/^es/i.test(v.lang)) || null;
+  const es = vs.filter(v=>/^es/i.test(v.lang));
+  // Preferir VOZ MASCULINA en español (Google no ofrece masculina; usamos la del sistema).
+  const FEMALE=/(m[oó]nica|paulina|flo|grandma|sandy|shelley|google|helena|laura|sabina|marisol|esperanza|penelope|paloma|angelica)/i;
+  function nameRank(n){ n=(n||'').toLowerCase();
+    if(/(jorge|juan|diego|carlos|pablo|ra[uú]l|[aá]lvaro|enrique|miguel|crist[oó]bal)/.test(n)) return 5; // clásicas masculinas (mac/win)
+    if(/(reed|rocko)/.test(n)) return 4;      // personales macOS, naturales
+    if(/(eddy|grandpa)/.test(n)) return 2; return 0; }
+  function region(v){ if(/es[-_]MX/i.test(v.lang))return 3; if(/es[-_]US/i.test(v.lang))return 2; if(/es[-_](419|CO|AR)/i.test(v.lang))return 1.5; if(/es[-_]ES/i.test(v.lang))return 1; return 0; }
+  const males = es.filter(v=>!FEMALE.test(v.name) && nameRank(v.name)>0)
+                  .sort((a,b)=> (nameRank(b.name)-nameRank(a.name)) || (region(b)-region(a)));
+  LP_VOICE = males[0]
+          || es.find(v=>!FEMALE.test(v.name))     // cualquier español no femenino
+          || es.find(v=>/^es[-_]US/i.test(v.lang))
+          || es[0] || null;
 }
 function lpSpeak(text){
   if(!('speechSynthesis' in window)) return;
