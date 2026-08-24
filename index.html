@@ -894,7 +894,7 @@ function dateBlock(d, citySlug){
       <input class="cell dlabel" data-dlabel="${d.id}" value="${esc(d.label||'')}" placeholder="Fecha / evento" onclick="event.stopPropagation()">
       <span class="pill ${st[1]}" style="flex:none">${st[0]}</span>
       <span class="dpct">${pct}%</span>
-      <button class="dxs" data-deldate="${d.id}" title="Eliminar fecha" onclick="event.stopPropagation()">✕</button>
+      <button class="dxs" data-deldate="${d.id}" title="Eliminar fecha">✕</button>
     </div>
     <div class="prog"><i style="width:${pct}%"></i></div>
     <div class="datebody">
@@ -1172,7 +1172,9 @@ document.addEventListener('click', async (e)=>{
   }
   if(t.dataset.deldate){
     const nm=dateLabelById(t.dataset.deldate);
-    await sb.from('event_dates').delete().eq('id',t.dataset.deldate);
+    if(!confirm('¿Eliminar esta fecha y todo lo asociado (fases, pendientes, evaluación)?\n\n'+(nm||'')+'\n\nEsta acción no se puede deshacer.')) return;
+    const { error } = await sb.from('event_dates').delete().eq('id',t.dataset.deldate);
+    if(error){ alert('No se pudo eliminar la fecha: '+error.message); return; }
     await loadAll(); logChange('fecha', nm, 'eliminó una fecha'); return;
   }
   if(t.dataset.addeval){
