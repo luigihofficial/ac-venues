@@ -19,6 +19,7 @@ const SUPA_ANON = "sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa";
 const ALLOWED   = ["global@amorconsciente.com", "noris@amorconsciente.com"];
 
 const BASE     = process.env.APP_BASE_URL || "https://ac-venues.luigihernandez.com";
+const LOGO     = BASE + "/logo.png";
 // Hasta verificar el dominio en Resend, usa el remitente de prueba onboarding@resend.dev
 // (sólo permite enviarte a TI). Una vez verificado luigihernandez.com, pon SURVEY_FROM.
 const FROM     = process.env.SURVEY_FROM    || "Amor Consciente — Venues <onboarding@resend.dev>";
@@ -67,24 +68,27 @@ const enc = encodeURIComponent;
 const validEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-function emailHtml({ name, eventLabel, city, venue, link }){
-  const cityTxt = city ? (" · " + esc(city)) : "";
-  return `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#22303f">
-  <div style="max-width:560px;margin:0 auto;padding:24px 16px">
-    <div style="background:linear-gradient(135deg,#1e3a5f,#14263f);color:#fff;border-radius:14px 14px 0 0;padding:22px;text-align:center">
-      <div style="font-size:19px;font-weight:700">Amor Consciente</div>
-      <div style="font-size:13px;opacity:.85">Evaluación del venue</div>
+function emailHtml({ name, eventLabel, venue, link }){
+  return `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
+  <div style="max-width:560px;margin:0 auto;padding:28px 16px">
+    <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(20,38,63,.10)">
+      <div style="background:linear-gradient(135deg,#1e3a5f,#14263f);padding:28px 22px 22px;text-align:center">
+        <img src="${LOGO}" width="54" height="54" alt="Amor Consciente" style="display:block;margin:0 auto 10px;border:0">
+        <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px">Amor Consciente</div>
+        <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:4px">Evaluación del venue</div>
+      </div>
+      <div style="height:3px;background:linear-gradient(90deg,#b8860b,#e3b23c)"></div>
+      <div style="background:#fffdf8;padding:26px 24px">
+        <p style="margin:0 0 12px;font-size:15px">Hola ${esc(name||"")},</p>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.55">Gracias por acompañarnos en <b>${esc(eventLabel||"el evento")}</b>. Nos ayudaría muchísimo tu evaluación del hotel <b style="color:#1e3a5f">${esc(venue||"")}</b> donde se realizó.</p>
+        <p style="margin:0 0 22px;font-size:15px;line-height:1.55">Es una encuesta corta —12 aspectos del 1 al 5— con un espacio para tus comentarios. Toma menos de 2 minutos.</p>
+        <p style="text-align:center;margin:0 0 22px">
+          <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#b8860b,#a9790a);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 34px;border-radius:12px;box-shadow:0 2px 6px rgba(184,134,11,.35)">Completar evaluación</a>
+        </p>
+        <p style="margin:0;font-size:12px;color:#8a9199;border-top:1px solid #efe8da;padding-top:14px">Si el botón no funciona, copia y pega este enlace:<br><a href="${link}" style="color:#1e3a5f;word-break:break-all">${link}</a></p>
+      </div>
     </div>
-    <div style="background:#fffdf8;border:1px solid #e6ddca;border-top:none;border-radius:0 0 14px 14px;padding:24px">
-      <p style="margin:0 0 12px">Hola ${esc(name||"")},</p>
-      <p style="margin:0 0 12px">Gracias por acompañarnos en <b>${esc(eventLabel||"el evento")}</b>${cityTxt}. Nos ayudaría muchísimo tu evaluación del hotel <b>${esc(venue||"")}</b> donde se realizó.</p>
-      <p style="margin:0 0 20px">Es una encuesta corta (12 aspectos del 1 al 5) y un espacio para tus comentarios. Toma menos de 2 minutos:</p>
-      <p style="text-align:center;margin:0 0 20px">
-        <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#b8860b,#a9790a);color:#fff;text-decoration:none;font-weight:700;padding:14px 28px;border-radius:12px">Completar evaluación</a>
-      </p>
-      <p style="margin:0;font-size:12px;color:#6b7480">Si el botón no funciona, copia y pega este enlace:<br><a href="${link}" style="color:#1e3a5f">${link}</a></p>
-    </div>
-    <p style="text-align:center;font-size:12px;color:#6b7480;margin:16px 0 0">Amor Consciente · Sourcing de venues</p>
+    <p style="text-align:center;font-size:11px;color:#8a9199;margin:16px 0 0;letter-spacing:.04em">Amor Consciente · Sourcing de venues</p>
   </div></body></html>`;
 }
 

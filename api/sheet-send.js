@@ -13,6 +13,7 @@ const SUPA_ANON = "sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa";
 const ALLOWED   = ["global@amorconsciente.com", "noris@amorconsciente.com"];
 
 const BASE    = process.env.APP_BASE_URL || "https://ac-venues.luigihernandez.com";
+const LOGO    = BASE + "/logo.png";
 const FROM    = process.env.SURVEY_FROM    || "Amor Consciente — Venues <onboarding@resend.dev>";
 const REPLYTO = process.env.SURVEY_REPLYTO || "global@amorconsciente.com";
 
@@ -44,7 +45,7 @@ const validEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 const yn = v => v==='si' ? 'Sí' : (v==='no' ? 'No' : '');
 
-function row(label, val){ if(!val) return ''; return `<tr><td style="padding:7px 10px;border-bottom:1px solid #eee;color:#6b7480;white-space:nowrap;vertical-align:top">${esc(label)}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;color:#22303f"><b>${val}</b></td></tr>`; }
+function row(label, val){ if(!val) return ''; return `<tr><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600">${esc(label)}</td><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#22303f;font-size:14px"><b>${val}</b></td></tr>`; }
 
 function sheetEmailHtml({ ev, sheet, recips }){
   const hotel = esc(sheet.hotel_name || "");
@@ -65,19 +66,23 @@ function sheetEmailHtml({ ev, sheet, recips }){
     row('Notas', esc(sheet.notes||'').replace(/\n/g,'<br>'))
   ].join('');
   const contractBtn = sheet.contract_url ? `<p style="text-align:center;margin:0 0 8px"><a href="${esc(sheet.contract_url)}" style="display:inline-block;background:linear-gradient(135deg,#b8860b,#a9790a);color:#fff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:12px">Descargar contrato</a></p>` : '';
-  return `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#22303f">
-  <div style="max-width:600px;margin:0 auto;padding:24px 16px">
-    <div style="background:linear-gradient(135deg,#1e3a5f,#14263f);color:#fff;border-radius:14px 14px 0 0;padding:22px;text-align:center">
-      <div style="font-size:19px;font-weight:700">Amor Consciente</div>
-      <div style="font-size:13px;opacity:.85">Ficha técnica del evento</div>
+  return `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
+  <div style="max-width:600px;margin:0 auto;padding:28px 16px">
+    <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(20,38,63,.10)">
+      <div style="background:linear-gradient(135deg,#1e3a5f,#14263f);padding:28px 22px 22px;text-align:center">
+        <img src="${LOGO}" width="54" height="54" alt="Amor Consciente" style="display:block;margin:0 auto 10px;border:0">
+        <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px">Amor Consciente</div>
+        <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:4px">Ficha técnica del evento</div>
+      </div>
+      <div style="height:3px;background:linear-gradient(90deg,#b8860b,#e3b23c)"></div>
+      <div style="background:#fffdf8;padding:24px">
+        <p style="margin:0 0 4px;font-size:16px;color:#1e3a5f"><b>${esc(ev.label||'Evento')}</b></p>
+        <p style="margin:0 0 18px;color:#8a9199;font-size:13px;line-height:1.5">Aquí tienes la información logística del evento. Cualquier duda, responde a este correo.</p>
+        <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #efe8da;border-radius:10px;overflow:hidden;margin-bottom:18px">${rows}</table>
+        ${contractBtn}
+      </div>
     </div>
-    <div style="background:#fffdf8;border:1px solid #e6ddca;border-top:none;border-radius:0 0 14px 14px;padding:22px">
-      <p style="margin:0 0 6px;font-size:15px"><b>${esc(ev.label||'Evento')}</b></p>
-      <p style="margin:0 0 16px;color:#6b7480;font-size:13px">Aquí tienes la información logística para mañana. Cualquier duda, responde a este correo.</p>
-      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px">${rows}</table>
-      ${contractBtn}
-    </div>
-    <p style="text-align:center;font-size:12px;color:#6b7480;margin:16px 0 0">Amor Consciente · Sourcing de venues</p>
+    <p style="text-align:center;font-size:11px;color:#8a9199;margin:16px 0 0;letter-spacing:.04em">Amor Consciente · Sourcing de venues</p>
   </div></body></html>`;
 }
 
