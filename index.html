@@ -312,6 +312,15 @@ input.cell.dt{font-size:12.5px}
 .btn.navy:hover{background:var(--navy2)}
 .survnote{font-size:11.5px;margin-top:6px;line-height:1.35}
 
+/* ---- Ficha técnica del evento ---- */
+.fichasec{margin-top:12px;border-top:2px solid var(--line);padding-top:10px}
+.shgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+@media(max-width:520px){.shgrid{grid-template-columns:1fr}}
+.shf{display:flex;flex-direction:column;gap:3px;font-size:11.5px;font-weight:700;color:var(--muted)}
+.shf .cell{font-weight:400}
+select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
+.shnotes{margin-top:8px}
+
 </style>
 </head>
 <body>
@@ -820,6 +829,9 @@ async function loadAll(){
   try{ const tk=await sb.from('survey_tokens').select('*').order('created_at',{ascending:true});
        state.tokens={}; (tk.data||[]).forEach(r=>{ (state.tokens[r.date_id]=state.tokens[r.date_id]||[]).push(r); }); }
   catch(e){ state.tokens={}; }
+  try{ const sh=await sb.from('event_sheet').select('*');
+       state.sheets={}; (sh.data||[]).forEach(r=>{ state.sheets[r.date_id]=r; }); }
+  catch(e){ state.sheets={}; }
   renderAll();
 }
 const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
@@ -900,6 +912,7 @@ function evalRec(avg){ if(!avg) return null; if(avg>=4)return['Regresar ✓','p-
 function allDates(){ const out=[]; CITIES.forEach(c=>citiesDates(c.slug).forEach(d=>out.push({city:c, d}))); return out; }
 // --- Encuestas: destinatarios, tokens, reviews agrupadas por hotel ---
 function recipientsFor(id){ return (state.recipients&&state.recipients[id])||[]; }
+function sheetFor(id){ return (state.sheets&&state.sheets[id])||{}; }
 function tokensFor(id){ return (state.tokens&&state.tokens[id])||[]; }
 function tokenForEmail(id,email){ email=(email||'').trim().toLowerCase(); return tokensFor(id).find(t=>(t.recipient_email||'').trim().toLowerCase()===email); }
 function evalsByVenue(id){
@@ -972,6 +985,25 @@ function dateBlock(d, citySlug){
       <button class="btn sm ghost cox" data-delrc="${r.id}" title="Eliminar">✕</button>
     </div>`;
   }).join('') || `<div class="muted" style="font-size:12.5px;padding:2px 0 4px">Sin líderes/speakers aún. Agrega el primero 👇</div>`;
+  const sh=sheetFor(d.id); const shid=d.id;
+  const YN=(f,v)=>`<select class="cell shsel" data-shfield="${f}" data-shid="${shid}"><option value=""${!v?' selected':''}>—</option><option value="si"${v==='si'?' selected':''}>Sí</option><option value="no"${v==='no'?' selected':''}>No</option></select>`;
+  const TX=(f,ph)=>`<input class="cell" data-shfield="${f}" data-shid="${shid}" value="${esc(sh[f]||'')}" placeholder="${esc(ph)}">`;
+  const fichaHtml=`
+    <div class="shgrid">
+      <label class="shf">Hotel ${TX('hotel_name','Nombre del hotel')}</label>
+      <label class="shf">Salón ${TX('room_name','Nombre del salón')}</label>
+      <label class="shf">Dirección ${TX('address','Dirección')}</label>
+      <label class="shf">Link al mapa ${TX('map_url','https://maps…')}</label>
+      <label class="shf">Contacto ${TX('contact_name','Nombre del contacto')}</label>
+      <label class="shf">Teléfono ${TX('contact_phone','Teléfono')}</label>
+      <label class="shf">Parqueo (por persona) ${TX('parking_cost','p.ej. $15/día')}</label>
+      <label class="shf">Re-entrada al parqueo ${YN('parking_reentry',sh.parking_reentry)}</label>
+      <label class="shf">WiFi incluido ${YN('wifi_included',sh.wifi_included)}</label>
+      <label class="shf">Green room incluido ${YN('greenroom_included',sh.greenroom_included)}</label>
+      <label class="shf">Hora de set-up ${TX('setup_time','p.ej. noche anterior 8 PM')}</label>
+      <label class="shf">Link del contrato ${TX('contract_url','https://…')}</label>
+    </div>
+    <textarea class="shnotes" data-shfield="notes" data-shid="${shid}" rows="2" placeholder="Notas adicionales para líderes/speakers…">${esc(sh.notes||'')}</textarea>`;
   return `<div class="dateblk">
     <div class="datehead" data-dtoggle="1">
       <span class="dcaret">▸</span>
@@ -1006,6 +1038,12 @@ function dateBlock(d, citySlug){
           <button class="btn sm navy" data-sendsurvey="${d.id}">✉ Enviar encuesta ahora</button>
         </div>
         <div class="muted survnote">Se envía automáticamente el día después del último día del evento${d.end_date?` (fin: ${fmtDay(d.end_date)})`:''}. También puedes enviarla manualmente aquí.</div>
+      </div>
+      <div class="fichasec">
+        <h5 class="dsub">Ficha técnica del evento <span class="dsubn">para líderes/speakers</span></h5>
+        ${fichaHtml}
+        <div class="survbtns"><button class="btn sm navy" data-sendsheet="${d.id}">✉ Enviar ficha ahora</button></div>
+        <div class="muted survnote">Se envía automáticamente el día antes del primer día del evento${d.start_date?` (inicio: ${fmtDay(d.start_date)})`:''}. Los líderes/speakers se toman de la lista de arriba.</div>
       </div>
     </div>
   </div>`;
@@ -1146,6 +1184,9 @@ document.addEventListener('change', async (e)=>{
     renderCities();
     logChange('fecha', dateLabelById(id), 'ajustó '+(field==='start_date'?'fecha de inicio':'fecha de fin')+(t.value?' ('+t.value+')':''));
   }
+  else if(t.dataset.shfield && t.tagName==='SELECT'){
+    await saveSheet(t.dataset.shid, t.dataset.shfield, t.value);
+  }
 });
 // inputs de texto (venue elegido, notas, celdas de contacto) — guardar al salir/blur
 document.addEventListener('input', debounce(async (e)=>{
@@ -1194,6 +1235,9 @@ document.addEventListener('input', debounce(async (e)=>{
     for(const k in state.recipients){ const r=(state.recipients[k]||[]).find(x=>x.id===id); if(r){ r[field]=t.value; break; } }
     await sb.from('event_recipients').update({[field]:t.value}).eq('id',id);
     logChange('evento', 'encuesta', 'editó un líder/speaker ('+field+')');
+  }
+  else if(t.dataset.shfield){
+    await saveSheet(t.dataset.shid, t.dataset.shfield, t.value);
   }
   else if(t.dataset.vfield){
     const id=t.dataset.vid, field=t.dataset.vfield; let slug='';
@@ -1278,6 +1322,32 @@ async function sendSurvey(dateId, btn){
   }
 }
 
+async function saveSheet(id, field, value){
+  if(!state.sheets) state.sheets={};
+  if(!state.sheets[id]) state.sheets[id]={date_id:id};
+  state.sheets[id][field]=value;
+  await sb.from('event_sheet').upsert({date_id:id, [field]:value, updated_at:new Date().toISOString()},{onConflict:'date_id'});
+  logChange('evento', dateLabelById(id), 'editó la ficha técnica ('+field+')');
+}
+async function sendSheet(dateId, btn){
+  const recs=recipientsFor(dateId).filter(r=>(r.email||'').includes('@'));
+  const sh=sheetFor(dateId); const nm=dateLabelById(dateId);
+  if(!sh.hotel_name && !sh.address && !sh.room_name){ alert('Primero llena la ficha técnica (al menos hotel, salón o dirección).'); return; }
+  if(!recs.length){ alert('Agrega al menos un líder/speaker con email antes de enviar la ficha.'); return; }
+  if(!confirm('¿Enviar la ficha técnica del evento “'+nm+'” a '+recs.length+' persona(s)?')) return;
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Enviando…';
+  try{
+    const tok=await lpToken();
+    const r=await fetch('/api/sheet-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({date_id:dateId})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){ throw new Error(j.error||('HTTP '+r.status)); }
+    btn.textContent='✓ Enviada ('+(j.sent||0)+')';
+    logChange('evento', nm, 'envió la ficha técnica a '+(j.sent||0)+' persona(s)');
+    if(j.skipped){ alert('Enviadas: '+j.sent+'.\nNo enviadas: '+j.skipped+(j.errors&&j.errors.length?('\n\n'+j.errors.join('\n')):'')); }
+    setTimeout(loadAll,1000);
+  }catch(e){ btn.disabled=false; btn.textContent=old; alert('No se pudo enviar la ficha:\n'+(e.message||e)); }
+}
+
 document.addEventListener('click', async (e)=>{
   const t=e.target;
   // expandir/colapsar fecha (UI, sin DB)
@@ -1311,6 +1381,7 @@ document.addEventListener('click', async (e)=>{
     await loadAll(); logChange('fecha', nm, 'eliminó una fecha'); return;
   }
   if(t.dataset.sendsurvey){ await sendSurvey(t.dataset.sendsurvey, t); return; }
+  if(t.dataset.sendsheet){ await sendSheet(t.dataset.sendsheet, t); return; }
   if(t.dataset.addrc){
     const dateId=t.dataset.addrc;
     await sb.from('event_recipients').insert({date_id:dateId, name:'', email:'', role:''});
