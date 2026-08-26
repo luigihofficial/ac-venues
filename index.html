@@ -1189,8 +1189,16 @@ document.addEventListener('change', async (e)=>{
   }
 });
 // inputs de texto (venue elegido, notas, celdas de contacto) — guardar al salir/blur
-document.addEventListener('input', debounce(async (e)=>{
-  const t=e.target; if(!sb||!USER) return;
+// Debounce POR CAMPO (cada input tiene su propio temporizador) — evita perder
+// datos al pasar rápido de un campo a otro (bug del temporizador compartido).
+const _inpTimers=new WeakMap();
+document.addEventListener('input',(e)=>{
+  const el=e.target; if(!el||!el.dataset) return;
+  clearTimeout(_inpTimers.get(el));
+  _inpTimers.set(el, setTimeout(()=>handleInput(el), 700));
+});
+async function handleInput(t){
+  if(!sb||!USER) return;
   if(t.dataset.dmeta){
     const [id,field]=t.dataset.dmeta.split(':');
     const patch={date_id:id}; patch[field]=t.value; patch.updated_at=new Date().toISOString();
@@ -1246,7 +1254,7 @@ document.addEventListener('input', debounce(async (e)=>{
     logChange('hotel', cityName(slug).split(',')[0], 'editó un hotel/venue ('+field+')');
   }
   renderAudit();
-}, 700));
+}
 
 // ---------- Layout: SVG → PNG (copiar / descargar para el correo) ----------
 function layoutPngBlob(svg, scale){
