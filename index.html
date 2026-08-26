@@ -284,6 +284,34 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 .statuslog .nbody{flex:1;min-width:180px;color:var(--ink);font-size:14px;white-space:pre-wrap;word-break:break-word}
 @media(max-width:520px){.statuslog .nbody{flex:1 1 100%}}
 
+/* ---- Encuestas a líderes/speakers + fechas de evento ---- */
+.drow2{display:flex;gap:10px;margin:2px 0 10px}
+.dtlab{flex:1;font-size:11.5px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+input.cell.dt{font-size:12.5px}
+.venuegrp{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0;background:#fbfaf5}
+.vgrp{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.vgrp > b{color:var(--navy);font-size:13.5px}
+.venuegrp .evalcard{background:#fff}
+.review{border-top:1px dashed var(--line);padding:7px 0 4px;margin-top:4px}
+.review:first-of-type{border-top:none}
+.revhead{display:flex;align-items:center;gap:8px}
+.revwho{font-weight:700;color:var(--navy);font-size:13px;flex:1}
+.scchips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.scchip{font-size:10.5px;background:#efe8da;border-radius:6px;padding:1px 6px;color:var(--ink)}
+.scchip b{color:var(--navy)}
+.revnote{font-size:12px;color:var(--muted);background:#fffdf8;border:1px solid var(--line);border-radius:6px;padding:5px 8px;margin-top:2px}
+.survsec{margin-top:12px;border-top:2px solid var(--line);padding-top:10px}
+.recips{display:flex;flex-direction:column;gap:6px}
+.rcrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.rcrow input.cell{flex:1;min-width:110px}
+.rcst{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.rcst.ok{color:var(--ok)}
+.rcst.sent{color:var(--gold)}
+.survbtns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.btn.navy{background:var(--navy)}
+.btn.navy:hover{background:var(--navy2)}
+.survnote{font-size:11.5px;margin-top:6px;line-height:1.35}
+
 </style>
 </head>
 <body>
@@ -786,6 +814,12 @@ async function loadAll(){
   try{ const vn=await sb.from('venues').select('*').order('sort',{ascending:true});
        state.venues={}; (vn.data||[]).forEach(r=>{ (state.venues[r.city_slug]=state.venues[r.city_slug]||[]).push(r); }); }
   catch(e){ state.venues={}; }
+  try{ const rc=await sb.from('event_recipients').select('*').order('created_at',{ascending:true});
+       state.recipients={}; (rc.data||[]).forEach(r=>{ (state.recipients[r.date_id]=state.recipients[r.date_id]||[]).push(r); }); }
+  catch(e){ state.recipients={}; }
+  try{ const tk=await sb.from('survey_tokens').select('*').order('created_at',{ascending:true});
+       state.tokens={}; (tk.data||[]).forEach(r=>{ (state.tokens[r.date_id]=state.tokens[r.date_id]||[]).push(r); }); }
+  catch(e){ state.tokens={}; }
   renderAll();
 }
 const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
@@ -864,6 +898,34 @@ function evalsFor(id){ return state.evals[id]||[]; }
 function evalAvg(ev){ const s=ev&&ev.scores||{}; const vals=EVAL_CRITERIA.map(c=>+s[c.k]).filter(v=>v>=1&&v<=5); return vals.length? (vals.reduce((a,b)=>a+b,0)/vals.length):0; }
 function evalRec(avg){ if(!avg) return null; if(avg>=4)return['Regresar ✓','p-ok']; if(avg>=3)return['Tal vez','p-prog']; return['No regresar','p-must']; }
 function allDates(){ const out=[]; CITIES.forEach(c=>citiesDates(c.slug).forEach(d=>out.push({city:c, d}))); return out; }
+// --- Encuestas: destinatarios, tokens, reviews agrupadas por hotel ---
+function recipientsFor(id){ return (state.recipients&&state.recipients[id])||[]; }
+function tokensFor(id){ return (state.tokens&&state.tokens[id])||[]; }
+function tokenForEmail(id,email){ email=(email||'').trim().toLowerCase(); return tokensFor(id).find(t=>(t.recipient_email||'').trim().toLowerCase()===email); }
+function evalsByVenue(id){
+  const map={};
+  evalsFor(id).forEach(ev=>{ const k=((ev.venue_name||'').trim())||'—'; (map[k]=map[k]||[]).push(ev); });
+  return Object.keys(map).map(v=>{
+    const rows=map[v]; const avgs=rows.map(evalAvg).filter(a=>a>0);
+    const avg=avgs.length? avgs.reduce((a,b)=>a+b,0)/avgs.length : 0;
+    return {venue:v, rows, avg, n:avgs.length};
+  });
+}
+function fmtDay(iso){ if(!iso) return ''; try{ const [y,m,dd]=iso.split('-'); return new Date(+y,+m-1,+dd).toLocaleDateString('es-US',{day:'2-digit',month:'short'}); }catch(e){ return iso; } }
+function surveyReviewCard(ev){
+  const avg=evalAvg(ev); const rec=evalRec(avg);
+  const chips=EVAL_CRITERIA.map(c=>{ const v=+((ev.scores||{})[c.k]||0); return v?`<span class="scchip">${esc(c.l.split(' ')[0])} <b>${v}</b></span>`:''; }).filter(Boolean).join('');
+  return `<div class="review">
+    <div class="revhead">
+      <span class="revwho">🗣️ ${esc(ev.respondent_name||'Anónimo')}</span>
+      ${rec?`<span class="pill ${rec[1]}" style="flex:none">${rec[0]}</span>`:''}
+      <span class="evavg">${avg?avg.toFixed(1):'—'}<small>/5</small></span>
+      <button class="dxs" data-deleval="${ev.id}" title="Eliminar review">✕</button>
+    </div>
+    <div class="scchips">${chips}</div>
+    ${ev.notes?`<div class="revnote">${esc(ev.notes)}</div>`:''}
+  </div>`;
+}
 
 function evalCard(ev){
   const avg=evalAvg(ev); const rec=evalRec(avg);
@@ -888,8 +950,28 @@ function dateBlock(d, citySlug){
   const fases=FASES.map((s,i)=>`<li class="${dateDone(d.id,i)?'done':''}"><input type="checkbox" ${dateDone(d.id,i)?'checked':''} data-dstep="${d.id}:${i}"><span>${esc(s)}</span></li>`).join('');
   const pend=PEND_EVENTO.map((s,i)=>`<li class="${pendDone(d.id,i)?'done':''}"><input type="checkbox" ${pendDone(d.id,i)?'checked':''} data-dstep="${d.id}:${PEND_BASE+i}"><span>${esc(s)}</span></li>`).join('');
   const pc=pendCount(d.id);
-  const evs=evalsFor(d.id);
-  const evalsHtml = evs.length ? evs.map(evalCard).join('') : `<div class="muted" style="font-size:12px;padding:4px 0">Sin evaluaciones todavía. Agrega una tras la visita 👇</div>`;
+  const groups=evalsByVenue(d.id);
+  const evalsHtml = groups.length ? groups.map(g=>{
+    const rec=evalRec(g.avg);
+    const team=g.rows.filter(r=>r.source!=='encuesta').map(evalCard).join('');
+    const surv=g.rows.filter(r=>r.source==='encuesta').map(surveyReviewCard).join('');
+    const head=`<div class="vgrp"><b>${esc(g.venue)}</b> <span class="evavg">${g.avg?g.avg.toFixed(1):'—'}<small>/5</small></span> ${rec?`<span class="pill ${rec[1]}">${rec[0]}</span>`:''} <span class="muted" style="font-size:11.5px">${g.n} review(s)</span></div>`;
+    return `<div class="venuegrp">${head}${team}${surv}</div>`;
+  }).join('') : `<div class="muted" style="font-size:12px;padding:4px 0">Sin evaluaciones todavía. Agrega una tras la visita, o llegan de las encuestas 👇</div>`;
+  const recs=recipientsFor(d.id);
+  const sentN=tokensFor(d.id).filter(t=>t.sent_at).length;
+  const respN=tokensFor(d.id).filter(t=>t.responded_at).length;
+  const recRows = recs.map(r=>{
+    const tk=tokenForEmail(d.id,r.email);
+    const stx = tk&&tk.responded_at ? '<span class="rcst ok">✓ respondió</span>' : (tk&&tk.sent_at ? '<span class="rcst sent">✉ enviada</span>' : '<span class="rcst">—</span>');
+    return `<div class="rcrow">
+      <input class="cell" data-rcfield="name" data-rcid="${r.id}" value="${esc(r.name||'')}" placeholder="Nombre">
+      <input class="cell" data-rcfield="email" data-rcid="${r.id}" value="${esc(r.email||'')}" placeholder="Email">
+      <input class="cell" data-rcfield="role" data-rcid="${r.id}" value="${esc(r.role||'')}" placeholder="Rol (líder/speaker)">
+      ${stx}
+      <button class="btn sm ghost cox" data-delrc="${r.id}" title="Eliminar">✕</button>
+    </div>`;
+  }).join('') || `<div class="muted" style="font-size:12.5px;padding:2px 0 4px">Sin líderes/speakers aún. Agrega el primero 👇</div>`;
   return `<div class="dateblk">
     <div class="datehead" data-dtoggle="1">
       <span class="dcaret">▸</span>
@@ -900,6 +982,10 @@ function dateBlock(d, citySlug){
     </div>
     <div class="prog"><i style="width:${pct}%"></i></div>
     <div class="datebody">
+      <div class="drow2">
+        <label class="dtlab">Inicio <input type="date" class="cell dt" data-dfield="start_date" data-did="${d.id}" value="${esc(d.start_date||'')}"></label>
+        <label class="dtlab">Fin <input type="date" class="cell dt" data-dfield="end_date" data-did="${d.id}" value="${esc(d.end_date||'')}"></label>
+      </div>
       <h5 class="dsub">Fases del evento</h5>
       <ul class="chk">${fases}</ul>
       <h5 class="dsub">Pendientes del evento <span class="dsubn">${pc}/${PEND_EVENTO.length}</span></h5>
@@ -908,9 +994,18 @@ function dateBlock(d, citySlug){
       <input class="cell" list="dl-${citySlug}" data-dmeta="${d.id}:chosen_venue" placeholder="— elige o escribe —" value="${esc(meta.chosen_venue||'')}">
       <textarea data-dmeta="${d.id}:notes" rows="2" placeholder="Notas de esta fecha..." style="margin-top:6px">${esc(meta.notes||'')}</textarea>
       <div class="evalsec">
-        <h5 class="dsub">Evaluación de venues <span class="dsubn">1–5 · 5 = me gusta mucho</span></h5>
+        <h5 class="dsub">Evaluación del venue <span class="dsubn">1–5 · 5 = excelente · equipo + encuestas</span></h5>
         ${evalsHtml}
-        <button class="btn sm gold" data-addeval="${d.id}" style="margin-top:6px">+ Evaluar venue</button>
+        <button class="btn sm gold" data-addeval="${d.id}" style="margin-top:6px">+ Evaluar venue (equipo)</button>
+      </div>
+      <div class="survsec">
+        <h5 class="dsub">Líderes / speakers · encuesta <span class="dsubn">${respN}/${sentN} respondieron</span></h5>
+        <div class="recips">${recRows}</div>
+        <div class="survbtns">
+          <button class="btn sm gold" data-addrc="${d.id}">+ persona</button>
+          <button class="btn sm navy" data-sendsurvey="${d.id}">✉ Enviar encuesta ahora</button>
+        </div>
+        <div class="muted survnote">Se envía automáticamente el día después del último día del evento${d.end_date?` (fin: ${fmtDay(d.end_date)})`:''}. También puedes enviarla manualmente aquí.</div>
       </div>
     </div>
   </div>`;
@@ -1044,6 +1139,13 @@ document.addEventListener('change', async (e)=>{
       logChange('evaluación', (ev.venue_name||dateLabelById(ev.date_id)), 'calificó “'+crit+'” = '+(t.value||'—'));
     }
   }
+  else if(t.dataset.dfield){
+    const id=t.dataset.did, field=t.dataset.dfield;
+    for(const k in state.dates){ const dd=(state.dates[k]||[]).find(x=>x.id===id); if(dd){ dd[field]=t.value||null; break; } }
+    await sb.from('event_dates').update({[field]:t.value||null}).eq('id',id);
+    renderCities();
+    logChange('fecha', dateLabelById(id), 'ajustó '+(field==='start_date'?'fecha de inicio':'fecha de fin')+(t.value?' ('+t.value+')':''));
+  }
 });
 // inputs de texto (venue elegido, notas, celdas de contacto) — guardar al salir/blur
 document.addEventListener('input', debounce(async (e)=>{
@@ -1086,6 +1188,12 @@ document.addEventListener('input', debounce(async (e)=>{
     const r=(state.company||[]).find(x=>x.id===id); if(r) r[field]=t.value;
     await sb.from('company_info').update({[field]:t.value}).eq('id',id);
     logChange('empresa', (r&&r.label)||'dato', 'editó dato de la empresa');
+  }
+  else if(t.dataset.rcfield){
+    const id=t.dataset.rcid, field=t.dataset.rcfield;
+    for(const k in state.recipients){ const r=(state.recipients[k]||[]).find(x=>x.id===id); if(r){ r[field]=t.value; break; } }
+    await sb.from('event_recipients').update({[field]:t.value}).eq('id',id);
+    logChange('evento', 'encuesta', 'editó un líder/speaker ('+field+')');
   }
   else if(t.dataset.vfield){
     const id=t.dataset.vid, field=t.dataset.vfield; let slug='';
@@ -1147,6 +1255,29 @@ async function downloadLayoutImage(svg, fname, btn){
   catch(e){ _flash(btn,'✕ Error'); }
 }
 
+async function sendSurvey(dateId, btn){
+  const recs=recipientsFor(dateId).filter(r=>(r.email||'').includes('@'));
+  const meta=state.dmeta[dateId]||{};
+  const nm=dateLabelById(dateId);
+  if(!(meta.chosen_venue||'').trim()){ alert('Primero define el “Venue elegido” de este evento — es el hotel que los líderes/speakers van a evaluar.'); return; }
+  if(!recs.length){ alert('Agrega al menos un líder/speaker con email válido antes de enviar la encuesta.'); return; }
+  if(!confirm('¿Enviar la encuesta de evaluación de “'+meta.chosen_venue+'” a '+recs.length+' persona(s) del evento “'+nm+'”?')) return;
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Enviando…';
+  try{
+    const tok=await lpToken();
+    const r=await fetch('/api/survey-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({date_id:dateId})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){ throw new Error(j.error||('HTTP '+r.status)); }
+    btn.textContent='✓ Enviada ('+(j.sent||0)+')';
+    logChange('evento', nm, 'envió la encuesta a '+(j.sent||0)+' persona(s)');
+    if(j.skipped){ alert('Enviadas: '+j.sent+'.\nNo enviadas: '+j.skipped+(j.errors&&j.errors.length?('\n\n'+j.errors.join('\n')):'')); }
+    setTimeout(loadAll, 1000);
+  }catch(e){
+    btn.disabled=false; btn.textContent=old;
+    alert('No se pudo enviar la encuesta:\n'+(e.message||e));
+  }
+}
+
 document.addEventListener('click', async (e)=>{
   const t=e.target;
   // expandir/colapsar fecha (UI, sin DB)
@@ -1178,6 +1309,18 @@ document.addEventListener('click', async (e)=>{
     const { error } = await sb.from('event_dates').delete().eq('id',t.dataset.deldate);
     if(error){ alert('No se pudo eliminar la fecha: '+error.message); return; }
     await loadAll(); logChange('fecha', nm, 'eliminó una fecha'); return;
+  }
+  if(t.dataset.sendsurvey){ await sendSurvey(t.dataset.sendsurvey, t); return; }
+  if(t.dataset.addrc){
+    const dateId=t.dataset.addrc;
+    await sb.from('event_recipients').insert({date_id:dateId, name:'', email:'', role:''});
+    await loadAll();
+    const el=document.querySelector(`[data-dlabel="${dateId}"]`); if(el){const b=el.closest('.dateblk'); if(b)b.classList.add('open');}
+    logChange('evento', dateLabelById(dateId), 'agregó un líder/speaker'); return;
+  }
+  if(t.dataset.delrc){
+    await sb.from('event_recipients').delete().eq('id',t.dataset.delrc);
+    await loadAll(); logChange('evento','encuesta','eliminó un líder/speaker'); return;
   }
   if(t.dataset.addeval){
     const dateId=t.dataset.addeval; const nm=dateLabelById(dateId);
