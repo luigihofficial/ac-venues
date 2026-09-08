@@ -71,16 +71,16 @@ function sheetEmailHtml({ ev, sheet, recips, files }){
     row('Hora de set-up aprobada', esc(sheet.setup_time||'')),
     row('Notas', esc(sheet.notes||'').replace(/\n/g,'<br>'))
   ].join('');
-  const contractBtn = sheet.contract_url ? `<p style="text-align:center;margin:0 0 8px"><a href="${esc(sheet.contract_url)}" style="display:inline-block;background:linear-gradient(135deg,#b8860b,#a9790a);color:#fff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:12px">Descargar contrato</a></p>` : '';
+  const contractBtn = sheet.contract_url ? `<p style="text-align:center;margin:0 0 8px"><a href="${esc(sheet.contract_url)}" style="display:inline-block;background-color:#b8860b;background-image:linear-gradient(135deg,#c9970d,#a9790a);color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:12px;border:1px solid #8a6208">Descargar contrato</a></p>` : '';
   return `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
   <div style="max-width:600px;margin:0 auto;padding:28px 16px">
     <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(20,38,63,.10)">
-      <div style="background:linear-gradient(135deg,#1e3a5f,#14263f);padding:28px 22px 22px;text-align:center">
+      <div style="background-color:#14263f;background-image:linear-gradient(135deg,#1e3a5f,#14263f);padding:28px 22px 22px;text-align:center">
         <img src="${LOGO}" width="54" height="54" alt="Amor Consciente" style="display:block;margin:0 auto 10px;border:0">
-        <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px">Amor Consciente</div>
+        <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.3px">Amor Consciente</div>
         <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:4px">Ficha técnica del evento</div>
       </div>
-      <div style="height:3px;background:linear-gradient(90deg,#b8860b,#e3b23c)"></div>
+      <div style="height:3px;background-color:#c99a2e;background-image:linear-gradient(90deg,#b8860b,#e3b23c);line-height:3px;font-size:0">&nbsp;</div>
       <div style="background:#fffdf8;padding:24px">
         <p style="margin:0 0 4px;font-size:16px;color:#1e3a5f"><b>${esc(ev.label||'Evento')}</b></p>
         <p style="margin:0 0 18px;color:#8a9199;font-size:13px;line-height:1.5">Aquí tienes la información logística del evento. Cualquier duda, responde a este correo.</p>
