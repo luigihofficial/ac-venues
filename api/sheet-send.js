@@ -3,7 +3,7 @@
 //  Dos modos:
 //   1) MANUAL → usuario autorizado (JWT de Supabase). Body: { date_id }
 //   2) CRON   → Vercel Cron (Authorization: Bearer CRON_SECRET). Envía a los
-//               eventos cuyo PRIMER día es MAÑANA (la ficha llega el día antes).
+//               eventos cuyo PRIMER día es EN 2 DÍAS (la ficha llega dos días antes).
 //  Variables de entorno: SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, CRON_SECRET,
 //   SURVEY_FROM (opcional), SURVEY_REPLYTO (opcional), APP_BASE_URL (opcional).
 // ============================================================
@@ -125,7 +125,8 @@ async function sendSheetForEvent(dateId, { markSent = true } = {}){
   return { dateId, label: ev.label, sent, skipped, errors: errors.slice(0,10) };
 }
 
-function tomorrowISO(){ return new Date(Date.now() + 24*3600*1000).toISOString().slice(0,10); }
+// La ficha se envía DOS días antes del primer día del evento
+function sheetTargetISO(){ return new Date(Date.now() + 2*24*3600*1000).toISOString().slice(0,10); }
 
 module.exports = async function handler(req, res){
   if (req.method !== "POST" && req.method !== "GET"){ res.status(405).json({ error: "Método no permitido" }); return; }
@@ -149,7 +150,7 @@ module.exports = async function handler(req, res){
 
   try {
     if (isCron){
-      const tm = tomorrowISO();
+      const tm = sheetTargetISO();
       const due = await sget(`event_dates?start_date=eq.${tm}&select=id`);
       const results = [];
       for (const e of (due||[])){
