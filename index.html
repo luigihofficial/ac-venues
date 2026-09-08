@@ -321,6 +321,17 @@ input.cell.dt{font-size:12.5px}
 select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
 .shnotes{margin-top:8px}
 
+/* ---- Archivos por evento ---- */
+.filesec{margin-top:12px;border-top:2px solid var(--line);padding-top:10px}
+.files{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.filerow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fffdf8;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.filerow .ficon{font-size:15px;flex:none}
+.filerow .fname{flex:1;min-width:120px;font-size:13px;font-weight:600;color:var(--navy);word-break:break-word}
+.filerow .fsize{font-size:11px;color:var(--muted);white-space:nowrap}
+.filerow .fshare{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer}
+.filerow .fshare input{width:14px;height:14px;accent-color:var(--gold);cursor:pointer}
+.fileupbtn{display:inline-block;cursor:pointer}
+
 </style>
 </head>
 <body>
@@ -453,7 +464,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <section id="contactos">
     <div class="sec-head"><div class="num">☎</div><div><h2>Directorio de contactos</h2><p>Compartido con el equipo. Agrega, edita y elimina.</p></div></div>
     <div class="card" style="overflow-x:auto"><table>
-      <thead><tr><th>Ciudad</th><th>Venue / Rol</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Notas</th><th></th></tr></thead>
+      <thead><tr><th>Ciudad</th><th>Venue / Rol</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Dirección</th><th>Notas</th><th></th></tr></thead>
       <tbody id="contactBody"></tbody>
     </table>
     <div class="addrow" style="padding:12px 14px">
@@ -462,6 +473,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <input id="cName" class="cell" placeholder="Contacto">
       <input id="cEmail" class="cell" placeholder="Email">
       <input id="cPhone" class="cell" placeholder="Teléfono">
+      <input id="cAddress" class="cell" placeholder="Dirección del hotel/salón">
       <button class="btn sm gold" id="addContact">+ Agregar</button>
     </div></div>
   </section>
@@ -832,6 +844,9 @@ async function loadAll(){
   try{ const sh=await sb.from('event_sheet').select('*');
        state.sheets={}; (sh.data||[]).forEach(r=>{ state.sheets[r.date_id]=r; }); }
   catch(e){ state.sheets={}; }
+  try{ const fl=await sb.from('event_files').select('*').order('created_at',{ascending:true});
+       state.files={}; (fl.data||[]).forEach(r=>{ (state.files[r.date_id]=state.files[r.date_id]||[]).push(r); }); }
+  catch(e){ state.files={}; }
   renderAll();
 }
 const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
@@ -913,6 +928,40 @@ function allDates(){ const out=[]; CITIES.forEach(c=>citiesDates(c.slug).forEach
 // --- Encuestas: destinatarios, tokens, reviews agrupadas por hotel ---
 function recipientsFor(id){ return (state.recipients&&state.recipients[id])||[]; }
 function sheetFor(id){ return (state.sheets&&state.sheets[id])||{}; }
+function filesFor(id){ return (state.files&&state.files[id])||[]; }
+function fmtSize(b){ b=+b||0; if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(0)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+function fileIcon(mime,name){ const s=((mime||'')+' '+(name||'')).toLowerCase(); if(/pdf/.test(s))return '📄'; if(/(png|jpg|jpeg|gif|webp|image)/.test(s))return '🖼️'; if(/(zip|rar|7z)/.test(s))return '🗜️'; if(/(word|doc)/.test(s))return '📝'; if(/(sheet|excel|xls|csv)/.test(s))return '📊'; return '📎'; }
+function normName(s){ return (s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+function contactForVenue(venueName){
+  const n=normName(venueName); if(!n) return null;
+  const list=state.contacts||[];
+  return list.find(c=>normName(c.role)===n) || list.find(c=>normName(c.name)===n) || null;
+}
+function mapUrlFrom(addr){ return addr? 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr) : ''; }
+// Al elegir el hotel en un evento, autocompleta la ficha (solo campos vacíos; hotel siempre)
+async function autofillSheetFromVenue(dateId, venueName){
+  if(!sb||!USER) return;
+  const c=contactForVenue(venueName);
+  const sh=sheetFor(dateId);
+  const patch={date_id:dateId, updated_at:new Date().toISOString()};
+  const setIfEmpty=(f,v)=>{ if(v && !(sh[f]&&String(sh[f]).trim())) patch[f]=v; };
+  if(venueName) patch.hotel_name=venueName;
+  if(c){
+    setIfEmpty('address', c.address);
+    setIfEmpty('contact_name', c.name);
+    setIfEmpty('contact_phone', c.phone);
+    setIfEmpty('map_url', mapUrlFrom(c.address||sh.address));
+  } else {
+    setIfEmpty('map_url', mapUrlFrom(sh.address));
+  }
+  const keys=Object.keys(patch).filter(k=>k!=='date_id'&&k!=='updated_at');
+  if(!keys.length) return;
+  if(!state.sheets) state.sheets={};
+  state.sheets[dateId]=Object.assign({date_id:dateId}, sh, patch);
+  await sb.from('event_sheet').upsert(patch,{onConflict:'date_id'});
+  // reflejar en el DOM sin re-render (preserva el foco)
+  keys.forEach(f=>{ const el=document.querySelector('[data-shfield="'+f+'"][data-shid="'+dateId+'"]'); if(el) el.value=patch[f]; });
+}
 function tokensFor(id){ return (state.tokens&&state.tokens[id])||[]; }
 function tokenForEmail(id,email){ email=(email||'').trim().toLowerCase(); return tokensFor(id).find(t=>(t.recipient_email||'').trim().toLowerCase()===email); }
 function evalsByVenue(id){
@@ -1004,6 +1053,15 @@ function dateBlock(d, citySlug){
       <label class="shf">Link del contrato ${TX('contract_url','https://…')}</label>
     </div>
     <textarea class="shnotes" data-shfield="notes" data-shid="${shid}" rows="2" placeholder="Notas adicionales para líderes/speakers…">${esc(sh.notes||'')}</textarea>`;
+  const files=filesFor(d.id);
+  const filesRows = files.map(f=>`
+    <div class="filerow">
+      <span class="ficon">${fileIcon(f.mime,f.name)}</span>
+      <a class="fname" href="${esc(f.url)}" target="_blank" rel="noopener" title="Descargar">${esc(f.name||'archivo')}</a>
+      <span class="fsize">${fmtSize(f.size)}</span>
+      <label class="fshare" title="Incluir en la ficha para líderes/speakers"><input type="checkbox" data-sharefile="${f.id}" ${f.share?'checked':''}> compartir</label>
+      <button class="btn sm ghost cox" data-delfile="${f.id}" title="Eliminar">✕</button>
+    </div>`).join('') || `<div class="muted" style="font-size:12.5px;padding:2px 0 4px">Sin archivos aún. Sube contratos, blueprints, layouts, etc. 👇</div>`;
   return `<div class="dateblk">
     <div class="datehead" data-dtoggle="1">
       <span class="dcaret">▸</span>
@@ -1044,6 +1102,12 @@ function dateBlock(d, citySlug){
         ${fichaHtml}
         <div class="survbtns"><button class="btn sm navy" data-sendsheet="${d.id}">✉ Enviar ficha ahora</button></div>
         <div class="muted survnote">Se envía automáticamente el día antes del primer día del evento${d.start_date?` (inicio: ${fmtDay(d.start_date)})`:''}. Los líderes/speakers se toman de la lista de arriba.</div>
+      </div>
+      <div class="filesec">
+        <h5 class="dsub">Archivos del evento <span class="dsubn">contratos, blueprints, layouts…</span></h5>
+        <div class="files">${filesRows}</div>
+        <label class="btn sm gold fileupbtn">+ Subir archivo<input type="file" data-uploadfiles="${d.id}" multiple style="display:none"></label>
+        <div class="muted survnote">Los archivos marcados <b>“compartir”</b> se incluyen como enlaces de descarga en la ficha técnica.</div>
       </div>
     </div>
   </div>`;
@@ -1128,9 +1192,10 @@ function renderContacts(){
      <td><input class="cell" data-cfield="name" value="${esc(c.name)}"></td>
      <td><input class="cell" data-cfield="email" value="${esc(c.email)}"></td>
      <td><input class="cell" data-cfield="phone" value="${esc(c.phone)}"></td>
+     <td><input class="cell" data-cfield="address" value="${esc(c.address||'')}" placeholder="Dirección"></td>
      <td><input class="cell" data-cfield="notes" value="${esc(c.notes)}"></td>
      <td><button class="btn sm ghost" data-delc="${c.id}">✕</button></td>
-   </tr>`).join('') || `<tr><td colspan="7" class="muted" style="padding:14px">Sin contactos todavía. Agrega el primero abajo.</td></tr>`;
+   </tr>`).join('') || `<tr><td colspan="8" class="muted" style="padding:14px">Sin contactos todavía. Agrega el primero abajo.</td></tr>`;
 }
 function renderStatus(){
   // más reciente arriba (state.notes viene ordenado desc); cada nota inicia con iniciales · fecha · hora
@@ -1187,6 +1252,15 @@ document.addEventListener('change', async (e)=>{
   else if(t.dataset.shfield && t.tagName==='SELECT'){
     await saveSheet(t.dataset.shid, t.dataset.shfield, t.value);
   }
+  else if(t.dataset.uploadfiles){
+    await uploadEventFiles(t.dataset.uploadfiles, t.files, t);
+  }
+  else if(t.dataset.sharefile){
+    const id=t.dataset.sharefile, val=t.checked;
+    for(const k in state.files){ const x=(state.files[k]||[]).find(y=>y.id===id); if(x){ x.share=val; break; } }
+    await sb.from('event_files').update({share:val}).eq('id',id);
+    logChange('evento','archivos', val?'compartió un archivo en la ficha':'quitó un archivo de la ficha');
+  }
 });
 // inputs de texto (venue elegido, notas, celdas de contacto) — guardar al salir/blur
 // Debounce POR CAMPO (cada input tiene su propio temporizador) — evita perder
@@ -1204,7 +1278,7 @@ async function handleInput(t){
     const patch={date_id:id}; patch[field]=t.value; patch.updated_at=new Date().toISOString();
     if(!state.dmeta[id]) state.dmeta[id]={date_id:id}; state.dmeta[id][field]=t.value;
     await sb.from('date_meta').upsert(patch,{onConflict:'date_id'});
-    if(field==='chosen_venue') renderMatrix();
+    if(field==='chosen_venue'){ await autofillSheetFromVenue(id, t.value); renderMatrix(); }
     logChange('evento', dateLabelById(id), 'editó '+(field==='chosen_venue'?'venue elegido':'notas'));
   }
   else if(t.dataset.dlabel){
@@ -1355,6 +1429,36 @@ async function sendSheet(dateId, btn){
     setTimeout(loadAll,1000);
   }catch(e){ btn.disabled=false; btn.textContent=old; alert('No se pudo enviar la ficha:\n'+(e.message||e)); }
 }
+async function uploadEventFiles(dateId, fileList, inputEl){
+  if(!sb||!USER) return;
+  const files=[...(fileList||[])]; if(!files.length) return;
+  const lbl=inputEl && inputEl.closest('.fileupbtn'); const txt=lbl && lbl.childNodes[0];
+  if(txt) txt.textContent='Subiendo… ';
+  try{
+    for(const file of files){
+      if(file.size > 25*1024*1024){ alert('“'+file.name+'” supera 25 MB. Súbelo comprimido o comparte un enlace en las notas.'); continue; }
+      const safe=(file.name||'archivo').replace(/[^\w.\-]+/g,'_');
+      const path=dateId+'/'+Date.now()+'-'+safe;
+      const up=await sb.storage.from('event-files').upload(path, file, {upsert:false, contentType:file.type||undefined});
+      if(up.error){ alert('No se pudo subir “'+file.name+'”: '+up.error.message); continue; }
+      const pub=sb.storage.from('event-files').getPublicUrl(path);
+      const url=(pub&&pub.data&&pub.data.publicUrl)||'';
+      await sb.from('event_files').insert({date_id:dateId, name:file.name, path, url, mime:file.type||'', size:file.size, uploaded_by:(USER.email||'')});
+      logChange('evento', dateLabelById(dateId), 'subió un archivo ('+file.name+')');
+    }
+    if(inputEl) inputEl.value='';
+    await loadAll();
+  }catch(e){ alert('Error al subir archivo: '+(e.message||e)); }
+}
+async function deleteEventFile(id){
+  let f=null; for(const k in state.files){ const x=(state.files[k]||[]).find(y=>y.id===id); if(x){f=x;break;} }
+  if(!f) return;
+  if(!confirm('¿Eliminar el archivo “'+(f.name||'')+'”? Esta acción no se puede deshacer.')) return;
+  try{ if(f.path) await sb.storage.from('event-files').remove([f.path]); }catch(e){}
+  const {error}=await sb.from('event_files').delete().eq('id',id);
+  if(error){ alert('No se pudo eliminar: '+error.message); return; }
+  await loadAll(); logChange('evento','archivos','eliminó un archivo'+(f.name?' ('+f.name+')':''));
+}
 
 document.addEventListener('click', async (e)=>{
   const t=e.target;
@@ -1390,6 +1494,7 @@ document.addEventListener('click', async (e)=>{
   }
   if(t.dataset.sendsurvey){ await sendSurvey(t.dataset.sendsurvey, t); return; }
   if(t.dataset.sendsheet){ await sendSheet(t.dataset.sendsheet, t); return; }
+  if(t.dataset.delfile){ await deleteEventFile(t.dataset.delfile); return; }
   if(t.dataset.addrc){
     const dateId=t.dataset.addrc;
     await sb.from('event_recipients').insert({date_id:dateId, name:'', email:'', role:''});
@@ -1440,9 +1545,9 @@ document.addEventListener('click', async (e)=>{
 document.addEventListener('DOMContentLoaded',()=>{
   const add=$('addContact'); if(add) add.addEventListener('click', async ()=>{
     if(!sb||!USER) return;
-    const row={city:$('cCity').value,role:$('cRole').value,name:$('cName').value,email:$('cEmail').value,phone:$('cPhone').value,notes:''};
+    const row={city:$('cCity').value,role:$('cRole').value,name:$('cName').value,email:$('cEmail').value,phone:$('cPhone').value,address:($('cAddress')?$('cAddress').value:''),notes:''};
     if(!row.city&&!row.role&&!row.name) return;
-    ['cCity','cRole','cName','cEmail','cPhone'].forEach(id=>$(id).value='');
+    ['cCity','cRole','cName','cEmail','cPhone','cAddress'].forEach(id=>{ if($(id)) $(id).value=''; });
     await sb.from('contacts').insert(row);
     logChange('contacto','Contactos','agregó un contacto'+(row.name?' ('+row.name+')':''));
   });
