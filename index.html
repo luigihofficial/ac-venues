@@ -849,7 +849,21 @@ async function loadAll(){
   catch(e){ state.files={}; }
   renderAll();
 }
-const reload = debounce(()=>{ if(sb&&USER) loadAll(); }, 250);
+// ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
+function isEditing(){ const el=document.activeElement; return !!(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !el.readOnly && !el.disabled); }
+let _pendingReload=false;
+// Realtime: si el equipo (u otra pestaña) cambia algo mientras escribes, NO re-renderiza
+// hasta que sueltes el campo — así no te saca del espacio donde escribes.
+const reload = debounce(()=>{
+  if(!(sb&&USER)) return;
+  if(isEditing()){ _pendingReload=true; return; }
+  loadAll();
+}, 250);
+document.addEventListener('focusout', ()=>{
+  if(!_pendingReload) return;
+  // esperar más que el guardado por campo (700ms) para no perder lo recién escrito
+  setTimeout(()=>{ if(_pendingReload && !isEditing()){ _pendingReload=false; loadAll(); } }, 1000);
+});
 let RT_CH=null;
 function subscribeRealtime(){
   if(RT_CH) return;                       // ya suscrito: evita re-agregar callbacks tras subscribe()
