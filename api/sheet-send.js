@@ -47,7 +47,13 @@ const yn = v => v==='si' ? 'Sí' : (v==='no' ? 'No' : '');
 
 function row(label, val){ if(!val) return ''; return `<tr><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600">${esc(label)}</td><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#22303f;font-size:14px"><b>${val}</b></td></tr>`; }
 
-function sheetEmailHtml({ ev, sheet, recips }){
+function filesBlock(files){
+  const list = (files||[]).filter(f=>f.url);
+  if(!list.length) return '';
+  const items = list.map(f=>`<a href="${esc(f.url)}" style="display:inline-block;margin:4px 6px 0 0;padding:9px 14px;background:#fff;border:1px solid #e6ddca;border-radius:10px;color:#1e3a5f;text-decoration:none;font-size:13px;font-weight:600">📎 ${esc(f.name||'archivo')}</a>`).join('');
+  return `<div style="margin:6px 0 18px"><div style="font-size:12px;color:#8a9199;font-weight:600;margin:0 0 6px">Archivos para descargar</div>${items}</div>`;
+}
+function sheetEmailHtml({ ev, sheet, recips, files }){
   const hotel = esc(sheet.hotel_name || "");
   const people = (recips||[]).map(r=>esc(r.name||r.email)).filter(Boolean).join(", ");
   const addr = sheet.address ? (esc(sheet.address) + (sheet.map_url?` · <a href="${esc(sheet.map_url)}" style="color:#1e3a5f">ver mapa</a>`:'')) : (sheet.map_url?`<a href="${esc(sheet.map_url)}" style="color:#1e3a5f">ver mapa</a>`:'');
@@ -79,6 +85,7 @@ function sheetEmailHtml({ ev, sheet, recips }){
         <p style="margin:0 0 4px;font-size:16px;color:#1e3a5f"><b>${esc(ev.label||'Evento')}</b></p>
         <p style="margin:0 0 18px;color:#8a9199;font-size:13px;line-height:1.5">Aquí tienes la información logística del evento. Cualquier duda, responde a este correo.</p>
         <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #efe8da;border-radius:10px;overflow:hidden;margin-bottom:18px">${rows}</table>
+        ${filesBlock(files)}
         ${contractBtn}
       </div>
     </div>
@@ -106,7 +113,9 @@ async function sendSheetForEvent(dateId, { markSent = true } = {}){
   const valid = (recips||[]).filter(r => validEmail(r.email));
   if (!valid.length) return { dateId, label: ev.label, sent:0, skipped:0, reason:"sin destinatarios con email válido" };
 
-  const html = sheetEmailHtml({ ev, sheet, recips: valid });
+  let files = [];
+  try { files = await sget(`event_files?date_id=eq.${enc(dateId)}&share=eq.true&select=name,url,mime,size&order=created_at.asc`); } catch(e){}
+  const html = sheetEmailHtml({ ev, sheet, recips: valid, files });
   let sent = 0, skipped = 0; const errors = [];
   for (const r of valid){
     const em = await sendEmail({ to: r.email.trim(), subject: `Ficha técnica del evento — ${ev.label}`, html });
