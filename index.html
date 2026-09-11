@@ -332,6 +332,15 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
 .filerow .fshare input{width:14px;height:14px;accent-color:var(--gold);cursor:pointer}
 .fileupbtn{display:inline-block;cursor:pointer}
 
+/* ---- Contactos: última llamada ---- */
+.callcell{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.callcell input.cell{width:135px;flex:none}
+.callb{font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 7px;white-space:nowrap}
+.callb.today{background:var(--ok-bg);color:var(--ok)}
+.callb.rec{background:#fdf3d8;color:#8a6208}
+.callb.old{background:#f2ece0;color:var(--muted)}
+.callb.none{background:#fbe9e7;color:#b23b2e}
+
 </style>
 </head>
 <body>
@@ -464,7 +473,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <section id="contactos">
     <div class="sec-head"><div class="num">☎</div><div><h2>Directorio de contactos</h2><p>Compartido con el equipo. Agrega, edita y elimina.</p></div></div>
     <div class="card" style="overflow-x:auto"><table>
-      <thead><tr><th>Ciudad</th><th>Venue / Rol</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Dirección</th><th>Notas</th><th></th></tr></thead>
+      <thead><tr><th>Ciudad</th><th>Venue / Rol</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Dirección</th><th>Última llamada</th><th>Notas</th><th></th></tr></thead>
       <tbody id="contactBody"></tbody>
     </table>
     <div class="addrow" style="padding:12px 14px">
@@ -1198,6 +1207,8 @@ function renderMatrix(){
       <td class="muted">${esc((ev.notes||'').slice(0,90))}</td></tr>`;
   }).join('') : `<tr><td colspan="5" class="muted" style="padding:14px">Aún no hay evaluaciones. Ábrelas dentro de cada evento (sección Ciudades → “+ Evaluar venue”).</td></tr>`;
 }
+function daysSince(iso){ if(!iso) return null; const t=new Date(); t.setHours(0,0,0,0); const p=String(iso).split('-').map(Number); if(p.length<3) return null; const d=new Date(p[0],p[1]-1,p[2]); return Math.round((t-d)/86400000); }
+function callBadge(iso){ const n=daysSince(iso); if(n===null) return '<span class="callb none">sin llamar</span>'; if(n<=0) return '<span class="callb today">Hoy ✓</span>'; if(n===1) return '<span class="callb rec">Ayer</span>'; if(n<=7) return `<span class="callb rec">hace ${n} d</span>`; return `<span class="callb old">hace ${n} d</span>`; }
 function renderContacts(){
   $('contactBody').innerHTML = state.contacts.map(c=>`
    <tr data-cid="${c.id}">
@@ -1207,9 +1218,14 @@ function renderContacts(){
      <td><input class="cell" data-cfield="email" value="${esc(c.email)}"></td>
      <td><input class="cell" data-cfield="phone" value="${esc(c.phone)}"></td>
      <td><input class="cell" data-cfield="address" value="${esc(c.address||'')}" placeholder="Dirección"></td>
+     <td><div class="callcell">
+       <input class="cell" type="date" data-cfield="last_call" value="${esc(c.last_call||'')}">
+       <button class="btn sm gold" data-callnow="${c.id}" title="Marcar llamada de hoy">Hoy</button>
+       ${callBadge(c.last_call)}
+     </div></td>
      <td><input class="cell" data-cfield="notes" value="${esc(c.notes)}"></td>
      <td><button class="btn sm ghost" data-delc="${c.id}">✕</button></td>
-   </tr>`).join('') || `<tr><td colspan="8" class="muted" style="padding:14px">Sin contactos todavía. Agrega el primero abajo.</td></tr>`;
+   </tr>`).join('') || `<tr><td colspan="9" class="muted" style="padding:14px">Sin contactos todavía. Agrega el primero abajo.</td></tr>`;
 }
 function renderStatus(){
   // más reciente arriba (state.notes viene ordenado desc); cada nota inicia con iniciales · fecha · hora
@@ -1303,9 +1319,11 @@ async function handleInput(t){
     logChange('fecha', cityName(citySlugOfDate(t.dataset.dlabel)).split(',')[0], 'renombró una fecha a “'+t.value+'”');
   }
   else if(t.dataset.cfield){
-    const id=t.closest('tr').dataset.cid;
-    await sb.from('contacts').update({[t.dataset.cfield]:t.value}).eq('id',id);
-    logChange('contacto', 'Contactos', 'editó '+t.dataset.cfield);
+    const id=t.closest('tr').dataset.cid, field=t.dataset.cfield;
+    const c=(state.contacts||[]).find(x=>x.id===id); if(c) c[field]=t.value;
+    await sb.from('contacts').update({[field]:t.value}).eq('id',id);
+    logChange('contacto', 'Contactos', field==='last_call'?('registró última llamada'+(c&&c.role?(' a '+c.role):'')):('editó '+field));
+    if(field==='last_call') renderContacts();
   }
   else if(t.dataset.evalvenue){
     let ev=null; for(const k in state.evals){ const f=state.evals[k].find(x=>x.id===t.dataset.evalvenue); if(f){ev=f;break;} }
@@ -1489,6 +1507,13 @@ document.addEventListener('click', async (e)=>{
     return;
   }
   if(!sb||!USER) return;
+  if(t.dataset.callnow){
+    const id=t.dataset.callnow; const today=new Date().toISOString().slice(0,10);
+    const c=(state.contacts||[]).find(x=>x.id===id); if(c) c.last_call=today;
+    await sb.from('contacts').update({last_call:today}).eq('id',id);
+    renderContacts();
+    logChange('contacto','Contactos','registró llamada'+(c&&c.role?(' a '+c.role):'')+' ('+today+')'); return;
+  }
   if(t.dataset.delc){
     const c=(state.contacts||[]).find(x=>x.id===t.dataset.delc);
     await sb.from('contacts').delete().eq('id',t.dataset.delc);
