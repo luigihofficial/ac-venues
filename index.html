@@ -473,13 +473,14 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <section id="contactos">
     <div class="sec-head"><div class="num">☎</div><div><h2>Directorio de contactos</h2><p>Compartido con el equipo. Agrega, edita y elimina.</p></div></div>
     <div class="card" style="overflow-x:auto"><table>
-      <thead><tr><th>Ciudad</th><th>Venue / Rol</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Dirección</th><th>Última llamada</th><th>Notas</th><th></th></tr></thead>
+      <thead><tr><th>Ciudad</th><th>Hotel / Venue</th><th>Contacto</th><th>Cargo</th><th>Email</th><th>Teléfono</th><th>Dirección</th><th>Última llamada</th><th>Notas</th><th></th></tr></thead>
       <tbody id="contactBody"></tbody>
     </table>
     <div class="addrow" style="padding:12px 14px">
       <input id="cCity" class="cell" placeholder="Ciudad">
-      <input id="cRole" class="cell" placeholder="Venue / Rol">
+      <input id="cVenue" class="cell" placeholder="Hotel / Venue">
       <input id="cName" class="cell" placeholder="Contacto">
+      <input id="cRole" class="cell" placeholder="Cargo">
       <input id="cEmail" class="cell" placeholder="Email">
       <input id="cPhone" class="cell" placeholder="Teléfono">
       <input id="cAddress" class="cell" placeholder="Dirección del hotel/salón">
@@ -958,7 +959,32 @@ function normName(s){ return (s||'').trim().toLowerCase().replace(/\s+/g,' '); }
 function contactForVenue(venueName){
   const n=normName(venueName); if(!n) return null;
   const list=state.contacts||[];
-  return list.find(c=>normName(c.role)===n) || list.find(c=>normName(c.name)===n) || null;
+  // 1) match exacto por hotel/venue  2) por si venue está vacío (datos viejos), por role  3) por nombre de persona
+  return list.find(c=>normName(c.venue)===n) || list.find(c=>normName(c.role)===n) || list.find(c=>normName(c.name)===n) || null;
+}
+// Mapea la ciudad de un contacto (ej. "Irving, TX") a uno de los 8 slugs de la app
+function contactCitySlug(cityStr){
+  const s=normName(cityStr);
+  if(!s) return '';
+  if(/houston/.test(s)) return 'houston';
+  if(/irving|grapevine|dallas|fort worth|dfw|plano|arlington/.test(s)) return 'dallas';
+  if(/glendale|los angeles|\bl\.?a\.?\b|lax|burbank|pasadena|century city|santa monica/.test(s)) return 'la';
+  if(/phoenix|scottsdale|tempe|mesa|chandler/.test(s)) return 'phoenix';
+  if(/salt lake|sandy|\but\b|utah/.test(s)) return 'slc';
+  if(/orlando|lake buena vista|kissimmee|seaworld/.test(s)) return 'orlando';
+  if(/atlanta|\bga\b|georgia/.test(s)) return 'atlanta';
+  if(/miami|doral|coral gables|brickell/.test(s)) return 'miami';
+  return '';
+}
+// Nombres de hotel/venue únicos de los contactos que caen en una ciudad (para el datalist del evento)
+function contactVenuesForCity(slug){
+  const seen={}, out=[];
+  (state.contacts||[]).forEach(c=>{
+    const v=(c.venue||'').trim(); if(!v) return;
+    if(contactCitySlug(c.city)!==slug) return;
+    const key=normName(v); if(seen[key]) return; seen[key]=1; out.push(v);
+  });
+  return out;
 }
 function mapUrlFrom(addr){ return addr? 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr) : ''; }
 // Al elegir el hotel en un evento, autocompleta la ficha (solo campos vacíos; hotel siempre)
@@ -1147,7 +1173,11 @@ function cityCard(c, disabled){
       <input class="cell vnotes" data-vfield="notes" data-vid="${v.id}" value="${esc(v.notes||'')}" placeholder="Notas">
       <button class="btn sm ghost cox" data-delvenue="${v.id}" title="Eliminar">✕</button>
     </div>`).join('') : `<div class="muted" style="font-size:12.5px;padding:2px 0 4px">Sin hoteles aún. Agrega el primero 👇</div>`;
-  const datalist = `<datalist id="dl-${c.slug}">${vlist.map(v=>`<option value="${esc(v.name||'')}">`).join('')}</datalist>`;
+  // Opciones del datalist = hoteles de la lista de la ciudad + hoteles del directorio de contactos de esa ciudad (sin duplicar)
+  const dlNames=[]; const dlSeen={};
+  vlist.forEach(v=>{ const nm=(v.name||'').trim(); if(!nm) return; const k=normName(nm); if(dlSeen[k])return; dlSeen[k]=1; dlNames.push(nm); });
+  (disabled?[]:contactVenuesForCity(c.slug)).forEach(nm=>{ const k=normName(nm); if(dlSeen[k])return; dlSeen[k]=1; dlNames.push(nm); });
+  const datalist = `<datalist id="dl-${c.slug}">${dlNames.map(nm=>`<option value="${esc(nm)}">`).join('')}</datalist>`;
   const links=c.search.map(s=>`<a href="${s[1]}" target="_blank" rel="noopener">${esc(s[0])} ↗</a>`).join('');
   const datesHtml = dates.length ? dates.map(d=>dateBlock(d,c.slug)).join('')
     : `<div class="muted" style="font-size:13px;padding:6px 0">Sin fechas todavía. Agrega la primera del año 👇</div>`;
@@ -1213,8 +1243,9 @@ function renderContacts(){
   $('contactBody').innerHTML = state.contacts.map(c=>`
    <tr data-cid="${c.id}">
      <td><input class="cell" data-cfield="city" value="${esc(c.city)}"></td>
-     <td><input class="cell" data-cfield="role" value="${esc(c.role)}"></td>
+     <td><input class="cell" data-cfield="venue" value="${esc(c.venue||'')}" placeholder="Hotel / Venue"></td>
      <td><input class="cell" data-cfield="name" value="${esc(c.name)}"></td>
+     <td><input class="cell" data-cfield="role" value="${esc(c.role)}" placeholder="Cargo"></td>
      <td><input class="cell" data-cfield="email" value="${esc(c.email)}"></td>
      <td><input class="cell" data-cfield="phone" value="${esc(c.phone)}"></td>
      <td><input class="cell" data-cfield="address" value="${esc(c.address||'')}" placeholder="Dirección"></td>
@@ -1225,7 +1256,7 @@ function renderContacts(){
      </div></td>
      <td><input class="cell" data-cfield="notes" value="${esc(c.notes)}"></td>
      <td><button class="btn sm ghost" data-delc="${c.id}">✕</button></td>
-   </tr>`).join('') || `<tr><td colspan="9" class="muted" style="padding:14px">Sin contactos todavía. Agrega el primero abajo.</td></tr>`;
+   </tr>`).join('') || `<tr><td colspan="10" class="muted" style="padding:14px">Sin contactos todavía. Agrega el primero abajo.</td></tr>`;
 }
 function renderStatus(){
   // más reciente arriba (state.notes viene ordenado desc); cada nota inicia con iniciales · fecha · hora
@@ -1322,7 +1353,7 @@ async function handleInput(t){
     const id=t.closest('tr').dataset.cid, field=t.dataset.cfield;
     const c=(state.contacts||[]).find(x=>x.id===id); if(c) c[field]=t.value;
     await sb.from('contacts').update({[field]:t.value}).eq('id',id);
-    logChange('contacto', 'Contactos', field==='last_call'?('registró última llamada'+(c&&c.role?(' a '+c.role):'')):('editó '+field));
+    logChange('contacto', 'Contactos', field==='last_call'?('registró última llamada'+(c&&(c.venue||c.name)?(' a '+(c.venue||c.name)):'')):('editó '+field));
     if(field==='last_call') renderContacts();
   }
   else if(t.dataset.evalvenue){
@@ -1512,7 +1543,7 @@ document.addEventListener('click', async (e)=>{
     const c=(state.contacts||[]).find(x=>x.id===id); if(c) c.last_call=today;
     await sb.from('contacts').update({last_call:today}).eq('id',id);
     renderContacts();
-    logChange('contacto','Contactos','registró llamada'+(c&&c.role?(' a '+c.role):'')+' ('+today+')'); return;
+    logChange('contacto','Contactos','registró llamada'+(c&&(c.venue||c.name)?(' a '+(c.venue||c.name)):'')+' ('+today+')'); return;
   }
   if(t.dataset.delc){
     const c=(state.contacts||[]).find(x=>x.id===t.dataset.delc);
@@ -1584,9 +1615,9 @@ document.addEventListener('click', async (e)=>{
 document.addEventListener('DOMContentLoaded',()=>{
   const add=$('addContact'); if(add) add.addEventListener('click', async ()=>{
     if(!sb||!USER) return;
-    const row={city:$('cCity').value,role:$('cRole').value,name:$('cName').value,email:$('cEmail').value,phone:$('cPhone').value,address:($('cAddress')?$('cAddress').value:''),notes:''};
-    if(!row.city&&!row.role&&!row.name) return;
-    ['cCity','cRole','cName','cEmail','cPhone','cAddress'].forEach(id=>{ if($(id)) $(id).value=''; });
+    const row={city:$('cCity').value,venue:($('cVenue')?$('cVenue').value:''),role:$('cRole').value,name:$('cName').value,email:$('cEmail').value,phone:$('cPhone').value,address:($('cAddress')?$('cAddress').value:''),notes:''};
+    if(!row.city&&!row.venue&&!row.name) return;
+    ['cCity','cVenue','cRole','cName','cEmail','cPhone','cAddress'].forEach(id=>{ if($(id)) $(id).value=''; });
     await sb.from('contacts').insert(row);
     logChange('contacto','Contactos','agregó un contacto'+(row.name?' ('+row.name+')':''));
   });
