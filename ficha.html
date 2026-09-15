@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Ficha del evento · Amor Consciente</title>
+<style>
+  :root{--navy:#1e3a5f;--navyd:#14263f;--gold:#b8860b;--golds:#e3b23c;--bg:#f5f1e8;--card:#fffdf8;--line:#e6ddca;--ink:#22303f;--mut:#6b7480;--ok:#2e7d5b;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+  .wrap{max-width:680px;margin:0 auto;padding:0 16px 64px}
+  header{background:linear-gradient(135deg,var(--navy),var(--navyd));color:#fff;padding:24px 16px 20px;text-align:center;border-bottom:3px solid #b8860b;border-image:linear-gradient(90deg,#b8860b,#e3b23c) 1}
+  header img{height:46px;width:auto;margin-bottom:8px}
+  header h1{margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em}
+  header .s{font-size:11px;color:var(--golds);margin-top:4px;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
+  .live{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:4px 11px;font-size:11.5px;margin-top:10px}
+  .live .dot{width:8px;height:8px;border-radius:50%;background:#66d19e;box-shadow:0 0 0 3px rgba(102,209,158,.25)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 4px;margin-top:18px;box-shadow:0 1px 3px rgba(20,38,63,.06);overflow:hidden}
+  .evt{margin-top:18px;text-align:center}
+  .evt h2{margin:0;color:var(--navy);font-size:22px}
+  .evt .when{color:var(--mut);font-size:14px;margin-top:2px}
+  table{width:100%;border-collapse:collapse}
+  td.k{padding:11px 14px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600;width:42%}
+  td.v{padding:11px 14px;border-bottom:1px solid #efe8da;color:var(--ink);font-size:14.5px}
+  tr:last-child td{border-bottom:none}
+  td.v b{color:var(--navy)}
+  a{color:var(--navy);font-weight:600}
+  .sub{font-size:12px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:22px 0 8px}
+  .files a,.contract a{display:inline-block;margin:0 8px 8px 0;padding:11px 16px;background:#fff;border:1px solid var(--line);border-radius:11px;color:var(--navy);text-decoration:none;font-size:14px;font-weight:600}
+  .files a:hover,.contract a:hover{border-color:var(--golds)}
+  .contract a{background:linear-gradient(135deg,var(--gold),#a9790a);color:#fff;border-color:#8a6208}
+  .people{color:var(--ink);font-size:14.5px}
+  .foot{margin-top:22px;text-align:center;color:var(--mut);font-size:12px}
+  .upd{margin-top:6px;color:var(--mut);font-size:11.5px;text-align:center}
+  .state{padding:44px 16px;text-align:center;color:var(--mut)}
+  .state h2{color:var(--navy);font-size:20px;margin:0 0 6px}
+  .btn{display:inline-block;margin-top:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:13.5px;font-weight:600;cursor:pointer;text-decoration:none}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <img src="/logo.png" alt="Amor Consciente" onerror="this.style.display='none'">
+  <h1>Ficha del evento</h1>
+  <div class="s">Amor Consciente · Venues</div>
+  <div class="live"><span class="dot"></span> Información en vivo</div>
+</header>
+
+<div class="wrap">
+  <div id="loading" class="state">Cargando ficha…</div>
+  <div id="invalid" class="state hidden">
+    <h2>Enlace no válido</h2>
+    <p>Este enlace de ficha no es válido o el evento ya no existe. Escríbenos a <a href="mailto:global@amorconsciente.com">global@amorconsciente.com</a>.</p>
+  </div>
+
+  <div id="content" class="hidden">
+    <div class="evt">
+      <h2 id="fHotel">—</h2>
+      <div class="when" id="fWhen"></div>
+    </div>
+
+    <div class="card"><table id="fTable"></table></div>
+
+    <div id="peopleWrap" class="hidden">
+      <div class="sub">Líderes / speakers</div>
+      <div class="people" id="fPeople"></div>
+    </div>
+
+    <div id="contractWrap" class="contract hidden">
+      <div class="sub">Contrato</div>
+      <div id="fContract"></div>
+    </div>
+
+    <div id="filesWrap" class="hidden">
+      <div class="sub">Archivos para descargar</div>
+      <div class="files" id="fFiles"></div>
+    </div>
+
+    <div class="foot">Esta página siempre muestra la información más reciente del evento.<br>Cualquier duda, responde al correo o escribe a <a href="mailto:global@amorconsciente.com">global@amorconsciente.com</a>.</div>
+    <div class="upd" id="fUpd"></div>
+    <div style="text-align:center"><button class="btn" onclick="location.reload()">↻ Actualizar</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB_URL="https://dwhwbcplgcqvuvnzqmne.supabase.co";
+const SB_KEY="sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa";
+const $=id=>document.getElementById(id);
+const params=new URLSearchParams(location.search);
+const token=params.get('t')||params.get('token')||'';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const yn=v=>v==='si'?'Sí':(v==='no'?'No':'');
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fmtDay(iso){ if(!iso) return ''; try{const [y,m,d]=iso.split('-');return `${+d} ${MES[+m-1]} ${y}`;}catch(e){return iso;} }
+function fmtDT(iso){ if(!iso) return ''; try{const d=new Date(iso);return d.toLocaleString('es-US',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}catch(e){return '';} }
+function show(id){ ['loading','invalid','content'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); }
+
+function rowsHtml(d){
+  const rows=[];
+  const R=(k,v)=>{ if(v) rows.push(`<tr><td class="k">${esc(k)}</td><td class="v"><b>${v}</b></td></tr>`); };
+  R('Salón', esc(d.room_name));
+  let addr = d.address ? esc(d.address) : '';
+  if(d.map_url) addr += (addr?' · ':'') + `<a href="${esc(d.map_url)}" target="_blank" rel="noopener">ver mapa</a>`;
+  R('Dirección', addr);
+  const contact=[esc(d.contact_name), esc(d.contact_phone)].filter(Boolean).join(' · ');
+  R('Contacto', contact);
+  R('Parqueo (por persona)', esc(d.parking_cost));
+  R('Re-entrada al parqueo', yn(d.parking_reentry));
+  R('WiFi incluido', yn(d.wifi_included));
+  R('Green room incluido', yn(d.greenroom_included));
+  R('Hora de set-up aprobada', esc(d.setup_time));
+  R('Notas', esc(d.notes).replace(/\n/g,'<br>'));
+  return rows.join('') || '<tr><td class="v" style="color:#8a9199;padding:16px">La ficha aún no tiene detalles cargados.</td></tr>';
+}
+
+async function load(){
+  if(!token){ show('invalid'); return; }
+  try{
+    const {data,error}=await sb.rpc('get_sheet',{p_token:token});
+    if(error||!data||!data.ok){ show('invalid'); return; }
+    const d=data;
+    $('fHotel').textContent = d.hotel_name || 'Ficha del evento';
+    const when=[d.event_label, (d.start_date?fmtDay(d.start_date):'')].filter(Boolean).join(' · ');
+    $('fWhen').textContent = when;
+    $('fTable').innerHTML = rowsHtml(d);
+    // gente
+    const ppl=(d.recipients||[]).map(p=>esc(p.name||'')).filter(Boolean);
+    if(ppl.length){ $('fPeople').textContent = ppl.join(' · '); $('peopleWrap').classList.remove('hidden'); }
+    // contrato
+    if(d.contract_url){ $('fContract').innerHTML = `<a href="${esc(d.contract_url)}" target="_blank" rel="noopener">Descargar contrato</a>`; $('contractWrap').classList.remove('hidden'); }
+    // archivos
+    const files=(d.files||[]).filter(f=>f.url);
+    if(files.length){ $('fFiles').innerHTML = files.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name||'archivo')}</a>`).join(''); $('filesWrap').classList.remove('hidden'); }
+    if(d.updated_at) $('fUpd').textContent = 'Actualizada: '+fmtDT(d.updated_at);
+    show('content');
+  }catch(e){ show('invalid'); }
+}
+load();
+</script>
+</body>
+</html>

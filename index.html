@@ -1315,8 +1315,12 @@ function dateBlock(d, citySlug){
       <div class="fichasec">
         <h5 class="dsub">Ficha técnica del evento <span class="dsubn">para líderes/speakers</span></h5>
         ${fichaHtml}
-        <div class="survbtns"><button class="btn sm navy" data-sendsheet="${d.id}">✉ Enviar ficha ahora</button></div>
-        <div class="muted survnote">Se envía automáticamente dos días antes del primer día del evento${d.start_date?` (inicio: ${fmtDay(d.start_date)})`:''}. Los líderes/speakers se toman de la lista de arriba.</div>
+        <div class="survbtns">
+          <button class="btn sm navy" data-sendsheet="${d.id}">✉ Enviar ficha ahora</button>
+          <button class="btn sm ghost" data-copysheet="${d.id}">🔗 Copiar enlace</button>
+          <button class="btn sm ghost" data-notifysheet="${d.id}">🔔 Avisar actualización</button>
+        </div>
+        <div class="muted survnote">Se envía automáticamente dos días antes del primer día del evento${d.start_date?` (inicio: ${fmtDay(d.start_date)})`:''}. El correo incluye un <b>enlace vivo</b>: si luego cambias algo, no hace falta reenviar — los líderes/speakers ven lo último al abrir el mismo enlace. Usa <b>🔔 Avisar actualización</b> solo si quieres notificarles de un cambio.</div>
       </div>
       <div class="filesec">
         <h5 class="dsub">Archivos del evento <span class="dsubn">contratos, blueprints, layouts…</span></h5>
@@ -1658,6 +1662,42 @@ async function sendSheet(dateId, btn){
     setTimeout(loadAll,1000);
   }catch(e){ btn.disabled=false; btn.textContent=old; alert('No se pudo enviar la ficha:\n'+(e.message||e)); }
 }
+async function ensureSheetToken(id){
+  let tok=(sheetFor(id).sheet_token)||'';
+  if(tok) return tok;
+  try{
+    await sb.from('event_sheet').upsert({date_id:id, updated_at:new Date().toISOString()},{onConflict:'date_id'});
+    const {data}=await sb.from('event_sheet').select('sheet_token').eq('date_id',id).maybeSingle();
+    tok=(data&&data.sheet_token)||'';
+    if(tok){ if(!state.sheets) state.sheets={}; state.sheets[id]=Object.assign({},state.sheets[id]||{},{sheet_token:tok}); }
+  }catch(e){}
+  return tok;
+}
+async function copySheetLink(id, btn){
+  const tok=await ensureSheetToken(id);
+  if(!tok){ alert('No pude generar el enlace de la ficha. Intenta de nuevo en un momento.'); return; }
+  const url=location.origin+'/ficha.html?t='+tok;
+  try{ await navigator.clipboard.writeText(url); const o=btn.textContent; btn.textContent='✓ Copiado'; setTimeout(()=>btn.textContent=o,1600); }
+  catch(e){ prompt('Copia el enlace de la ficha (siempre actualizado):', url); }
+  logChange('evento', dateLabelById(id), 'copió el enlace vivo de la ficha');
+}
+async function notifySheet(id, btn){
+  const recs=recipientsFor(id).filter(r=>(r.email||'').includes('@'));
+  const nm=dateLabelById(id);
+  if(!recs.length){ alert('No hay líderes/speakers con email en este evento.'); return; }
+  if(!confirm('¿Avisar a '+recs.length+' persona(s) que la ficha de “'+nm+'” se actualizó? Recibirán un correo corto con el enlace vivo (no la ficha completa).')) return;
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Enviando…';
+  try{
+    const tok=await lpToken();
+    const r=await fetch('/api/sheet-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({date_id:id, notify:true})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok) throw new Error(j.error||j.reason||('HTTP '+r.status));
+    btn.textContent='✓ Avisado ('+(j.sent||0)+')';
+    logChange('evento', nm, 'avisó actualización de la ficha a '+(j.sent||0)+' persona(s)');
+    if(j.skipped){ alert('Avisados: '+j.sent+'.\nNo enviados: '+j.skipped+(j.errors&&j.errors.length?('\n\n'+j.errors.join('\n')):'')); }
+    setTimeout(()=>{ btn.disabled=false; btn.textContent=old; },2500);
+  }catch(e){ btn.disabled=false; btn.textContent=old; alert('No se pudo avisar:\n'+(e.message||e)); }
+}
 async function uploadEventFiles(dateId, fileList, inputEl){
   if(!sb||!USER) return;
   const files=[...(fileList||[])]; if(!files.length) return;
@@ -1730,6 +1770,8 @@ document.addEventListener('click', async (e)=>{
   }
   if(t.dataset.sendsurvey){ await sendSurvey(t.dataset.sendsurvey, t); return; }
   if(t.dataset.sendsheet){ await sendSheet(t.dataset.sendsheet, t); return; }
+  if(t.dataset.copysheet){ await copySheetLink(t.dataset.copysheet, t); return; }
+  if(t.dataset.notifysheet){ await notifySheet(t.dataset.notifysheet, t); return; }
   if(t.dataset.delfile){ await deleteEventFile(t.dataset.delfile); return; }
   if(t.dataset.addrc){
     const dateId=t.dataset.addrc;
