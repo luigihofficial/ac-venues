@@ -58,9 +58,53 @@ header.hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#f
 
 /* ---------- Nav ---------- */
 nav.tabs{position:sticky;top:0;z-index:30;background:rgba(246,242,233,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto}
+nav.tabs .wrap{display:flex;gap:2px;flex-wrap:wrap;overflow:visible;align-items:center}
 nav.tabs a{padding:13px 14px;font-weight:600;font-size:13.5px;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
 nav.tabs a:hover{color:var(--navy);text-decoration:none}
+nav.tabs a.active{color:var(--navy);border-bottom-color:var(--gold)}
+/* menú agrupado */
+.navgroup{position:relative}
+.navbtn{background:none;border:none;padding:13px 14px;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;font-family:inherit}
+.navbtn:hover{color:var(--navy)}
+.navbtn .car{font-size:10px;opacity:.7}
+.navgroup.open .navbtn{color:var(--navy)}
+.navgroup.active-group .navbtn{color:var(--navy);border-bottom-color:var(--gold)}
+.navmenu{display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:200px;padding:6px;z-index:40}
+.navgroup.open .navmenu{display:block}
+.navmenu a{display:block;padding:9px 12px;border-radius:7px;font-size:13.5px;color:var(--ink);border:none}
+.navmenu a:hover{background:var(--cream);text-decoration:none;color:var(--navy)}
+.navmenu a.active{background:var(--cream);color:var(--navy)}
+
+/* ---------- Inicio (dashboard) ---------- */
+.home-hd{margin-bottom:16px}
+.home-hd h2{font-size:22px;color:var(--navy)}
+.home-hd p{margin:3px 0 0;font-size:13px}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px 18px}
+.stat .sn{font-size:28px;font-weight:800;color:var(--navy);line-height:1}
+.stat .sl{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
+.home-cols{display:grid;grid-template-columns:1fr 1.15fr;gap:16px;align-items:start}
+.home-cardhd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.home-cardhd h3{font-size:15px;color:var(--navy)}
+.seeall{font-size:12.5px;font-weight:600}
+.home-up{overflow:hidden}
+.up-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);color:var(--ink)}
+.up-row:last-child{border-bottom:none}
+.up-row:hover{background:var(--cream);text-decoration:none}
+.up-main{min-width:0}
+.up-city{font-weight:700;color:var(--navy);font-size:14px}
+.up-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.up-pct{font-weight:800;color:var(--navy);font-size:14px;flex:none}
+.acc-group{margin-bottom:14px}
+.acc-group h4{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+.acc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.acc{display:flex;flex-direction:column;gap:1px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:13px 14px;color:var(--ink);transition:border-color .15s,transform .15s}
+.acc:hover{text-decoration:none;border-color:var(--gold);transform:translateY(-1px)}
+.acc-ic{font-size:18px;color:var(--gold);margin-bottom:4px}
+.acc b{color:var(--navy);font-size:14px}
+.acc small{color:var(--muted);font-size:11.5px}
+@media(max-width:900px){.home-cols{grid-template-columns:1fr}}
+@media(max-width:760px){.stat-row{grid-template-columns:repeat(2,1fr)}.acc-grid{grid-template-columns:repeat(2,1fr)}}
 
 section{padding:32px 0 8px}
 .sec-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
@@ -374,21 +418,87 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
 </header>
 
 <nav class="tabs"><div class="wrap">
-  <a href="#empresa">Empresa</a>
-  <a href="#specs">Especificaciones</a>
-  <a href="#metas">Metas</a>
-  <a href="#timeline">Fases</a>
-  <a href="#pendientes">Pendientes</a>
-  <a href="#ciudades">Ciudades</a>
-  <a href="#matriz">Evaluación</a>
+  <a href="#inicio">Inicio</a>
+  <div class="navgroup">
+    <button type="button" class="navbtn" data-navbtn>Trabajo <span class="car">▾</span></button>
+    <div class="navmenu">
+      <a href="#ciudades">Ciudades / Eventos</a>
+      <a href="#matriz">Evaluación</a>
+      <a href="#pendientes">Pendientes</a>
+    </div>
+  </div>
   <a href="#contactos">Contactos</a>
-  <a href="#plantilla">Plantilla correo</a>
-  <a href="#status">Status</a>
-  <a href="#registro">Registro</a>
+  <div class="navgroup">
+    <button type="button" class="navbtn" data-navbtn>Referencia <span class="car">▾</span></button>
+    <div class="navmenu">
+      <a href="#empresa">Empresa</a>
+      <a href="#specs">Especificaciones</a>
+      <a href="#metas">Metas</a>
+      <a href="#timeline">Fases</a>
+      <a href="#plantilla">Plantilla correo</a>
+    </div>
+  </div>
+  <div class="navgroup">
+    <button type="button" class="navbtn" data-navbtn>Bitácora <span class="car">▾</span></button>
+    <div class="navmenu">
+      <a href="#status">Status</a>
+      <a href="#registro">Registro</a>
+    </div>
+  </div>
 </div></nav>
 
 <main class="wrap">
   <div id="configBanner" class="banner hidden"></div>
+
+  <!-- INICIO (dashboard ligero) -->
+  <section id="inicio">
+    <div class="home-hd"><h2>Resumen</h2><p class="muted">Vista rápida del sourcing. Entra a un área para trabajar en detalle.</p></div>
+    <div class="stat-row">
+      <div class="stat"><div class="sn" id="hAvance">0%</div><div class="sl">Avance promedio</div></div>
+      <div class="stat"><div class="sn" id="hCerradas">0/0</div><div class="sl">Fechas cerradas</div></div>
+      <div class="stat"><div class="sn" id="hEventos">0</div><div class="sl">Fechas totales</div></div>
+      <div class="stat"><div class="sn" id="hContactos">0</div><div class="sl">Contactos</div></div>
+    </div>
+    <div class="home-cols">
+      <div class="card home-up">
+        <div class="home-cardhd"><h3>Próximos eventos</h3><a href="#ciudades" class="seeall">Ver ciudades →</a></div>
+        <div id="homeUpcoming"></div>
+      </div>
+      <div class="home-access">
+        <div class="acc-group">
+          <h4>Trabajo</h4>
+          <div class="acc-grid">
+            <a class="acc" href="#ciudades"><span class="acc-ic">◧</span><b>Ciudades / Eventos</b><small>Pipeline por ciudad</small></a>
+            <a class="acc" href="#matriz"><span class="acc-ic">▦</span><b>Evaluación</b><small>Matriz de venues</small></a>
+            <a class="acc" href="#pendientes"><span class="acc-ic">☑</span><b>Pendientes</b><small>Por evento</small></a>
+          </div>
+        </div>
+        <div class="acc-group">
+          <h4>Directorio</h4>
+          <div class="acc-grid">
+            <a class="acc" href="#contactos"><span class="acc-ic">☎</span><b>Contactos</b><small>Hoteles y personas</small></a>
+          </div>
+        </div>
+        <div class="acc-group">
+          <h4>Referencia</h4>
+          <div class="acc-grid">
+            <a class="acc" href="#empresa"><span class="acc-ic">★</span><b>Empresa</b><small>Datos y lealtad</small></a>
+            <a class="acc" href="#specs"><span class="acc-ic">✓</span><b>Especificaciones</b><small>Sala y must-haves</small></a>
+            <a class="acc" href="#plantilla"><span class="acc-ic">✉</span><b>Plantilla correo</b><small>RFP / templates</small></a>
+            <a class="acc" href="#metas"><span class="acc-ic">◎</span><b>Metas</b><small>Objetivos</small></a>
+            <a class="acc" href="#timeline"><span class="acc-ic">⏱</span><b>Fases</b><small>Avance global</small></a>
+          </div>
+        </div>
+        <div class="acc-group">
+          <h4>Bitácora</h4>
+          <div class="acc-grid">
+            <a class="acc" href="#status"><span class="acc-ic">✎</span><b>Status</b><small>Notas del equipo</small></a>
+            <a class="acc" href="#registro"><span class="acc-ic">🧾</span><b>Registro</b><small>Historial de cambios</small></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- EMPRESA (dinámico) -->
   <section id="empresa">
@@ -755,19 +865,61 @@ const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
 
-// --- Vista separada de Contactos: solo se muestra al abrir su pestaña (#contactos) ---
+// --- Router de vistas: una sección a la vez; Inicio por defecto ---
+const HOME_VIEW='inicio';
+function closeNavMenus(){ document.querySelectorAll('.navgroup.open').forEach(g=>g.classList.remove('open')); }
 function routeView(){
-  const hash = location.hash || '';
-  const isContacts = hash === '#contactos';
-  document.querySelectorAll('main.wrap > section').forEach(s=>{
-    const show = (s.id==='contactos') ? isContacts : !isContacts;
-    s.style.display = show ? '' : 'none';
+  const secs=document.querySelectorAll('main.wrap > section');
+  if(!secs.length) return;
+  const ids=[...secs].map(s=>s.id);
+  let hash=(location.hash||'').replace(/^#/,'');
+  if(!hash || !ids.includes(hash)) hash=HOME_VIEW;
+  secs.forEach(s=>{ s.style.display=(s.id===hash)?'':'none'; });
+  document.querySelectorAll('nav.tabs a[href^="#"]').forEach(a=>{
+    a.classList.toggle('active', a.getAttribute('href')==='#'+hash);
   });
-  if(isContacts){ window.scrollTo({top:0}); }
-  else if(hash && hash.length>1){ const el=document.querySelector(hash); if(el) el.scrollIntoView({block:'start'}); }
+  document.querySelectorAll('.navgroup').forEach(g=>{
+    g.classList.toggle('active-group', !!g.querySelector('a[href="#'+hash+'"]'));
+  });
+  closeNavMenus();
+  if(hash===HOME_VIEW) renderHome();
+  window.scrollTo({top:0});
 }
 window.addEventListener('hashchange', routeView);
-document.addEventListener('DOMContentLoaded', routeView);
+document.addEventListener('DOMContentLoaded', ()=>{
+  routeView();
+  document.querySelectorAll('[data-navbtn]').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{ e.stopPropagation(); const g=btn.closest('.navgroup'); const wasOpen=g.classList.contains('open'); closeNavMenus(); if(!wasOpen) g.classList.add('open'); });
+  });
+  document.addEventListener('click', (e)=>{ if(!e.target.closest('.navgroup')) closeNavMenus(); });
+});
+// --- Dashboard de Inicio ---
+function renderHome(){
+  const rows=allDates(); const total=rows.length; let closed=0,sum=0;
+  rows.forEach(({d})=>{ const p=datePct(d.id); sum+=p; if(p===100)closed++; });
+  const set=(id,v)=>{ const el=$(id); if(el) el.textContent=v; };
+  set('hAvance',(total?Math.round(sum/total):0)+'%');
+  set('hCerradas',closed+'/'+total);
+  set('hEventos',total);
+  set('hContactos',(state.contacts||[]).length);
+  const box=$('homeUpcoming'); if(!box) return;
+  const today=new Date().toISOString().slice(0,10);
+  const withDate=rows.filter(r=>r.d.start_date).sort((a,b)=>a.d.start_date<b.d.start_date?-1:1);
+  let up=withDate.filter(r=>r.d.start_date>=today);
+  if(!up.length) up=withDate.slice(-6);
+  up=up.slice(0,6);
+  if(!up.length){ box.innerHTML='<div class="muted" style="padding:16px">Aún no hay fechas con día asignado. Agrégalas en Ciudades / Eventos.</div>'; return; }
+  box.innerHTML=up.map(({city,d})=>{
+    const pct=datePct(d.id); const meta=state.dmeta[d.id]||{}; const venue=meta.chosen_venue||'';
+    return `<a class="up-row" href="#ciudades">
+      <div class="up-main">
+        <div class="up-city">${esc(city.name.split(',')[0])} · ${esc(fmtDay(d.start_date))}</div>
+        <div class="up-sub">${esc(d.label||'Fecha')}${venue?(' · '+esc(venue)):''}</div>
+      </div>
+      <div class="up-pct">${pct}%</div>
+    </a>`;
+  }).join('');
+}
 
 function configured(){
   const c=window.AC_CONFIG||{};
@@ -897,7 +1049,7 @@ function subscribeRealtime(){
 }
 
 // ---------- Render ----------
-function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); }
+function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); }
 
 const AUDIT_ICONS={fase:'📌',pendiente:'☑️',evaluación:'⭐',evento:'📅',fecha:'📅',hotel:'🏨',empresa:'🏢',contacto:'👤',nota:'📝',seguridad:'🔒'};
 function renderAudit(){
