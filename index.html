@@ -755,6 +755,20 @@ const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
 
+// --- Vista separada de Contactos: solo se muestra al abrir su pestaña (#contactos) ---
+function routeView(){
+  const hash = location.hash || '';
+  const isContacts = hash === '#contactos';
+  document.querySelectorAll('main.wrap > section').forEach(s=>{
+    const show = (s.id==='contactos') ? isContacts : !isContacts;
+    s.style.display = show ? '' : 'none';
+  });
+  if(isContacts){ window.scrollTo({top:0}); }
+  else if(hash && hash.length>1){ const el=document.querySelector(hash); if(el) el.scrollIntoView({block:'start'}); }
+}
+window.addEventListener('hashchange', routeView);
+document.addEventListener('DOMContentLoaded', routeView);
+
 function configured(){
   const c=window.AC_CONFIG||{};
   return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
