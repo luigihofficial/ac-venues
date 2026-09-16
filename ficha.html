@@ -95,7 +95,18 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const yn=v=>v==='si'?'Sí':(v==='no'?'No':'');
 const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function fmtDay(iso){ if(!iso) return ''; try{const [y,m,d]=iso.split('-');return `${+d} ${MES[+m-1]} ${y}`;}catch(e){return iso;} }
-function fmtDT(iso){ if(!iso) return ''; try{const d=new Date(iso);return d.toLocaleString('es-US',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}catch(e){return '';} }
+function fmtDT(iso){
+  if(!iso) return '';
+  try{
+    let s=String(iso);
+    // si el timestamp no trae zona horaria, asumir UTC; así se convierte correcto al huso local
+    if(!/[zZ]|[+-]\d{2}:?\d{2}$/.test(s)) s=s.replace(' ','T')+'Z';
+    const d=new Date(s);
+    if(isNaN(d)) return '';
+    // se muestra en el huso horario del dispositivo de quien abre la página
+    return d.toLocaleString('es-US',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+  }catch(e){ return ''; }
+}
 function show(id){ ['loading','invalid','content'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); }
 
 function rowsHtml(d){
