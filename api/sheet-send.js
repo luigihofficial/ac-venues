@@ -73,7 +73,7 @@ function sheetEmailHtml({ ev, sheet, recips, files }){
   ].join('');
   const contractBtn = sheet.contract_url ? `<p style="text-align:center;margin:0 0 8px"><a href="${esc(sheet.contract_url)}" style="display:inline-block;background-color:#b8860b;background-image:linear-gradient(135deg,#c9970d,#a9790a);color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:12px;border:1px solid #8a6208">Descargar contrato</a></p>` : '';
   const liveUrl = sheet.sheet_token ? (BASE + "/ficha.html?t=" + enc(sheet.sheet_token)) : '';
-  const liveBtn = liveUrl ? `<p style="text-align:center;margin:0 0 8px"><a href="${liveUrl}" style="display:inline-block;background-color:#1e3a5f;background-image:linear-gradient(135deg,#1e3a5f,#14263f);color:#ffffff;text-decoration:none;font-weight:700;padding:14px 30px;border-radius:12px;border:1px solid #14263f">Ver ficha del evento — siempre actualizada</a></p><p style="margin:0 0 18px;text-align:center;color:#8a9199;font-size:12px;line-height:1.5">Este enlace muestra <b>siempre la información más reciente</b>. Si algo cambia, no hace falta reenviar este correo — solo abre el mismo enlace.</p>` : '';
+  const liveBtn = liveUrl ? `<p style="text-align:center;margin:0 0 8px"><a href="${liveUrl}" style="display:inline-block;background-color:#1e3a5f;background-image:linear-gradient(135deg,#1e3a5f,#14263f);color:#ffffff;text-decoration:none;font-weight:700;padding:14px 30px;border-radius:12px;border:1px solid #14263f">Ver ficha del evento</a></p><p style="margin:0 0 4px;text-align:center;color:#8a9199;font-size:12px;line-height:1.5">Este enlace muestra <b>siempre la información más reciente</b>.</p>` : '';
   return `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
   <div style="max-width:600px;margin:0 auto;padding:28px 16px">
     <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(20,38,63,.10)">
@@ -87,9 +87,6 @@ function sheetEmailHtml({ ev, sheet, recips, files }){
         <p style="margin:0 0 4px;font-size:16px;color:#1e3a5f"><b>${esc(ev.label||'Evento')}</b></p>
         <p style="margin:0 0 18px;color:#8a9199;font-size:13px;line-height:1.5">Aquí tienes la información logística del evento. Cualquier duda, responde a este correo.</p>
         ${liveBtn}
-        <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #efe8da;border-radius:10px;overflow:hidden;margin-bottom:18px">${rows}</table>
-        ${filesBlock(files)}
-        ${contractBtn}
       </div>
     </div>
     <p style="text-align:center;font-size:11px;color:#8a9199;margin:16px 0 0;letter-spacing:.04em">Amor Consciente · Sourcing de venues</p>
