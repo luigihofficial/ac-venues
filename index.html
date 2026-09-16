@@ -106,6 +106,17 @@ nav.tabs a.active{color:var(--navy);border-bottom-color:var(--gold)}
 @media(max-width:900px){.home-cols{grid-template-columns:1fr}}
 @media(max-width:760px){.stat-row{grid-template-columns:repeat(2,1fr)}.acc-grid{grid-template-columns:repeat(2,1fr)}}
 
+/* ---------- Filtros de contactos ---------- */
+.cfilters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+.csearch{position:relative;flex:1;min-width:240px}
+.csearch .cs-ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.6;pointer-events:none}
+.csearch input{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px 10px 32px;font:inherit;font-size:14px;background:#fffdf8;color:var(--ink)}
+.csearch input:focus{outline:none;border-color:var(--gold-soft)}
+.cfsel{border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;font-size:13.5px;background:#fffdf8;color:var(--ink);max-width:220px}
+.cfsel:focus{outline:none;border-color:var(--gold-soft)}
+.cfcount{font-size:12.5px;margin-left:auto;white-space:nowrap}
+@media(max-width:640px){.csearch{min-width:100%}.cfsel{flex:1;min-width:0;max-width:none}}
+
 section{padding:32px 0 8px}
 .sec-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .sec-head .num{width:30px;height:30px;border-radius:8px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
@@ -581,7 +592,15 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
 
   <!-- CONTACTOS (dinámico) -->
   <section id="contactos">
-    <div class="sec-head"><div class="num">☎</div><div><h2>Directorio de contactos</h2><p>Compartido con el equipo. Agrega, edita y elimina.</p></div></div>
+    <div class="sec-head"><div class="num">☎</div><div><h2>Directorio de contactos</h2><p>Compartido con el equipo. Agrega, edita y elimina. Los más nuevos aparecen arriba.</p></div></div>
+    <div class="cfilters">
+      <div class="csearch"><span class="cs-ic">🔍</span><input id="cSearch" type="search" placeholder="Buscar: contacto, hotel, email, teléfono, ciudad…"></div>
+      <select id="fCity" class="cfsel"><option value="">Todas las ciudades</option></select>
+      <select id="fBrand" class="cfsel"><option value="">Todas las marcas</option></select>
+      <select id="fVenue" class="cfsel"><option value="">Todos los hoteles</option></select>
+      <button id="cClear" class="btn sm ghost">Limpiar</button>
+      <span id="cCount" class="muted cfcount"></span>
+    </div>
     <div class="card" style="overflow-x:auto"><table>
       <thead><tr><th>Ciudad</th><th>Hotel / Venue</th><th>Contacto</th><th>Cargo</th><th>Email</th><th>Teléfono</th><th>Dirección</th><th>Última llamada</th><th>Notas</th><th></th></tr></thead>
       <tbody id="contactBody"></tbody>
@@ -989,7 +1008,7 @@ async function loadAll(){
     sb.from('event_dates').select('*').order('sort',{ascending:true}),
     sb.from('date_progress').select('*'),
     sb.from('date_meta').select('*'),
-    sb.from('contacts').select('*').order('created_at',{ascending:true}),
+    sb.from('contacts').select('*').order('created_at',{ascending:false}),
     sb.from('status_notes').select('*').order('created_at',{ascending:false}),
     sb.from('deadlines').select('*').order('sort',{ascending:true}),
     sb.from('global_tasks').select('*').order('sort',{ascending:true})
@@ -1409,8 +1428,45 @@ function renderMatrix(){
 }
 function daysSince(iso){ if(!iso) return null; const t=new Date(); t.setHours(0,0,0,0); const p=String(iso).split('-').map(Number); if(p.length<3) return null; const d=new Date(p[0],p[1]-1,p[2]); return Math.round((t-d)/86400000); }
 function callBadge(iso){ const n=daysSince(iso); if(n===null) return '<span class="callb none">sin llamar</span>'; if(n<=0) return '<span class="callb today">Hoy ✓</span>'; if(n===1) return '<span class="callb rec">Ayer</span>'; if(n<=7) return `<span class="callb rec">hace ${n} d</span>`; return `<span class="callb old">hace ${n} d</span>`; }
+// Marca del hotel derivada del nombre del venue (para filtrar por marca)
+const BRAND_MAP=[
+  ['jw marriott','JW Marriott'],['ritz','Ritz-Carlton'],['renaissance','Renaissance'],['courtyard','Courtyard'],
+  ['marriott','Marriott'],['sheraton','Sheraton'],['westin','Westin'],['st. regis','St. Regis'],['st regis','St. Regis'],
+  ['waldorf','Waldorf Astoria'],['conrad','Conrad'],['doubletree','DoubleTree'],['embassy','Embassy Suites'],
+  ['hampton','Hampton'],['hilton','Hilton'],['hyatt','Hyatt'],['crowne plaza','Crowne Plaza'],
+  ['intercontinental','InterContinental'],['holiday inn','Holiday Inn'],['omni','Omni'],['kimpton','Kimpton'],
+  ['four seasons','Four Seasons'],['fairmont','Fairmont'],['loews','Loews'],['rosen','Rosen'],
+  ['swan','Disney Swan & Dolphin'],['dolphin','Disney Swan & Dolphin'],
+  ['salt palace','Salt Palace'],['mountain america','Mountain America Expo']
+];
+function brandOf(venue){ const s=(venue||'').toLowerCase(); for(const [n,l] of BRAND_MAP){ if(s.includes(n)) return l; } return ''; }
+const cFilter={ q:'', city:'', brand:'', venue:'' };
+function contactMatches(c){
+  if(cFilter.city && normName(c.city)!==normName(cFilter.city)) return false;
+  if(cFilter.venue && normName(c.venue)!==normName(cFilter.venue)) return false;
+  if(cFilter.brand && brandOf(c.venue)!==cFilter.brand) return false;
+  const q=normName(cFilter.q);
+  if(q){ const hay=[c.city,c.venue,c.name,c.role,c.email,c.phone,c.address,c.notes,brandOf(c.venue)].map(x=>String(x||'').toLowerCase()).join(' '); if(!hay.includes(q)) return false; }
+  return true;
+}
+function fillContactFilters(){
+  const list=state.contacts||[];
+  const uniq=(arr)=>Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>a.localeCompare(b,'es'));
+  const cities=uniq(list.map(c=>c.city));
+  const venues=uniq(list.map(c=>c.venue));
+  const brands=uniq(list.map(c=>brandOf(c.venue)));
+  const opt=(v,sel)=>`<option value="${esc(v)}"${normName(v)===normName(sel)?' selected':''}>${esc(v)}</option>`;
+  const set=(id,items,sel,all)=>{ const el=$(id); if(!el) return; el.innerHTML=`<option value="">${all}</option>`+items.map(v=>opt(v,sel)).join(''); el.value=sel||''; };
+  set('fCity',  cities, cFilter.city,  'Todas las ciudades');
+  set('fBrand', brands, cFilter.brand, 'Todas las marcas');
+  set('fVenue', venues, cFilter.venue, 'Todos los hoteles');
+}
 function renderContacts(){
-  $('contactBody').innerHTML = state.contacts.map(c=>`
+  fillContactFilters();
+  const all=state.contacts||[];
+  const rows=all.filter(contactMatches);
+  const cnt=$('cCount'); if(cnt) cnt.textContent = rows.length===all.length ? (all.length+' contactos') : (rows.length+' de '+all.length);
+  $('contactBody').innerHTML = rows.map(c=>`
    <tr data-cid="${c.id}">
      <td><input class="cell" data-cfield="city" value="${esc(c.city)}"></td>
      <td><input class="cell" data-cfield="venue" value="${esc(c.venue||'')}" placeholder="Hotel / Venue"></td>
@@ -1426,7 +1482,7 @@ function renderContacts(){
      </div></td>
      <td><input class="cell" data-cfield="notes" value="${esc(c.notes)}"></td>
      <td><button class="btn sm ghost" data-delc="${c.id}">✕</button></td>
-   </tr>`).join('') || `<tr><td colspan="10" class="muted" style="padding:14px">Sin contactos todavía. Agrega el primero abajo.</td></tr>`;
+   </tr>`).join('') || `<tr><td colspan="10" class="muted" style="padding:14px">${all.length? 'Ningún contacto coincide con la búsqueda o el filtro.' : 'Sin contactos todavía. Agrega el primero abajo.'}</td></tr>`;
 }
 function renderStatus(){
   // más reciente arriba (state.notes viene ordenado desc); cada nota inicia con iniciales · fecha · hora
@@ -1821,6 +1877,12 @@ document.addEventListener('click', async (e)=>{
 
 // Agregar contacto
 document.addEventListener('DOMContentLoaded',()=>{
+  // Filtros y búsqueda de contactos
+  const cs=$('cSearch'); if(cs) cs.addEventListener('input', ()=>{ cFilter.q=cs.value; renderContacts(); });
+  const fc=$('fCity');  if(fc) fc.addEventListener('change', ()=>{ cFilter.city=fc.value; renderContacts(); });
+  const fb=$('fBrand'); if(fb) fb.addEventListener('change', ()=>{ cFilter.brand=fb.value; renderContacts(); });
+  const fv=$('fVenue'); if(fv) fv.addEventListener('change', ()=>{ cFilter.venue=fv.value; renderContacts(); });
+  const cc=$('cClear'); if(cc) cc.addEventListener('click', ()=>{ cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if(cs)cs.value=''; renderContacts(); });
   const add=$('addContact'); if(add) add.addEventListener('click', async ()=>{
     if(!sb||!USER) return;
     const row={city:$('cCity').value,venue:($('cVenue')?$('cVenue').value:''),role:$('cRole').value,name:$('cName').value,email:$('cEmail').value,phone:$('cPhone').value,address:($('cAddress')?$('cAddress').value:''),notes:''};
