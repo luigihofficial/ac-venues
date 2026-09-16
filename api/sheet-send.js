@@ -16,6 +16,9 @@ const BASE    = process.env.APP_BASE_URL || "https://ac-venues.luigihernandez.co
 const LOGO    = BASE + "/logo.png";
 const FROM    = process.env.SURVEY_FROM    || "Amor Consciente — Venues <onboarding@resend.dev>";
 const REPLYTO = process.env.SURVEY_REPLYTO || "global@amorconsciente.com";
+// CCO por defecto en TODAS las fichas (copia oculta al equipo)
+const TEAM_BCC = (process.env.SHEET_BCC || "global@amorconsciente.com,noris@amorconsciente.com")
+  .split(",").map(s => s.trim()).filter(Boolean);
 
 function readBody(req){
   return new Promise((resolve) => {
@@ -93,11 +96,13 @@ function sheetEmailHtml({ ev, sheet, recips, files }){
   </div></body></html>`;
 }
 
-async function sendEmail({ to, subject, html }){
+async function sendEmail({ to, subject, html, bcc }){
+  const payload = { from: FROM, to: [to], reply_to: REPLYTO, subject, html };
+  if (bcc && bcc.length) payload.bcc = bcc;
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: [to], reply_to: REPLYTO, subject, html })
+    body: JSON.stringify(payload)
   });
   const j = await r.json().catch(()=> ({}));
   if (!r.ok) return { ok:false, err: (j && (j.message||JSON.stringify(j))) || ("HTTP "+r.status) };
@@ -116,10 +121,10 @@ async function sendSheetForEvent(dateId, { markSent = true } = {}){
   let files = [];
   try { files = await sget(`event_files?date_id=eq.${enc(dateId)}&share=eq.true&select=name,url,mime,size&order=created_at.asc`); } catch(e){}
   const html = sheetEmailHtml({ ev, sheet, recips: valid, files });
-  let sent = 0, skipped = 0; const errors = [];
+  let sent = 0, skipped = 0; const errors = []; let bccPending = true;
   for (const r of valid){
-    const em = await sendEmail({ to: r.email.trim(), subject: `Ficha técnica del evento — ${ev.label}`, html });
-    if (em.ok) sent++; else { skipped++; errors.push(r.email + ": " + em.err); }
+    const em = await sendEmail({ to: r.email.trim(), subject: `Ficha técnica del evento — ${ev.label}`, html, bcc: bccPending ? TEAM_BCC : undefined });
+    if (em.ok) { sent++; bccPending = false; } else { skipped++; errors.push(r.email + ": " + em.err); }
   }
   if (markSent && sent > 0) { try { await spatch(`event_sheet?date_id=eq.${enc(dateId)}`, { sheet_sent_at: new Date().toISOString() }); } catch {} }
   return { dateId, label: ev.label, sent, skipped, errors: errors.slice(0,10) };
@@ -155,10 +160,10 @@ async function notifySheetUpdate(dateId){
   if (!valid.length) return { dateId, label: ev.label, sent:0, skipped:0, reason:"sin destinatarios con email válido" };
   const liveUrl = BASE + "/ficha.html?t=" + enc(sheet.sheet_token);
   const html = notifyEmailHtml({ ev, hotel: sheet.hotel_name||'', liveUrl });
-  let sent = 0, skipped = 0; const errors = [];
+  let sent = 0, skipped = 0; const errors = []; let bccPending = true;
   for (const r of valid){
-    const em = await sendEmail({ to: r.email.trim(), subject: `Ficha actualizada — ${ev.label}`, html });
-    if (em.ok) sent++; else { skipped++; errors.push(r.email + ": " + em.err); }
+    const em = await sendEmail({ to: r.email.trim(), subject: `Ficha actualizada — ${ev.label}`, html, bcc: bccPending ? TEAM_BCC : undefined });
+    if (em.ok) { sent++; bccPending = false; } else { skipped++; errors.push(r.email + ": " + em.err); }
   }
   return { dateId, label: ev.label, sent, skipped, errors: errors.slice(0,10), mode:"notify" };
 }
