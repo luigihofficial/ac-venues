@@ -91,6 +91,11 @@ nav.tabs a.active{color:var(--navy);border-bottom-color:var(--gold)}
 .up-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);color:var(--ink)}
 .up-row:last-child{border-bottom:none}
 .up-row:hover{background:var(--cream);text-decoration:none}
+.up-row{cursor:pointer}
+.ebox{max-width:640px;max-height:88vh;overflow:auto}
+.emsec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);font-weight:800;margin:16px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.emfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
+.cbox .cgrid select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px;background:#fffdf8;color:var(--ink);font-weight:400}
 .up-main{min-width:0}
 .up-city{font-weight:700;color:var(--navy);font-size:14px}
 .up-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -721,6 +726,45 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       </div>
     </div>
   </div>
+
+  <!-- ===== Actualizar evento (desde el resumen) ===== -->
+  <div id="eventModal" class="hidden pw-overlay">
+    <div class="pw-box cbox ebox">
+      <h3 id="emTitle">Evento</h3>
+      <p class="muted" id="emSub" style="font-size:13px;margin:0 0 8px"></p>
+      <div class="emsec">Evento</div>
+      <div class="cgrid">
+        <label class="cfull">Nombre del evento<input id="emLabel" placeholder="Ej. Despertar"></label>
+        <label>Fecha inicio<input id="emStart" type="date"></label>
+        <label>Fecha fin<input id="emEnd" type="date"></label>
+        <label class="cfull">Venue elegido<input id="emVenue" list="emVenueList" placeholder="— elige o escribe —"><datalist id="emVenueList"></datalist></label>
+      </div>
+      <div class="emsec">Ficha técnica</div>
+      <div class="cgrid">
+        <label>Hotel<input id="emHotel" placeholder="Hotel"></label>
+        <label>Salón<input id="emRoom" placeholder="Salón / salones"></label>
+        <label class="cfull">Dirección<input id="emAddr" placeholder="Dirección del hotel/salón"></label>
+        <label class="cfull">Link del mapa<input id="emMap" placeholder="https://maps.google.com/..."></label>
+        <label>Contacto (persona)<input id="emCName" placeholder="Nombre"></label>
+        <label>Teléfono<input id="emCPhone" placeholder="Teléfono"></label>
+        <label>Parqueo (por persona)<input id="emParking" placeholder="Ej. $25/día"></label>
+        <label>Re-entrada al parqueo<select id="emReentry"><option value="">—</option><option value="si">Sí</option><option value="no">No</option></select></label>
+        <label>WiFi incluido<select id="emWifi"><option value="">—</option><option value="si">Sí</option><option value="no">No</option></select></label>
+        <label>Green room incluido<select id="emGreen"><option value="">—</option><option value="si">Sí</option><option value="no">No</option></select></label>
+        <label class="cfull">Hora de set-up aprobada<input id="emSetup" placeholder="Ej. Día anterior a partir de las 4:00 p.m."></label>
+        <label class="cfull">Link del contrato<input id="emContract" placeholder="https://..."></label>
+        <label class="cfull">Notas de la ficha<textarea id="emNotes" rows="2" placeholder="Notas para líderes/speakers…"></textarea></label>
+      </div>
+      <div id="emMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
+      <div class="emfoot">
+        <a href="#ciudades" id="emOpenFull" style="font-size:12.5px;font-weight:600">Abrir evento completo en Ciudades →</a>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm ghost" id="emCancel">Cancelar</button>
+          <button class="btn sm gold" id="emSave">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -953,14 +997,53 @@ function renderHome(){
   if(!up.length){ box.innerHTML='<div class="muted" style="padding:16px">Aún no hay fechas con día asignado. Agrégalas en Ciudades / Eventos.</div>'; return; }
   box.innerHTML=up.map(({city,d})=>{
     const pct=datePct(d.id); const meta=state.dmeta[d.id]||{}; const venue=meta.chosen_venue||'';
-    return `<a class="up-row" href="#ciudades">
+    return `<div class="up-row" data-openevent="${d.id}" role="button" tabindex="0" title="Actualizar este evento">
       <div class="up-main">
         <div class="up-city">${esc(city.name.split(',')[0])} · ${esc(fmtDay(d.start_date))}</div>
         <div class="up-sub">${esc(d.label||'Fecha')}${venue?(' · '+esc(venue)):''}</div>
       </div>
       <div class="up-pct">${pct}%</div>
-    </a>`;
+    </div>`;
   }).join('');
+}
+
+// --- Modal para actualizar un evento desde el resumen ---
+let _emId=null;
+function venueOptionsForDate(dateId){
+  const slug=citySlugOfDate(dateId); const seen={}, out=[];
+  (cityVenues(slug)||[]).forEach(v=>{ const nm=(v.name||'').trim(); if(!nm)return; const k=normName(nm); if(seen[k])return; seen[k]=1; out.push(nm); });
+  (contactVenuesForCity(slug)||[]).forEach(nm=>{ const k=normName(nm); if(seen[k])return; seen[k]=1; out.push(nm); });
+  return out;
+}
+function openEventModal(dateId){
+  let d=null; for(const k in state.dates){ const f=(state.dates[k]||[]).find(x=>x.id===dateId); if(f){ d=f; break; } }
+  if(!d) return;
+  _emId=dateId;
+  const meta=(state.dmeta&&state.dmeta[dateId])||{}; const sh=sheetFor(dateId);
+  $('emTitle').textContent=cityName(citySlugOfDate(dateId)).split(',')[0]+' · '+(d.label||'Evento');
+  $('emSub').textContent=[d.start_date?fmtDay(d.start_date):'', d.end_date?fmtDay(d.end_date):''].filter(Boolean).join(' – ');
+  const V=(id,val)=>{ const el=$(id); if(el) el.value=(val==null?'':val); };
+  V('emLabel',d.label); V('emStart',d.start_date); V('emEnd',d.end_date); V('emVenue',meta.chosen_venue);
+  const dl=$('emVenueList'); if(dl) dl.innerHTML=venueOptionsForDate(dateId).map(nm=>`<option value="${esc(nm)}">`).join('');
+  V('emHotel',sh.hotel_name); V('emRoom',sh.room_name); V('emAddr',sh.address); V('emMap',sh.map_url);
+  V('emCName',sh.contact_name); V('emCPhone',sh.contact_phone); V('emParking',sh.parking_cost);
+  V('emReentry',sh.parking_reentry); V('emWifi',sh.wifi_included); V('emGreen',sh.greenroom_included);
+  V('emSetup',sh.setup_time); V('emContract',sh.contract_url); V('emNotes',sh.notes);
+  const msg=$('emMsg'); if(msg) msg.textContent='';
+  const cm=$('eventModal'); if(cm) cm.classList.remove('hidden');
+}
+function closeEventModal(){ const cm=$('eventModal'); if(cm) cm.classList.add('hidden'); }
+async function saveEventModal(){
+  if(!sb||!USER||!_emId) return; const id=_emId; const g=x=>$(x)?$(x).value:'';
+  const btn=$('emSave'); const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    await sb.from('event_dates').update({label:(g('emLabel').trim()||null), start_date:(g('emStart')||null), end_date:(g('emEnd')||null)}).eq('id',id);
+    await sb.from('date_meta').upsert({date_id:id, chosen_venue:g('emVenue').trim(), updated_at:new Date().toISOString()},{onConflict:'date_id'});
+    await sb.from('event_sheet').upsert({date_id:id, hotel_name:g('emHotel').trim(), room_name:g('emRoom').trim(), address:g('emAddr').trim(), map_url:g('emMap').trim(), contact_name:g('emCName').trim(), contact_phone:g('emCPhone').trim(), parking_cost:g('emParking').trim(), parking_reentry:g('emReentry'), wifi_included:g('emWifi'), greenroom_included:g('emGreen'), setup_time:g('emSetup').trim(), contract_url:g('emContract').trim(), notes:g('emNotes').trim(), updated_at:new Date().toISOString()},{onConflict:'date_id'});
+    logChange('evento', dateLabelById(id), 'actualizó los datos del evento (desde el resumen)');
+    btn.disabled=false; btn.textContent=old; closeEventModal();
+    setTimeout(loadAll, 400);
+  }catch(e){ btn.disabled=false; btn.textContent=old; const m=$('emMsg'); m.style.color='#b23b3b'; m.textContent='No se pudo guardar: '+(e.message||e); }
 }
 
 function configured(){
@@ -1823,6 +1906,8 @@ document.addEventListener('click', async (e)=>{
     return;
   }
   if(!sb||!USER) return;
+  const orow = t.closest ? t.closest('[data-openevent]') : null;
+  if(orow){ openEventModal(orow.dataset.openevent); return; }
   if(t.dataset.callnow){
     const id=t.dataset.callnow; const today=new Date().toISOString().slice(0,10);
     const c=(state.contacts||[]).find(x=>x.id===id); if(c) c.last_call=today;
@@ -1910,7 +1995,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   function openContactModal(){ NC_IDS.forEach(id=>{ if($(id)) $(id).value=''; }); const m=$('ncMsg'); if(m){ m.textContent=''; } const cm=$('contactModal'); if(cm){ cm.classList.remove('hidden'); setTimeout(()=>{ if($('ncCity')) $('ncCity').focus(); },50); } }
   function closeContactModal(){ const cm=$('contactModal'); if(cm) cm.classList.add('hidden'); }
   const cNew=$('cNew'); if(cNew) cNew.addEventListener('click', openContactModal);
-  const ncCancel=$('ncCancel'); if(ncCancel) ncCancel.addEventListener('click', closeContactModal);
+  const emCancel=$('emCancel'); if(emCancel) emCancel.addEventListener('click', closeEventModal);
+  const emSave=$('emSave'); if(emSave) emSave.addEventListener('click', saveEventModal);
+  const emOv=$('eventModal'); if(emOv) emOv.addEventListener('click',(e)=>{ if(e.target===emOv) closeEventModal(); });
+  const emFull=$('emOpenFull'); if(emFull) emFull.addEventListener('click',()=>{ closeEventModal(); });  const ncCancel=$('ncCancel'); if(ncCancel) ncCancel.addEventListener('click', closeContactModal);
   const cmOv=$('contactModal'); if(cmOv) cmOv.addEventListener('click',(e)=>{ if(e.target===cmOv) closeContactModal(); });
   const ncSave=$('ncSave'); if(ncSave) ncSave.addEventListener('click', async ()=>{
     if(!sb||!USER) return;
