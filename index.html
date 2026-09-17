@@ -268,6 +268,15 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 .pw-box{background:#fff;border-radius:14px;box-shadow:var(--shadow);max-width:380px;width:100%;padding:22px}
 .pw-box h3{color:var(--navy);font-size:18px;margin-bottom:4px}
 .pw-box input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;margin-bottom:8px}
+/* modal nuevo contacto */
+.cfnew{white-space:nowrap}
+.pw-box.cbox{max-width:560px}
+.cbox .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+.cbox .cgrid label{display:flex;flex-direction:column;font-size:12px;font-weight:600;color:var(--navy);gap:4px;margin-bottom:6px}
+.cbox .cgrid label.cfull{grid-column:1 / -1}
+.cbox .cgrid input,.cbox .cgrid textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px;background:#fffdf8;color:var(--ink);margin:0;font-weight:400}
+.cbox .cgrid textarea{resize:vertical}
+@media(max-width:560px){.cbox .cgrid{grid-template-columns:1fr}}
 
 /* ---------- Fases / pendientes por evento + evaluación de venue ---------- */
 .dsub{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:800;margin:14px 0 5px}
@@ -600,21 +609,12 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <select id="fVenue" class="cfsel"><option value="">Todos los hoteles</option></select>
       <button id="cClear" class="btn sm ghost">Limpiar</button>
       <span id="cCount" class="muted cfcount"></span>
+      <button id="cNew" class="btn sm gold cfnew">+ Nuevo contacto</button>
     </div>
     <div class="card" style="overflow-x:auto"><table>
       <thead><tr><th>Ciudad</th><th>Hotel / Venue</th><th>Contacto</th><th>Cargo</th><th>Email</th><th>Teléfono</th><th>Dirección</th><th>Última llamada</th><th>Notas</th><th></th></tr></thead>
       <tbody id="contactBody"></tbody>
-    </table>
-    <div class="addrow" style="padding:12px 14px">
-      <input id="cCity" class="cell" placeholder="Ciudad">
-      <input id="cVenue" class="cell" placeholder="Hotel / Venue">
-      <input id="cName" class="cell" placeholder="Contacto">
-      <input id="cRole" class="cell" placeholder="Cargo">
-      <input id="cEmail" class="cell" placeholder="Email">
-      <input id="cPhone" class="cell" placeholder="Teléfono">
-      <input id="cAddress" class="cell" placeholder="Dirección del hotel/salón">
-      <button class="btn sm gold" id="addContact">+ Agregar</button>
-    </div></div>
+    </table></div>
   </section>
 
   <!-- PLANTILLA CORREO (estático) -->
@@ -695,6 +695,29 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
         <button class="btn sm ghost" id="pwCancel">Cancelar</button>
         <button class="btn sm gold" id="pwSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Nuevo contacto ===== -->
+  <div id="contactModal" class="hidden pw-overlay">
+    <div class="pw-box cbox">
+      <h3>Nuevo contacto</h3>
+      <p class="muted" style="font-size:13px;margin:0 0 14px">Completa los datos. El contacto aparecerá de primero en el directorio.</p>
+      <div class="cgrid">
+        <label>Ciudad<input id="ncCity" placeholder="Ciudad, Estado"></label>
+        <label>Hotel / Venue<input id="ncVenue" placeholder="Nombre del hotel"></label>
+        <label>Contacto<input id="ncName" placeholder="Nombre y apellido"></label>
+        <label>Cargo<input id="ncRole" placeholder="Cargo / puesto"></label>
+        <label>Email<input id="ncEmail" type="email" placeholder="correo@hotel.com"></label>
+        <label>Teléfono<input id="ncPhone" placeholder="Teléfono"></label>
+        <label class="cfull">Dirección<input id="ncAddress" placeholder="Dirección del hotel/salón"></label>
+        <label class="cfull">Notas<textarea id="ncNotes" rows="2" placeholder="Notas (opcional)"></textarea></label>
+      </div>
+      <div id="ncMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn sm ghost" id="ncCancel">Cancelar</button>
+        <button class="btn sm gold" id="ncSave">Guardar contacto</button>
       </div>
     </div>
   </div>
@@ -1883,13 +1906,24 @@ document.addEventListener('DOMContentLoaded',()=>{
   const fb=$('fBrand'); if(fb) fb.addEventListener('change', ()=>{ cFilter.brand=fb.value; renderContacts(); });
   const fv=$('fVenue'); if(fv) fv.addEventListener('change', ()=>{ cFilter.venue=fv.value; renderContacts(); });
   const cc=$('cClear'); if(cc) cc.addEventListener('click', ()=>{ cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if(cs)cs.value=''; renderContacts(); });
-  const add=$('addContact'); if(add) add.addEventListener('click', async ()=>{
+  const NC_IDS=['ncCity','ncVenue','ncName','ncRole','ncEmail','ncPhone','ncAddress','ncNotes'];
+  function openContactModal(){ NC_IDS.forEach(id=>{ if($(id)) $(id).value=''; }); const m=$('ncMsg'); if(m){ m.textContent=''; } const cm=$('contactModal'); if(cm){ cm.classList.remove('hidden'); setTimeout(()=>{ if($('ncCity')) $('ncCity').focus(); },50); } }
+  function closeContactModal(){ const cm=$('contactModal'); if(cm) cm.classList.add('hidden'); }
+  const cNew=$('cNew'); if(cNew) cNew.addEventListener('click', openContactModal);
+  const ncCancel=$('ncCancel'); if(ncCancel) ncCancel.addEventListener('click', closeContactModal);
+  const cmOv=$('contactModal'); if(cmOv) cmOv.addEventListener('click',(e)=>{ if(e.target===cmOv) closeContactModal(); });
+  const ncSave=$('ncSave'); if(ncSave) ncSave.addEventListener('click', async ()=>{
     if(!sb||!USER) return;
-    const row={city:$('cCity').value,venue:($('cVenue')?$('cVenue').value:''),role:$('cRole').value,name:$('cName').value,email:$('cEmail').value,phone:$('cPhone').value,address:($('cAddress')?$('cAddress').value:''),notes:''};
-    if(!row.city&&!row.venue&&!row.name) return;
-    ['cCity','cVenue','cRole','cName','cEmail','cPhone','cAddress'].forEach(id=>{ if($(id)) $(id).value=''; });
-    await sb.from('contacts').insert(row);
-    logChange('contacto','Contactos','agregó un contacto'+(row.name?' ('+row.name+')':''));
+    const row={city:$('ncCity').value.trim(),venue:$('ncVenue').value.trim(),name:$('ncName').value.trim(),role:$('ncRole').value.trim(),email:$('ncEmail').value.trim(),phone:$('ncPhone').value.trim(),address:$('ncAddress').value.trim(),notes:$('ncNotes').value.trim()};
+    if(!row.city&&!row.venue&&!row.name){ const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='Agrega al menos ciudad, hotel o contacto.'; return; }
+    const btn=$('ncSave'); const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…';
+    try{
+      await sb.from('contacts').insert(row);
+      logChange('contacto','Contactos','agregó un contacto'+(row.name?' ('+row.name+')':''));
+      btn.disabled=false; btn.textContent=old; closeContactModal();
+      cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if($('cSearch')) $('cSearch').value='';
+      setTimeout(loadAll, 400);
+    }catch(e){ btn.disabled=false; btn.textContent=old; const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='No se pudo guardar: '+(e.message||e); }
   });
   const addN=$('addNote'); if(addN) addN.addEventListener('click', async ()=>{
     if(!sb||!USER) return;
