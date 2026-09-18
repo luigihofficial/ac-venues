@@ -96,6 +96,30 @@ nav.tabs a.active{color:var(--navy);border-bottom-color:var(--gold)}
 .emsec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);font-weight:800;margin:16px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
 .emfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
 .cbox .cgrid select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px;background:#fffdf8;color:var(--ink);font-weight:400}
+/* pagos */
+.paysec{margin-top:12px;border-top:2px solid var(--line);padding-top:10px}
+.paysum{font-size:12.5px;color:var(--muted);margin-left:10px}
+.pw-box.pbox{max-width:760px;max-height:88vh;overflow:auto}
+.pgrid2{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+.pgrid2 label{display:flex;flex-direction:column;font-size:12px;font-weight:600;color:var(--navy);gap:4px;margin-bottom:6px}
+.pgrid2 input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px;background:#fffdf8;color:var(--ink);font-weight:400}
+.prow{display:grid;grid-template-columns:120px 130px 100px 150px 1fr 30px;gap:6px;align-items:center;margin-bottom:6px}
+.prow.phead{margin-bottom:4px}
+.prow.phead span{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700}
+.prow .cell{font-size:13px}
+.prow select.cell{border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:13px;background:#fffdf8;color:var(--ink)}
+.pmsummary{display:flex;gap:20px;flex-wrap:wrap;margin-top:14px;padding:12px 16px;background:var(--cream);border:1px solid var(--line);border-radius:10px}
+.pmtot{display:flex;flex-direction:column;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.pmtot b{font-size:18px;color:var(--navy);margin-top:3px;letter-spacing:0}
+.pmtot.due b{color:var(--danger)} .pmtot.ok b{color:var(--ok)}
+@media(max-width:640px){.prow{grid-template-columns:1fr 1fr;position:relative;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fffdf8}.prow.phead{display:none}.prow [data-pf="ref"]{grid-column:1 / -1}}
+/* ofertas */
+.offtable{width:100%;border-collapse:collapse}
+.offtable th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;background:#faf7f0;padding:8px 10px;text-align:left}
+.offtable td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13px;white-space:nowrap}
+.offtable tr.offwin td{background:var(--ok-bg)}
+.wbadge{display:inline-block;background:var(--ok);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.03em;vertical-align:middle}
+.offacts{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .up-main{min-width:0}
 .up-city{font-weight:700;color:var(--navy);font-size:14px}
 .up-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -449,6 +473,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
     <div class="navmenu">
       <a href="#ciudades">Ciudades / Eventos</a>
       <a href="#matriz">Evaluación</a>
+      <a href="#ofertas">Ofertas</a>
       <a href="#pendientes">Pendientes</a>
     </div>
   </div>
@@ -495,6 +520,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
           <div class="acc-grid">
             <a class="acc" href="#ciudades"><span class="acc-ic">◧</span><b>Ciudades / Eventos</b><small>Pipeline por ciudad</small></a>
             <a class="acc" href="#matriz"><span class="acc-ic">▦</span><b>Evaluación</b><small>Matriz de venues</small></a>
+            <a class="acc" href="#ofertas"><span class="acc-ic">🏷️</span><b>Ofertas</b><small>Comparar y elegir</small></a>
             <a class="acc" href="#pendientes"><span class="acc-ic">☑</span><b>Pendientes</b><small>Por evento</small></a>
           </div>
         </div>
@@ -602,6 +628,18 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <thead><tr><th>Ciudad · Evento</th><th>Venue</th><th>Promedio</th><th>Recomendación</th><th>Comentarios</th></tr></thead>
       <tbody id="matrixBody"></tbody>
     </table></div>
+  </section>
+
+  <!-- OFERTAS (dinámico · interno) -->
+  <section id="ofertas">
+    <div class="sec-head"><div class="num">🏷️</div><div><h2>Ofertas recibidas</h2><p>Interno · no aparece en la ficha. Registra las cotizaciones de cada evento, compáralas y elige la ganadora — sus datos llenan el evento automáticamente.</p></div></div>
+    <div class="cfilters">
+      <label style="font-size:13px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:8px">Evento
+        <select id="offEvent" class="cfsel" style="max-width:340px"></select>
+      </label>
+      <button id="offAdd" class="btn sm gold cfnew" style="margin-left:auto">+ Agregar oferta</button>
+    </div>
+    <div class="card" style="overflow-x:auto" id="offBody"></div>
   </section>
 
   <!-- CONTACTOS (dinámico) -->
@@ -757,10 +795,71 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       </div>
       <div id="emMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
       <div class="emfoot">
-        <a href="#ciudades" id="emOpenFull" style="font-size:12.5px;font-weight:600">Abrir evento completo en Ciudades →</a>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <a href="#ciudades" id="emOpenFull" style="font-size:12.5px;font-weight:600">Abrir evento completo en Ciudades →</a>
+          <button class="btn sm ghost" id="emPay">💳 Pagos</button>
+        </div>
         <div style="display:flex;gap:8px">
           <button class="btn sm ghost" id="emCancel">Cancelar</button>
           <button class="btn sm gold" id="emSave">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Pagos del evento (interno) ===== -->
+  <div id="payModal" class="hidden pw-overlay">
+    <div class="pw-box pbox">
+      <h3 id="pmTitle">Pagos del evento</h3>
+      <p class="muted" style="font-size:12.5px;margin:0 0 12px">Sección interna del equipo. <b>No</b> se incluye en la ficha ni se comparte con líderes/speakers.</p>
+      <div class="pgrid2">
+        <label>Total del contrato<input id="pmTotal" type="number" step="0.01" min="0" placeholder="0.00"></label>
+        <label>Moneda<input id="pmCurrency" placeholder="USD" value="USD"></label>
+      </div>
+      <div class="emsec">Pagos realizados</div>
+      <div class="prow phead"><span>Fecha</span><span>Concepto</span><span>Monto</span><span>Método</span><span>Referencia / nota</span><span></span></div>
+      <div id="pmRows"></div>
+      <button class="btn sm ghost" id="pmAdd" style="margin-top:8px">+ Agregar pago</button>
+      <div class="pmsummary" id="pmSummary"></div>
+      <label style="display:block;margin-top:12px;font-size:12px;font-weight:600;color:var(--navy)">Notas<textarea id="pmNotes" rows="2" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px;background:#fffdf8;color:var(--ink);margin-top:4px;resize:vertical"></textarea></label>
+      <div id="pmMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
+      <div class="emfoot">
+        <span class="muted" style="font-size:11.5px">🔒 Visible solo para el equipo</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm ghost" id="pmCancel">Cancelar</button>
+          <button class="btn sm gold" id="pmSave">Guardar pagos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Oferta recibida (interno) ===== -->
+  <div id="offerModal" class="hidden pw-overlay">
+    <div class="pw-box cbox">
+      <h3 id="ofTitle">Oferta recibida</h3>
+      <p class="muted" style="font-size:12.5px;margin:0 0 14px">Datos de la cotización. Interno — no aparece en la ficha.</p>
+      <div class="cgrid">
+        <label class="cfull">Hotel / Venue<input id="ofVenue" placeholder="Nombre del hotel"></label>
+        <label>Total ofertado<input id="ofTotal" type="number" step="0.01" min="0" placeholder="0.00"></label>
+        <label>Depósito<input id="ofDeposit" placeholder="Ej. 25% para reservar"></label>
+        <label>Salón<input id="ofRoom" placeholder="Salón / salones"></label>
+        <label>Hora de set-up<input id="ofSetup" placeholder="Ej. día anterior 4pm"></label>
+        <label class="cfull">Dirección<input id="ofAddr" placeholder="Dirección"></label>
+        <label class="cfull">Link del mapa<input id="ofMap" placeholder="https://maps.google.com/..."></label>
+        <label>Contacto<input id="ofCName" placeholder="Nombre"></label>
+        <label>Teléfono<input id="ofCPhone" placeholder="Teléfono"></label>
+        <label>Parqueo (por persona)<input id="ofParking" placeholder="Ej. $25/día"></label>
+        <label>Re-entrada al parqueo<select id="ofReentry"><option value="">—</option><option value="si">Sí</option><option value="no">No</option></select></label>
+        <label>WiFi incluido<select id="ofWifi"><option value="">—</option><option value="si">Sí</option><option value="no">No</option></select></label>
+        <label>Green room incluido<select id="ofGreen"><option value="">—</option><option value="si">Sí</option><option value="no">No</option></select></label>
+        <label class="cfull">Notas<textarea id="ofNotes" rows="2" placeholder="Condiciones, must-haves, observaciones…"></textarea></label>
+      </div>
+      <div id="ofMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
+      <div class="emfoot">
+        <span class="muted" style="font-size:11.5px">🔒 Visible solo para el equipo</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm ghost" id="ofCancel">Cancelar</button>
+          <button class="btn sm gold" id="ofSave">Guardar oferta</button>
         </div>
       </div>
     </div>
@@ -969,6 +1068,7 @@ function routeView(){
   });
   closeNavMenus();
   if(hash===HOME_VIEW) renderHome();
+  if(hash==='ofertas' && typeof renderOffers==='function') renderOffers();
   window.scrollTo({top:0});
 }
 window.addEventListener('hashchange', routeView);
@@ -1046,12 +1146,145 @@ async function saveEventModal(){
   }catch(e){ btn.disabled=false; btn.textContent=old; const m=$('emMsg'); m.style.color='#b23b3b'; m.textContent='No se pudo guardar: '+(e.message||e); }
 }
 
+// --- Modal de pagos del evento (interno) ---
+let _pmId=null;
+const PAY_CONCEPTS=['Depósito','Balance','Pago parcial','Reembolso','Otro'];
+const PAY_METHODS=['Tarjeta de crédito','Transferencia / ACH','Cheque','Wire','Efectivo','Otro'];
+function payRowHtml(e){ e=e||{};
+  const opt=(arr,v)=>arr.map(o=>`<option${o===v?' selected':''}>${o}</option>`).join('');
+  return `<div class="prow">
+    <input class="cell" type="date" data-pf="date" value="${esc(e.date||'')}">
+    <select class="cell" data-pf="concept"><option value="">Concepto</option>${opt(PAY_CONCEPTS,e.concept||'')}</select>
+    <input class="cell" type="number" step="0.01" min="0" data-pf="amount" placeholder="Monto" value="${e.amount!=null?esc(e.amount):''}">
+    <select class="cell" data-pf="method"><option value="">Método</option>${opt(PAY_METHODS,e.method||'')}</select>
+    <input class="cell" data-pf="ref" placeholder="Referencia / nota" value="${esc(e.ref||'')}">
+    <button class="btn sm ghost cox" data-delprow title="Eliminar">✕</button>
+  </div>`;
+}
+function collectPayEntries(){
+  return [...document.querySelectorAll('#pmRows .prow')].map(r=>{
+    const g=f=>{ const el=r.querySelector('[data-pf="'+f+'"]'); return el?el.value:''; };
+    const amt=g('amount');
+    return {date:g('date'), concept:g('concept'), amount:(amt!==''?Number(amt):null), method:g('method'), ref:g('ref')};
+  }).filter(e=>e.date||e.concept||e.amount!=null||e.method||e.ref);
+}
+function pmRecalc(){
+  const entries=collectPayEntries();
+  const paid=entries.reduce((s,e)=>s+(Number(e.amount)||0),0);
+  const total=($('pmTotal')&&$('pmTotal').value!=='')?Number($('pmTotal').value):0;
+  const bal=total-paid;
+  const box=$('pmSummary'); if(!box) return;
+  box.innerHTML=`<div class="pmtot"><span>Total pagado</span><b>${fmtMoney(paid)}</b></div>`+
+    `<div class="pmtot"><span>Total del contrato</span><b>${total?fmtMoney(total):'—'}</b></div>`+
+    `<div class="pmtot ${total?(bal>0.001?'due':'ok'):''}"><span>Saldo pendiente</span><b>${total?fmtMoney(bal):'—'}</b></div>`;
+}
+function openPaymentsModal(id){
+  let d=null; for(const k in state.dates){ const f=(state.dates[k]||[]).find(x=>x.id===id); if(f){ d=f; break; } }
+  if(!d) return;
+  _pmId=id; const p=paymentsFor(id);
+  $('pmTitle').textContent='Pagos · '+cityName(citySlugOfDate(id)).split(',')[0]+' · '+(d.label||'Evento');
+  $('pmTotal').value=(p.total_amount!=null?p.total_amount:'');
+  $('pmCurrency').value=p.currency||'USD';
+  $('pmNotes').value=p.notes||'';
+  const rows=(p.entries&&p.entries.length)?p.entries:[{}];
+  $('pmRows').innerHTML=rows.map(payRowHtml).join('');
+  pmRecalc(); const m=$('pmMsg'); if(m) m.textContent='';
+  const cm=$('payModal'); if(cm) cm.classList.remove('hidden');
+}
+function closePaymentsModal(){ const cm=$('payModal'); if(cm) cm.classList.add('hidden'); }
+async function savePaymentsModal(){
+  if(!sb||!USER||!_pmId) return; const id=_pmId;
+  const entries=collectPayEntries();
+  const total=($('pmTotal').value!=='')?Number($('pmTotal').value):null;
+  const btn=$('pmSave'); const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    await sb.from('event_payments').upsert({date_id:id, total_amount:total, currency:($('pmCurrency').value||'USD').trim(), entries:entries, notes:$('pmNotes').value.trim(), updated_at:new Date().toISOString()},{onConflict:'date_id'});
+    logChange('pago', dateLabelById(id), 'actualizó los pagos del evento');
+    btn.disabled=false; btn.textContent=old; closePaymentsModal();
+    setTimeout(loadAll,400);
+  }catch(e){ btn.disabled=false; btn.textContent=old; const m=$('pmMsg'); m.style.color='#b23b3b'; m.textContent='No se pudo guardar: '+(e.message||e); }
+}
+
+// --- Ofertas recibidas por evento (interno) ---
+let _offSel='', _ofId=null;
+const OF_IDS=['ofVenue','ofTotal','ofDeposit','ofRoom','ofSetup','ofAddr','ofMap','ofCName','ofCPhone','ofParking','ofReentry','ofWifi','ofGreen','ofNotes'];
+function offersFor(id){ return (state.offers&&state.offers[id])||[]; }
+function findOffer(oid){ for(const k in (state.offers||{})){ const f=(state.offers[k]||[]).find(o=>o.id===oid); if(f) return f; } return null; }
+function ynTxt(v){ return v==='si'?'Sí':(v==='no'?'No':'—'); }
+function renderOffers(){
+  const sel=$('offEvent'); if(!sel) return;
+  const list=allDates();
+  if((!_offSel || !list.some(x=>x.d.id===_offSel)) && list.length) _offSel=list[0].d.id;
+  sel.innerHTML=list.map(({city,d})=>`<option value="${d.id}"${d.id===_offSel?' selected':''}>${esc(city.name.split(',')[0])} · ${esc(d.label||'Fecha')}${d.start_date?(' · '+esc(fmtDay(d.start_date))):''}</option>`).join('') || '<option value="">Sin eventos</option>';
+  if(sel.value) _offSel=sel.value;
+  const box=$('offBody'); if(!box) return;
+  if(!_offSel){ box.innerHTML='<div class="muted" style="padding:16px">Primero agrega fechas en Ciudades / Eventos.</div>'; return; }
+  const offers=offersFor(_offSel);
+  if(!offers.length){ box.innerHTML='<div class="muted" style="padding:16px">Aún no hay ofertas para este evento. Agrégalas con “+ Agregar oferta”.</div>'; return; }
+  const rows=offers.map(o=>`<tr class="${o.is_winner?'offwin':''}">
+    <td style="white-space:normal"><b>${esc(o.venue||'—')}</b>${o.is_winner?' <span class="wbadge">GANADORA ✓</span>':''}${o.notes?`<div class="muted" style="font-size:11.5px;white-space:normal">${esc(o.notes)}</div>`:''}</td>
+    <td><b>${o.total_amount!=null?fmtMoney(o.total_amount):'—'}</b>${o.deposit?`<div class="muted" style="font-size:11.5px;white-space:normal">Dep: ${esc(o.deposit)}</div>`:''}</td>
+    <td style="white-space:normal">${esc(o.room_name||'—')}</td>
+    <td>${esc(o.parking_cost||'—')}</td>
+    <td>${ynTxt(o.wifi_included)}</td>
+    <td>${ynTxt(o.greenroom_included)}</td>
+    <td style="white-space:normal">${esc(o.setup_time||'—')}</td>
+    <td style="white-space:normal">${[esc(o.contact_name||''),esc(o.contact_phone||'')].filter(Boolean).join('<br>')||'—'}</td>
+    <td><div class="offacts">${o.is_winner?'<span class="muted" style="font-size:11.5px">Elegida</span>':`<button class="btn sm gold" data-offwin="${o.id}">Elegir</button>`}<button class="btn sm ghost" data-offedit="${o.id}">Editar</button><button class="btn sm ghost" data-offdel="${o.id}">✕</button></div></td>
+  </tr>`).join('');
+  box.innerHTML=`<table class="offtable"><thead><tr><th>Venue</th><th>Total / Depósito</th><th>Salón</th><th>Parqueo</th><th>WiFi</th><th>Green</th><th>Set-up</th><th>Contacto</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function openOfferModal(dateId, offerId){
+  if(!dateId){ alert('Elige un evento primero.'); return; }
+  _offSel=dateId; _ofId=offerId||null;
+  OF_IDS.forEach(id=>{ if($(id)) $(id).value=''; });
+  if(offerId){ const o=findOffer(offerId); if(o){
+    $('ofVenue').value=o.venue||''; $('ofTotal').value=(o.total_amount!=null?o.total_amount:''); $('ofDeposit').value=o.deposit||'';
+    $('ofRoom').value=o.room_name||''; $('ofSetup').value=o.setup_time||''; $('ofAddr').value=o.address||''; $('ofMap').value=o.map_url||'';
+    $('ofCName').value=o.contact_name||''; $('ofCPhone').value=o.contact_phone||''; $('ofParking').value=o.parking_cost||'';
+    $('ofReentry').value=o.parking_reentry||''; $('ofWifi').value=o.wifi_included||''; $('ofGreen').value=o.greenroom_included||''; $('ofNotes').value=o.notes||'';
+  }}
+  $('ofTitle').textContent=(offerId?'Editar oferta':'Nueva oferta')+' · '+cityName(citySlugOfDate(dateId)).split(',')[0];
+  const m=$('ofMsg'); if(m) m.textContent='';
+  const cm=$('offerModal'); if(cm) cm.classList.remove('hidden');
+}
+function closeOfferModal(){ const cm=$('offerModal'); if(cm) cm.classList.add('hidden'); }
+async function saveOfferModal(){
+  if(!sb||!USER||!_offSel) return; const g=x=>$(x)?$(x).value:'';
+  const row={ date_id:_offSel, venue:g('ofVenue').trim(), total_amount:(g('ofTotal')!==''?Number(g('ofTotal')):null), deposit:g('ofDeposit').trim(), room_name:g('ofRoom').trim(), setup_time:g('ofSetup').trim(), address:g('ofAddr').trim(), map_url:g('ofMap').trim(), contact_name:g('ofCName').trim(), contact_phone:g('ofCPhone').trim(), parking_cost:g('ofParking').trim(), parking_reentry:g('ofReentry'), wifi_included:g('ofWifi'), greenroom_included:g('ofGreen'), notes:g('ofNotes').trim() };
+  if(!row.venue && row.total_amount==null){ const m=$('ofMsg'); m.style.color='#b23b3b'; m.textContent='Agrega al menos el hotel o el total.'; return; }
+  const btn=$('ofSave'); const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    if(_ofId){ await sb.from('event_offers').update(row).eq('id',_ofId); }
+    else { await sb.from('event_offers').insert(row); }
+    logChange('oferta', dateLabelById(_offSel), (_ofId?'editó':'agregó')+' una oferta'+(row.venue?(' ('+row.venue+')'):''));
+    btn.disabled=false; btn.textContent=old; closeOfferModal(); setTimeout(loadAll,400);
+  }catch(e){ btn.disabled=false; btn.textContent=old; const m=$('ofMsg'); m.style.color='#b23b3b'; m.textContent='No se pudo guardar: '+(e.message||e); }
+}
+async function chooseWinner(offerId){
+  const off=findOffer(offerId); if(!off||!sb||!USER) return; const id=off.date_id;
+  if(!confirm('¿Elegir “'+(off.venue||'esta oferta')+'” como ganadora? Se marcará como el venue del evento y llenará los datos de la ficha y el total del contrato con esta oferta.')) return;
+  try{
+    await sb.from('event_offers').update({is_winner:false}).eq('date_id',id);
+    await sb.from('event_offers').update({is_winner:true}).eq('id',offerId);
+    await sb.from('date_meta').upsert({date_id:id, chosen_venue:off.venue||'', updated_at:new Date().toISOString()},{onConflict:'date_id'});
+    await sb.from('event_sheet').upsert({date_id:id, hotel_name:off.venue||'', room_name:off.room_name||'', address:off.address||'', map_url:off.map_url||'', contact_name:off.contact_name||'', contact_phone:off.contact_phone||'', parking_cost:off.parking_cost||'', parking_reentry:off.parking_reentry||'', wifi_included:off.wifi_included||'', greenroom_included:off.greenroom_included||'', setup_time:off.setup_time||'', notes:off.notes||'', updated_at:new Date().toISOString()},{onConflict:'date_id'});
+    if(off.total_amount!=null){ await sb.from('event_payments').upsert({date_id:id, total_amount:off.total_amount, updated_at:new Date().toISOString()},{onConflict:'date_id'}); }
+    logChange('oferta', dateLabelById(id), 'eligió la oferta ganadora'+(off.venue?(': '+off.venue):''));
+    setTimeout(loadAll,400);
+  }catch(e){ alert('No se pudo elegir la ganadora: '+(e.message||e)); }
+}
+async function deleteOffer(offerId){
+  const off=findOffer(offerId); if(!off||!sb||!USER) return;
+  if(!confirm('¿Eliminar esta oferta'+(off.venue?(' de '+off.venue):'')+'?')) return;
+  try{ await sb.from('event_offers').delete().eq('id',offerId); logChange('oferta', dateLabelById(off.date_id),'eliminó una oferta'); setTimeout(loadAll,400); }catch(e){ alert('No se pudo eliminar: '+(e.message||e)); }
+}
+
 function configured(){
   const c=window.AC_CONFIG||{};
   return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
     !c.SUPABASE_URL.includes("TU-PROYECTO") && !c.SUPABASE_ANON_KEY.includes("TU-ANON");
 }
-
 function init(){
   // Contenido estático que no depende de la base de datos
   $('mailEN').textContent=MAIL_EN; $('mailES').textContent=MAIL_ES; $('mailFU').textContent=MAIL_FU;
@@ -1148,6 +1381,12 @@ async function loadAll(){
   try{ const fl=await sb.from('event_files').select('*').order('created_at',{ascending:true});
        state.files={}; (fl.data||[]).forEach(r=>{ (state.files[r.date_id]=state.files[r.date_id]||[]).push(r); }); }
   catch(e){ state.files={}; }
+  try{ const pay=await sb.from('event_payments').select('*');
+       state.payments={}; (pay.data||[]).forEach(r=>{ state.payments[r.date_id]=r; }); }
+  catch(e){ state.payments={}; }
+  try{ const of=await sb.from('event_offers').select('*').order('created_at',{ascending:true});
+       state.offers={}; (of.data||[]).forEach(r=>{ (state.offers[r.date_id]=state.offers[r.date_id]||[]).push(r); }); }
+  catch(e){ state.offers={}; }
   renderAll();
 }
 // ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
@@ -1174,7 +1413,7 @@ function subscribeRealtime(){
 }
 
 // ---------- Render ----------
-function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); }
+function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); }
 
 const AUDIT_ICONS={fase:'📌',pendiente:'☑️',evaluación:'⭐',evento:'📅',fecha:'📅',hotel:'🏨',empresa:'🏢',contacto:'👤',nota:'📝',seguridad:'🔒'};
 function renderAudit(){
@@ -1243,6 +1482,10 @@ function allDates(){ const out=[]; CITIES.forEach(c=>citiesDates(c.slug).forEach
 // --- Encuestas: destinatarios, tokens, reviews agrupadas por hotel ---
 function recipientsFor(id){ return (state.recipients&&state.recipients[id])||[]; }
 function sheetFor(id){ return (state.sheets&&state.sheets[id])||{}; }
+function paymentsFor(id){ return (state.payments&&state.payments[id])||{}; }
+function fmtMoney(n){ n=Number(n)||0; return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function payTotalsOf(p){ const items=(p&&p.entries)||[]; const paid=items.reduce((s,e)=>s+(Number(e.amount)||0),0); const total=Number(p&&p.total_amount)||0; return {paid, total, balance: total-paid}; }
+function paySummaryText(id){ const p=paymentsFor(id); const items=(p&&p.entries)||[]; if(!items.length && !(p&&p.total_amount)) return 'Sin pagos registrados'; const t=payTotalsOf(p); return 'Pagado '+fmtMoney(t.paid)+(t.total?(' de '+fmtMoney(t.total)+' · saldo '+fmtMoney(t.balance)):''); }
 function filesFor(id){ return (state.files&&state.files[id])||[]; }
 function fmtSize(b){ b=+b||0; if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(0)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
 function fileIcon(mime,name){ const s=((mime||'')+' '+(name||'')).toLowerCase(); if(/pdf/.test(s))return '📄'; if(/(png|jpg|jpeg|gif|webp|image)/.test(s))return '🖼️'; if(/(zip|rar|7z)/.test(s))return '🗜️'; if(/(word|doc)/.test(s))return '📝'; if(/(sheet|excel|xls|csv)/.test(s))return '📊'; return '📎'; }
@@ -1452,6 +1695,11 @@ function dateBlock(d, citySlug){
         <div class="files">${filesRows}</div>
         <label class="btn sm gold fileupbtn">+ Subir archivo<input type="file" data-uploadfiles="${d.id}" multiple style="display:none"></label>
         <div class="muted survnote">Los archivos marcados <b>“compartir”</b> se incluyen como enlaces de descarga en la ficha técnica.</div>
+      </div>
+      <div class="paysec">
+        <h5 class="dsub">Pagos <span class="dsubn">interno · no aparece en la ficha</span></h5>
+        <button class="btn sm navy" data-openpay="${d.id}">💳 Ver / registrar pagos</button>
+        <span class="paysum">${paySummaryText(d.id)}</span>
       </div>
     </div>
   </div>`;
@@ -1908,6 +2156,12 @@ document.addEventListener('click', async (e)=>{
   if(!sb||!USER) return;
   const orow = t.closest ? t.closest('[data-openevent]') : null;
   if(orow){ openEventModal(orow.dataset.openevent); return; }
+  if(t.dataset.openpay){ openPaymentsModal(t.dataset.openpay); return; }
+  const delp = t.closest ? t.closest('[data-delprow]') : null;
+  if(delp){ const pr=delp.closest('.prow'); if(pr){ pr.remove(); pmRecalc(); } return; }
+  if(t.dataset.offwin){ chooseWinner(t.dataset.offwin); return; }
+  if(t.dataset.offedit){ const o=findOffer(t.dataset.offedit); if(o) openOfferModal(o.date_id, o.id); return; }
+  if(t.dataset.offdel){ deleteOffer(t.dataset.offdel); return; }
   if(t.dataset.callnow){
     const id=t.dataset.callnow; const today=new Date().toISOString().slice(0,10);
     const c=(state.contacts||[]).find(x=>x.id===id); if(c) c.last_call=today;
@@ -1998,7 +2252,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   const emCancel=$('emCancel'); if(emCancel) emCancel.addEventListener('click', closeEventModal);
   const emSave=$('emSave'); if(emSave) emSave.addEventListener('click', saveEventModal);
   const emOv=$('eventModal'); if(emOv) emOv.addEventListener('click',(e)=>{ if(e.target===emOv) closeEventModal(); });
-  const emFull=$('emOpenFull'); if(emFull) emFull.addEventListener('click',()=>{ closeEventModal(); });  const ncCancel=$('ncCancel'); if(ncCancel) ncCancel.addEventListener('click', closeContactModal);
+  const emFull=$('emOpenFull'); if(emFull) emFull.addEventListener('click',()=>{ closeEventModal(); });
+  const emPay=$('emPay'); if(emPay) emPay.addEventListener('click',()=>{ const id=_emId; closeEventModal(); if(id) openPaymentsModal(id); });
+  const pmAdd=$('pmAdd'); if(pmAdd) pmAdd.addEventListener('click',()=>{ $('pmRows').insertAdjacentHTML('beforeend', payRowHtml({})); });
+  const pmCancel=$('pmCancel'); if(pmCancel) pmCancel.addEventListener('click', closePaymentsModal);
+  const pmSave=$('pmSave'); if(pmSave) pmSave.addEventListener('click', savePaymentsModal);
+  const pmOv=$('payModal'); if(pmOv){ pmOv.addEventListener('click',(e)=>{ if(e.target===pmOv) closePaymentsModal(); }); pmOv.addEventListener('input', pmRecalc); }
+  const offEvent=$('offEvent'); if(offEvent) offEvent.addEventListener('change', ()=>{ _offSel=offEvent.value; renderOffers(); });
+  const offAdd=$('offAdd'); if(offAdd) offAdd.addEventListener('click', ()=>{ openOfferModal(_offSel); });
+  const ofCancel=$('ofCancel'); if(ofCancel) ofCancel.addEventListener('click', closeOfferModal);
+  const ofSave=$('ofSave'); if(ofSave) ofSave.addEventListener('click', saveOfferModal);
+  const ofOv=$('offerModal'); if(ofOv) ofOv.addEventListener('click',(e)=>{ if(e.target===ofOv) closeOfferModal(); });  const ncCancel=$('ncCancel'); if(ncCancel) ncCancel.addEventListener('click', closeContactModal);
   const cmOv=$('contactModal'); if(cmOv) cmOv.addEventListener('click',(e)=>{ if(e.target===cmOv) closeContactModal(); });
   const ncSave=$('ncSave'); if(ncSave) ncSave.addEventListener('click', async ()=>{
     if(!sb||!USER) return;
