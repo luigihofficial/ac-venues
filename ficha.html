@@ -19,7 +19,8 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 4px;margin-top:18px;box-shadow:0 1px 3px rgba(20,38,63,.06);overflow:hidden}
   .evt{margin-top:18px;text-align:center}
   .evt h2{margin:0;color:var(--navy);font-size:22px}
-  .evt .when{color:var(--mut);font-size:14px;margin-top:2px}
+  .evt .fcity{margin:2px 0 0;color:var(--navy);font-size:20px;font-weight:700}
+  .evt .when{color:var(--mut);font-size:14px;margin-top:4px}
   table{width:100%;border-collapse:collapse}
   td.k{padding:11px 14px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600;width:42%}
   td.v{padding:11px 14px;border-bottom:1px solid #efe8da;color:var(--ink);font-size:14.5px}
@@ -57,6 +58,7 @@
   <div id="content" class="hidden">
     <div class="evt">
       <h2 id="fHotel">—</h2>
+      <h2 id="fCity" class="fcity hidden"></h2>
       <div class="when" id="fWhen"></div>
     </div>
 
@@ -95,6 +97,34 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const yn=v=>v==='si'?'Sí':(v==='no'?'No':'');
 const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function fmtDay(iso){ if(!iso) return ''; try{const [y,m,d]=iso.split('-');return `${+d} ${MES[+m-1]} ${y}`;}catch(e){return iso;} }
+function fmtRange(s,e){
+  if(!s && !e) return '';
+  if(s && e && s!==e){
+    const [sy,sm,sd]=s.split('-'), [ey,em,ed]=e.split('-');
+    if(sy===ey && sm===em) return `${+sd}–${+ed} ${MES[+sm-1]} ${sy}`;
+    if(sy===ey) return `${+sd} ${MES[+sm-1]} – ${+ed} ${MES[+em-1]} ${sy}`;
+    return `${fmtDay(s)} – ${fmtDay(e)}`;
+  }
+  return fmtDay(s||e);
+}
+function cityFromAddress(addr){
+  const s=(addr||'').toLowerCase();
+  if(/houston/.test(s)) return 'Houston, TX';
+  if(/irving|grapevine|dallas|fort worth|dfw|plano|arlington/.test(s)) return 'Dallas, TX';
+  if(/glendale|los angeles|\blax\b|burbank|pasadena|santa monica|culver/.test(s)) return 'Los Angeles, CA';
+  if(/phoenix|scottsdale|tempe|mesa|chandler/.test(s)) return 'Phoenix, AZ';
+  if(/salt lake|sandy|\but\b|utah/.test(s)) return 'Salt Lake City, UT';
+  if(/orlando|lake buena vista|kissimmee|seaworld/.test(s)) return 'Orlando, FL';
+  if(/atlanta|\bga\b|georgia/.test(s)) return 'Atlanta, GA';
+  if(/miami|doral|coral gables|brickell/.test(s)) return 'Miami, FL';
+  return '';
+}
+// quita del label la parte de fecha que a veces se escribe dentro del nombre (evita duplicar la fecha)
+function eventTier(label){
+  let t=(label||'').trim(); const parts=t.split(' · ');
+  if(parts.length>1 && /\d/.test(parts.slice(1).join(' '))) t=parts[0].trim();
+  return t;
+}
 function fmtDT(iso){
   if(!iso) return '';
   try{
@@ -134,7 +164,9 @@ async function load(){
     if(error||!data||!data.ok){ show('invalid'); return; }
     const d=data;
     $('fHotel').textContent = d.hotel_name || 'Ficha del evento';
-    const when=[d.event_label, (d.start_date?fmtDay(d.start_date):'')].filter(Boolean).join(' · ');
+    const city=cityFromAddress(d.address);
+    const fc=$('fCity'); if(city){ fc.textContent=city; fc.classList.remove('hidden'); } else { fc.classList.add('hidden'); }
+    const when=[eventTier(d.event_label), fmtRange(d.start_date, d.end_date)].filter(Boolean).join(' · ');
     $('fWhen').textContent = when;
     $('fTable').innerHTML = rowsHtml(d);
     // gente
