@@ -1311,7 +1311,15 @@ function init(){
     return;
   }
 
-  sb = window.supabase.createClient(window.AC_CONFIG.SUPABASE_URL, window.AC_CONFIG.SUPABASE_ANON_KEY);
+  sb = window.supabase.createClient(window.AC_CONFIG.SUPABASE_URL, window.AC_CONFIG.SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: true,      // guarda la sesión en el dispositivo
+      autoRefreshToken: true,    // renueva el token solo, sin pedir clave
+      detectSessionInUrl: false, // no usamos enlaces mágicos
+      storage: window.localStorage
+      // se mantiene la storageKey por defecto para no cerrar sesiones ya abiertas
+    }
+  });
   wireAuthUI();
   sb.auth.onAuthStateChange((_e,session)=>handleSession(session));
   sb.auth.getSession().then(({data})=>handleSession(data.session));
