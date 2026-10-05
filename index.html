@@ -486,6 +486,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
     </div>
   </div>
   <a href="#contactos">Contactos</a>
+  <a href="#agenda">Agenda</a>
   <div class="navgroup">
     <button type="button" class="navbtn" data-navbtn>Referencia <span class="car">▾</span></button>
     <div class="navmenu">
@@ -668,6 +669,31 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
     </table></div>
   </section>
 
+  <!-- AGENDA / CALENDARIO (dinámico) -->
+  <section id="agenda">
+    <div class="sec-head"><div class="num">📅</div><div><h2>Agenda</h2><p>Recordatorios, reuniones y llamadas. Ligados a eventos y contactos. Agrega cada cita a tu Google Calendar u Outlook (M365).</p></div></div>
+    <div class="agtoolbar">
+      <div class="agviews">
+        <button class="btn sm" id="agViewMonth" data-agview="month">Mes</button>
+        <button class="btn sm ghost" id="agViewList" data-agview="list">Lista</button>
+      </div>
+      <div class="agnav">
+        <button class="btn sm ghost" id="agPrev" title="Anterior">‹</button>
+        <button class="btn sm ghost" id="agToday">Hoy</button>
+        <button class="btn sm ghost" id="agNext" title="Siguiente">›</button>
+        <span id="agLabel" class="agmonthlabel"></span>
+      </div>
+      <button class="btn sm gold agnew" id="agNew">+ Nueva cita</button>
+    </div>
+    <div id="agMonthWrap" class="card agcard">
+      <div class="agdow"><span>Dom</span><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span></div>
+      <div id="agGrid" class="aggrid"></div>
+    </div>
+    <div id="agListWrap" class="hidden">
+      <div id="agList"></div>
+    </div>
+  </section>
+
   <!-- PLANTILLA CORREO (estático) -->
   <section id="plantilla">
     <div class="sec-head"><div class="num">✉</div><div><h2>Plantilla de correo / RFP</h2><p>Adjunta la imagen de layout según la asistencia. Botones para copiar.</p></div></div>
@@ -806,6 +832,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <a href="#ciudades" id="emOpenFull" style="font-size:12.5px;font-weight:600">Abrir evento completo en Ciudades →</a>
           <button class="btn sm ghost" id="emPay">💳 Pagos</button>
+          <button class="btn sm ghost" id="emAgendar">📅 Agendar</button>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn sm ghost" id="emCancel">Cancelar</button>
@@ -868,6 +895,51 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
         <div style="display:flex;gap:8px">
           <button class="btn sm ghost" id="ofCancel">Cancelar</button>
           <button class="btn sm gold" id="ofSave">Guardar oferta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Cita / recordatorio (Agenda) ===== -->
+  <div id="calModal" class="hidden pw-overlay">
+    <div class="pw-box cbox">
+      <h3 id="cmTitle">Nueva cita</h3>
+      <p class="muted" style="font-size:12.5px;margin:0 0 14px">Después de guardar puedes agregarla a Google Calendar u Outlook (M365).</p>
+      <div class="cgrid">
+        <label class="cfull">Título<input id="cmTitleInput" placeholder="Ej. Llamar a Kary por el contrato"></label>
+        <label>Tipo<select id="cmKind">
+          <option value="recordatorio">Recordatorio</option>
+          <option value="reunión">Reunión</option>
+          <option value="llamada">Llamada</option>
+          <option value="visita">Visita</option>
+          <option value="tarea">Tarea</option>
+          <option value="otro">Otro</option>
+        </select></label>
+        <label>Todo el día<span class="agallday"><input id="cmAllDay" type="checkbox"> <span class="muted" style="font-size:12px">Sin hora</span></span></label>
+        <label>Inicio<input id="cmStart" type="datetime-local"></label>
+        <label>Fin<input id="cmEnd" type="datetime-local"></label>
+        <label class="cfull">Lugar / enlace<input id="cmLoc" placeholder="Dirección, sala, o link de videollamada"></label>
+        <label>Evento ligado<select id="cmEvent"><option value="">— Ninguno —</option></select></label>
+        <label>Contacto ligado<select id="cmContact"><option value="">— Ninguno —</option></select></label>
+        <label class="cfull">Notas<textarea id="cmNotes" rows="2" placeholder="Detalles (opcional)"></textarea></label>
+        <label class="cfull agdonerow"><span class="agallday"><input id="cmDone" type="checkbox"> <span class="muted" style="font-size:12px">Marcar como hecha</span></span></label>
+      </div>
+      <div id="cmLinks" class="agmodallinks hidden">
+        <div class="muted" style="font-size:12px;font-weight:700;margin-bottom:6px">Agregar a calendario</div>
+        <div class="agbtns">
+          <a class="agbtn agbtn-g" id="cmGoogle" target="_blank" rel="noopener">Google Calendar</a>
+          <a class="agbtn agbtn-o" id="cmOutlook" target="_blank" rel="noopener">Outlook / M365</a>
+          <button class="agbtn agbtn-i" id="cmIcs" type="button">Descargar .ics</button>
+        </div>
+      </div>
+      <div id="cmMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
+      <div class="emfoot">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn sm ghost cdel hidden" id="cmDelete">🗑 Eliminar</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm ghost" id="cmCancel">Cancelar</button>
+          <button class="btn sm gold" id="cmSave">Guardar cita</button>
         </div>
       </div>
     </div>
@@ -1053,7 +1125,7 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 
 // ---------- Estado ----------
 let sb=null, USER=null;
-const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[], audit:[]};
+const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[], audit:[], calendar:[]};
 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
@@ -1077,6 +1149,7 @@ function routeView(){
   closeNavMenus();
   if(hash===HOME_VIEW) renderHome();
   if(hash==='ofertas' && typeof renderOffers==='function') renderOffers();
+  if(hash==='agenda' && typeof renderAgenda==='function') renderAgenda();
   window.scrollTo({top:0});
 }
 window.addEventListener('hashchange', routeView);
@@ -1403,6 +1476,9 @@ async function loadAll(){
   try{ const of=await sb.from('event_offers').select('*').order('created_at',{ascending:true});
        state.offers={}; (of.data||[]).forEach(r=>{ (state.offers[r.date_id]=state.offers[r.date_id]||[]).push(r); }); }
   catch(e){ state.offers={}; }
+  try{ const cal=await sb.from('calendar_items').select('*').order('starts_at',{ascending:true});
+       state.calendar=cal.data||[]; }
+  catch(e){ state.calendar=[]; }
   renderAll();
 }
 // ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
@@ -1429,7 +1505,7 @@ function subscribeRealtime(){
 }
 
 // ---------- Render ----------
-function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); }
+function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); }
 
 const AUDIT_ICONS={fase:'📌',pendiente:'☑️',evaluación:'⭐',evento:'📅',fecha:'📅',hotel:'🏨',empresa:'🏢',contacto:'👤',nota:'📝',seguridad:'🔒'};
 function renderAudit(){
@@ -1810,6 +1886,21 @@ const BRAND_MAP=[
   ['salt palace','Salt Palace'],['mountain america','Mountain America Expo']
 ];
 function brandOf(venue){ const s=(venue||'').toLowerCase(); for(const [n,l] of BRAND_MAP){ if(s.includes(n)) return l; } return ''; }
+// ---- Anti-duplicados de contactos (nombre, teléfono, dirección) ----
+function normPhone(s){ return (s||'').replace(/\D/g,''); } // solo dígitos
+// Un contacto es duplicado si coincide el NOMBRE y además el TELÉFONO o la DIRECCIÓN,
+// o si coinciden a la vez teléfono y dirección. Campos vacíos no cuentan como coincidencia.
+function findDuplicateContact(row, ignoreId){
+  const n=normName(row.name), p=normPhone(row.phone), a=normName(row.address);
+  return (state.contacts||[]).find(c=>{
+    if(ignoreId && c.id===ignoreId) return false;
+    const cn=normName(c.name), cp=normPhone(c.phone), ca=normName(c.address);
+    const nameMatch = !!n && cn===n;
+    const phoneMatch = !!p && cp===p;
+    const addrMatch = !!a && ca===a;
+    return (nameMatch && (phoneMatch || addrMatch)) || (phoneMatch && addrMatch);
+  });
+}
 const cFilter={ q:'', city:'', brand:'', venue:'' };
 function contactMatches(c){
   if(cFilter.city && normName(c.city)!==normName(cFilter.city)) return false;
@@ -1851,7 +1942,7 @@ function renderContacts(){
        ${callBadge(c.last_call)}
      </div></td>
      <td><input class="cell" data-cfield="notes" value="${esc(c.notes)}"></td>
-     <td><button class="btn sm ghost" data-delc="${c.id}">✕</button></td>
+     <td><div style="display:flex;gap:4px"><button class="btn sm ghost" data-agc="${c.id}" title="Agendar">📅</button><button class="btn sm ghost" data-delc="${c.id}">✕</button></div></td>
    </tr>`).join('') || `<tr><td colspan="10" class="muted" style="padding:14px">${all.length? 'Ningún contacto coincide con la búsqueda o el filtro.' : 'Sin contactos todavía. Agrega el primero abajo.'}</td></tr>`;
 }
 function renderStatus(){
@@ -2284,9 +2375,18 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(!sb||!USER) return;
     const row={city:$('ncCity').value.trim(),venue:$('ncVenue').value.trim(),name:$('ncName').value.trim(),role:$('ncRole').value.trim(),email:$('ncEmail').value.trim(),phone:$('ncPhone').value.trim(),address:$('ncAddress').value.trim(),notes:$('ncNotes').value.trim()};
     if(!row.city&&!row.venue&&!row.name){ const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='Agrega al menos ciudad, hotel o contacto.'; return; }
+    // Aviso anti-duplicados (nombre / teléfono / dirección)
+    const dup=findDuplicateContact(row);
+    if(dup){ const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='Ya existe un contacto parecido: '+(dup.name||'—')+(dup.venue?(' · '+dup.venue):'')+'. No se guardó para evitar duplicados.'; return; }
     const btn=$('ncSave'); const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…';
     try{
-      await sb.from('contacts').insert(row);
+      const { error }=await sb.from('contacts').insert(row);
+      if(error){
+        const dupErr=/duplic|23505/i.test(error.message||'');
+        const m=$('ncMsg'); m.style.color='#b23b3b';
+        m.textContent = dupErr ? 'Ya existe un contacto con ese nombre y teléfono o dirección. No se guardó para evitar duplicados.' : ('No se pudo guardar: '+(error.message||error));
+        btn.disabled=false; btn.textContent=old; return;
+      }
       logChange('contacto','Contactos','agregó un contacto'+(row.name?' ('+row.name+')':''));
       btn.disabled=false; btn.textContent=old; closeContactModal();
       cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if($('cSearch')) $('cSearch').value='';
@@ -2299,6 +2399,310 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('noteInput').value='';
     await sb.from('status_notes').insert({body,author:(USER.email||'')});
     logChange('nota','Status','agregó una nota de status');
+  });
+});
+
+/* ============================================================
+   AGENDA / CALENDARIO  (recordatorios, reuniones; enlaces a
+   Google Calendar / Outlook M365 y descarga .ics)
+   ============================================================ */
+const CAL_KINDS={
+  'recordatorio':{ic:'⏰',cls:'k-rec'}, 'reunión':{ic:'👥',cls:'k-reu'},
+  'llamada':{ic:'📞',cls:'k-lla'}, 'visita':{ic:'📍',cls:'k-vis'},
+  'tarea':{ic:'✅',cls:'k-tar'}, 'otro':{ic:'•',cls:'k-otr'}
+};
+function calKind(k){ return CAL_KINDS[k]||CAL_KINDS['otro']; }
+let agMode='month';           // 'month' | 'list'
+let agRef=new Date();         // mes mostrado
+let _cmId=null;               // id de la cita en edición (null = nueva)
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function dtInputVal(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+function dateInputVal(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function calStart(item){ try{ return new Date(item.starts_at); }catch(e){ return new Date(); } }
+function calEnd(item){ if(item.ends_at){ try{ return new Date(item.ends_at); }catch(e){} } return null; }
+function dayKey(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+
+function fmtCalWhen(item){
+  const s=calStart(item);
+  const dstr=s.toLocaleDateString('es-US',{weekday:'short',day:'numeric',month:'short'});
+  if(item.all_day) return dstr+' · Todo el día';
+  const t=s.toLocaleTimeString('es-US',{hour:'numeric',minute:'2-digit'});
+  const e=calEnd(item);
+  let et=''; if(e && !isNaN(e)){ et=' – '+e.toLocaleTimeString('es-US',{hour:'numeric',minute:'2-digit'}); }
+  return dstr+' · '+t+et;
+}
+// datos ligados
+function calEventLabel(date_id){
+  if(!date_id) return '';
+  for(const {city,d} of allDates()){ if(d.id===date_id){ return (cityName(city.slug)||'').split(',')[0]+' · '+(d.label||'Evento'); } }
+  return '';
+}
+function calContact(contact_id){ return (state.contacts||[]).find(c=>c.id===contact_id)||null; }
+
+// ---- Enlaces a calendarios externos ----
+function icsStampUTC(d){ return d.getUTCFullYear()+pad2(d.getUTCMonth()+1)+pad2(d.getUTCDate())+'T'+pad2(d.getUTCHours())+pad2(d.getUTCMinutes())+pad2(d.getUTCSeconds())+'Z'; }
+function icsDateLocal(d){ return d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate()); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function calEndOrDefault(item){
+  const s=calStart(item); let e=calEnd(item);
+  if(e && !isNaN(e)) return e;
+  return item.all_day ? s : new Date(s.getTime()+60*60*1000); // +1h por defecto
+}
+function calDetailsText(item){
+  const parts=[];
+  const ev=calEventLabel(item.date_id); if(ev) parts.push('Evento: '+ev);
+  const c=calContact(item.contact_id); if(c){ parts.push('Contacto: '+[c.name,c.phone].filter(Boolean).join(' · ')); }
+  if(item.notes) parts.push(item.notes);
+  parts.push('— Amor Consciente · Venues');
+  return parts.join('\n');
+}
+function googleUrl(item){
+  const s=calStart(item), e=calEndOrDefault(item);
+  let dates;
+  if(item.all_day){ dates=icsDateLocal(s)+'/'+icsDateLocal(addDays(e,1)); }
+  else{ dates=icsStampUTC(s)+'/'+icsStampUTC(e); }
+  const p=new URLSearchParams({action:'TEMPLATE', text:item.title||'Cita', dates, details:calDetailsText(item), location:item.location||''});
+  return 'https://calendar.google.com/calendar/render?'+p.toString();
+}
+function outlookUrl(item){
+  const s=calStart(item), e=calEndOrDefault(item);
+  const p=new URLSearchParams({path:'/calendar/action/compose', rru:'addevent', subject:item.title||'Cita', body:calDetailsText(item), location:item.location||''});
+  if(item.all_day){ p.set('startdt', dateInputVal(s)); p.set('enddt', dateInputVal(addDays(e,1))); p.set('allday','true'); }
+  else{ p.set('startdt', s.toISOString()); p.set('enddt', e.toISOString()); }
+  return 'https://outlook.office.com/calendar/0/deeplink/compose?'+p.toString();
+}
+function icsEsc(t){ return String(t==null?'':t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function icsText(item){
+  const s=calStart(item), e=calEndOrDefault(item);
+  const uid=(item.id||('ac'+Date.now()))+'@amorconsciente';
+  let dts, dte;
+  if(item.all_day){ dts='DTSTART;VALUE=DATE:'+icsDateLocal(s); dte='DTEND;VALUE=DATE:'+icsDateLocal(addDays(e,1)); }
+  else{ dts='DTSTART:'+icsStampUTC(s); dte='DTEND:'+icsStampUTC(e); }
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Amor Consciente//Venues//ES','CALSCALE:GREGORIAN','BEGIN:VEVENT',
+    'UID:'+uid, 'DTSTAMP:'+icsStampUTC(new Date()), dts, dte,
+    'SUMMARY:'+icsEsc(item.title||'Cita'), 'DESCRIPTION:'+icsEsc(calDetailsText(item)),
+    (item.location?('LOCATION:'+icsEsc(item.location)):''), 'END:VEVENT','END:VCALENDAR'].filter(Boolean).join('\r\n');
+}
+function downloadIcs(item){
+  const blob=new Blob([icsText(item)],{type:'text/calendar;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=((item.title||'cita').replace(/[^\w\-]+/g,'_').slice(0,40)||'cita')+'.ics';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+// ---- Render de la Agenda ----
+function agItemsOn(d){
+  const key=dayKey(d);
+  return (state.calendar||[]).filter(it=>{ const s=calStart(it); return dayKey(s)===key; })
+    .sort((a,b)=> calStart(a)-calStart(b));
+}
+function agChip(it){
+  const k=calKind(it.kind);
+  const t=it.all_day?'':calStart(it).toLocaleTimeString('es-US',{hour:'numeric',minute:'2-digit'})+' ';
+  return `<button class="agchip ${k.cls} ${it.done?'agdone':''}" data-agedit="${it.id}" title="${esc(it.title||'')}">${k.ic} ${esc(t)}${esc((it.title||'').slice(0,22))}</button>`;
+}
+function renderAgenda(){
+  const lbl=$('agLabel'); const grid=$('agGrid'); if(!grid) return;
+  // toggle vistas
+  const mW=$('agMonthWrap'), lW=$('agListWrap');
+  if(mW) mW.classList.toggle('hidden', agMode!=='month');
+  if(lW) lW.classList.toggle('hidden', agMode!=='list');
+  document.querySelectorAll('[data-agview]').forEach(b=>{ b.classList.toggle('gold', b.dataset.agview===agMode); b.classList.toggle('ghost', b.dataset.agview!==agMode); });
+
+  if(agMode==='month'){
+    if(lbl) lbl.textContent = agRef.toLocaleDateString('es-US',{month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase());
+    const y=agRef.getFullYear(), m=agRef.getMonth();
+    const first=new Date(y,m,1); const startDow=first.getDay();
+    const gridStart=addDays(first, -startDow);
+    const todayKey=dayKey(new Date());
+    let html='';
+    for(let i=0;i<42;i++){
+      const d=addDays(gridStart,i);
+      const inMonth=d.getMonth()===m;
+      const items=agItemsOn(d);
+      const chips=items.slice(0,3).map(agChip).join('');
+      const more=items.length>3?`<span class="agmore">+${items.length-3} más</span>`:'';
+      html+=`<div class="agcell${inMonth?'':' agout'}${dayKey(d)===todayKey?' agtoday':''}" data-agday="${dayKey(d)}">
+        <div class="agdnum">${d.getDate()}</div>${chips}${more}</div>`;
+    }
+    grid.innerHTML=html;
+  } else {
+    if(lbl) lbl.textContent='Próximas citas';
+    const now=new Date(); const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    const all=(state.calendar||[]).slice().sort((a,b)=>calStart(a)-calStart(b));
+    const up=all.filter(it=>calStart(it)>=startToday);
+    const past=all.filter(it=>calStart(it)<startToday).reverse();
+    const box=$('agList');
+    const card=(it)=>{
+      const k=calKind(it.kind);
+      const ev=calEventLabel(it.date_id); const c=calContact(it.contact_id);
+      const chips=[ev?`<span class="agtag">📅 ${esc(ev)}</span>`:'', c?`<span class="agtag">👤 ${esc(c.name||'')}</span>`:'', it.location?`<span class="agtag">📍 ${esc(it.location)}</span>`:''].filter(Boolean).join('');
+      return `<div class="agitem ${it.done?'agdone':''}">
+        <div class="agi-main" data-agedit="${it.id}">
+          <div class="agi-when">${esc(fmtCalWhen(it))}</div>
+          <div class="agi-title">${k.ic} ${esc(it.title||'(sin título)')} ${it.done?'<span class="agok">✓ hecha</span>':''}</div>
+          ${chips?`<div class="agi-tags">${chips}</div>`:''}
+        </div>
+        <div class="agi-cal">
+          <a class="agbtn agbtn-g" href="${esc(googleUrl(it))}" target="_blank" rel="noopener">Google</a>
+          <a class="agbtn agbtn-o" href="${esc(outlookUrl(it))}" target="_blank" rel="noopener">Outlook</a>
+          <button class="agbtn agbtn-i" data-agics="${it.id}" type="button">.ics</button>
+        </div></div>`;
+    };
+    let html='';
+    html+= up.length ? up.map(card).join('') : '<div class="muted" style="padding:16px">No hay citas próximas. Crea una con “+ Nueva cita”.</div>';
+    if(past.length){ html+=`<div class="agpasthd">Pasadas</div>`+past.slice(0,50).map(card).join(''); }
+    if(box) box.innerHTML=html;
+  }
+}
+
+// ---- Modal de cita ----
+function fillCalSelects(){
+  const evSel=$('cmEvent'), coSel=$('cmContact'); if(!evSel||!coSel) return;
+  evSel.innerHTML='<option value="">— Ninguno —</option>'+allDates().map(({city,d})=>{
+    const t=(cityName(city.slug)||'').split(',')[0]+' · '+(d.label||'Evento')+(d.start_date?(' · '+fmtDay(d.start_date)):'');
+    return `<option value="${esc(d.id)}">${esc(t)}</option>`;
+  }).join('');
+  coSel.innerHTML='<option value="">— Ninguno —</option>'+(state.contacts||[]).map(c=>{
+    const t=(c.name||'(sin nombre)')+(c.venue?(' · '+c.venue):'');
+    return `<option value="${esc(c.id)}">${esc(t)}</option>`;
+  }).join('');
+}
+function setCalTimeInputs(startDate, endDate, allDay){
+  const s=$('cmStart'), e=$('cmEnd');
+  if(allDay){ s.type='date'; e.type='date'; s.value=dateInputVal(startDate); e.value=endDate?dateInputVal(endDate):dateInputVal(startDate); }
+  else{ s.type='datetime-local'; e.type='datetime-local'; s.value=dtInputVal(startDate); e.value=endDate?dtInputVal(endDate):dtInputVal(new Date(startDate.getTime()+60*60*1000)); }
+}
+function openCalModal(item, presets){
+  presets=presets||{};
+  fillCalSelects();
+  const m=$('cmMsg'); if(m) m.textContent='';
+  const links=$('cmLinks'); const del=$('cmDelete');
+  if(item){
+    _cmId=item.id;
+    $('cmTitle').textContent='Editar cita';
+    $('cmTitleInput').value=item.title||'';
+    $('cmKind').value=item.kind||'recordatorio';
+    $('cmAllDay').checked=!!item.all_day;
+    setCalTimeInputs(calStart(item), calEnd(item), !!item.all_day);
+    $('cmLoc').value=item.location||'';
+    $('cmEvent').value=item.date_id||'';
+    $('cmContact').value=item.contact_id||'';
+    $('cmNotes').value=item.notes||'';
+    $('cmDone').checked=!!item.done;
+    if(links) links.classList.remove('hidden');
+    if(del) del.classList.remove('hidden');
+  } else {
+    _cmId=null;
+    $('cmTitle').textContent='Nueva cita';
+    $('cmTitleInput').value='';
+    $('cmKind').value=presets.kind||'recordatorio';
+    $('cmAllDay').checked=false;
+    const base = presets.day ? new Date(presets.day+'T09:00') : (()=>{ const d=new Date(); d.setMinutes(0,0,0); d.setHours(d.getHours()+1); return d; })();
+    setCalTimeInputs(base, new Date(base.getTime()+60*60*1000), false);
+    $('cmLoc').value=presets.location||'';
+    $('cmEvent').value=presets.date_id||'';
+    $('cmContact').value=presets.contact_id||'';
+    $('cmNotes').value='';
+    $('cmDone').checked=false;
+    if(links) links.classList.add('hidden');
+    if(del) del.classList.add('hidden');
+  }
+  const cm=$('calModal'); if(cm) cm.classList.remove('hidden');
+  setTimeout(()=>{ const ti=$('cmTitleInput'); if(ti) ti.focus(); },50);
+}
+function closeCalModal(){ const cm=$('calModal'); if(cm) cm.classList.add('hidden'); }
+function readCalForm(){
+  const allDay=$('cmAllDay').checked;
+  const sv=$('cmStart').value, ev=$('cmEnd').value;
+  let starts_at=null, ends_at=null;
+  if(allDay){
+    if(sv) starts_at=new Date(sv+'T00:00').toISOString();
+    if(ev) ends_at=new Date(ev+'T00:00').toISOString();
+  } else {
+    if(sv) starts_at=new Date(sv).toISOString();
+    if(ev) ends_at=new Date(ev).toISOString();
+  }
+  return {
+    title:$('cmTitleInput').value.trim(), kind:$('cmKind').value, all_day:allDay,
+    starts_at, ends_at, location:$('cmLoc').value.trim(),
+    date_id:$('cmEvent').value||null, contact_id:$('cmContact').value||null,
+    notes:$('cmNotes').value.trim(), done:$('cmDone').checked
+  };
+}
+async function saveCalModal(){
+  if(!sb||!USER) return;
+  const row=readCalForm();
+  const m=$('cmMsg');
+  if(!row.title){ m.style.color='#b23b3b'; m.textContent='Escribe un título.'; return; }
+  if(!row.starts_at){ m.style.color='#b23b3b'; m.textContent='Elige la fecha/hora de inicio.'; return; }
+  const btn=$('cmSave'); const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    if(_cmId){
+      row.updated_at=new Date().toISOString();
+      const {error}=await sb.from('calendar_items').update(row).eq('id',_cmId);
+      if(error) throw error;
+      logChange('agenda','Agenda','actualizó una cita ('+row.title+')');
+    } else {
+      row.created_by=USER.email||'';
+      const {error}=await sb.from('calendar_items').insert(row);
+      if(error) throw error;
+      logChange('agenda','Agenda','agendó “'+row.title+'”');
+    }
+    btn.disabled=false; btn.textContent=old; closeCalModal();
+    setTimeout(loadAll,300);
+  }catch(e){ btn.disabled=false; btn.textContent=old; m.style.color='#b23b3b'; m.textContent='No se pudo guardar: '+(e.message||e); }
+}
+async function deleteCalItem(){
+  if(!sb||!USER||!_cmId) return;
+  const it=(state.calendar||[]).find(x=>x.id===_cmId);
+  if(!confirm('¿Eliminar esta cita de la agenda?')) return;
+  try{
+    await sb.from('calendar_items').delete().eq('id',_cmId);
+    logChange('agenda','Agenda','eliminó una cita'+(it&&it.title?(' ('+it.title+')'):''));
+    closeCalModal(); setTimeout(loadAll,300);
+  }catch(e){ const m=$('cmMsg'); m.style.color='#b23b3b'; m.textContent='No se pudo eliminar: '+(e.message||e); }
+}
+
+// ---- Wiring de la Agenda ----
+document.addEventListener('DOMContentLoaded', ()=>{
+  const byId=(id,ev,fn)=>{ const el=$(id); if(el) el.addEventListener(ev,fn); };
+  document.querySelectorAll('[data-agview]').forEach(b=> b.addEventListener('click', ()=>{ agMode=b.dataset.agview; renderAgenda(); }));
+  byId('agPrev','click', ()=>{ if(agMode==='month'){ agRef=new Date(agRef.getFullYear(),agRef.getMonth()-1,1); renderAgenda(); } });
+  byId('agNext','click', ()=>{ if(agMode==='month'){ agRef=new Date(agRef.getFullYear(),agRef.getMonth()+1,1); renderAgenda(); } });
+  byId('agToday','click', ()=>{ agRef=new Date(); agMode='month'; renderAgenda(); });
+  byId('agNew','click', ()=> openCalModal(null,{}));
+  byId('cmCancel','click', closeCalModal);
+  byId('cmSave','click', saveCalModal);
+  byId('cmDelete','click', deleteCalItem);
+  byId('cmAllDay','change', ()=>{
+    const allDay=$('cmAllDay').checked;
+    const sEl=$('cmStart'); let base;
+    try{ base = sEl.type==='date' ? new Date(sEl.value+'T09:00') : new Date(sEl.value); }catch(e){ base=new Date(); }
+    if(!base||isNaN(base)) base=new Date();
+    setCalTimeInputs(base, null, allDay);
+  });
+  byId('cmIcs','click', ()=>{ const it=(state.calendar||[]).find(x=>x.id===_cmId); if(it) downloadIcs(it); });
+  const cm=$('calModal'); if(cm) cm.addEventListener('click',(e)=>{ if(e.target===cm) closeCalModal(); });
+  // clicks en la cuadrícula / lista
+  document.addEventListener('click',(e)=>{
+    const cell=e.target.closest && e.target.closest('[data-agday]');
+    const edit=e.target.closest && e.target.closest('[data-agedit]');
+    const ics=e.target.closest && e.target.closest('[data-agics]');
+    if(ics){ const it=(state.calendar||[]).find(x=>x.id===ics.dataset.agics); if(it) downloadIcs(it); return; }
+    if(edit){ e.stopPropagation(); const it=(state.calendar||[]).find(x=>x.id===edit.dataset.agedit); if(it) openCalModal(it); return; }
+    if(cell && !edit){ openCalModal(null,{day:cell.dataset.agday}); }
+  });
+  // botón "Agendar" desde el modal de evento
+  byId('emAgendar','click', ()=>{ const id=_emId; closeEventModal(); openCalModal(null,{date_id:id, kind:'reunión'}); });
+  // botón "Agendar" desde un contacto (delegación)
+  document.addEventListener('click',(e)=>{
+    const b=e.target.closest && e.target.closest('[data-agc]'); if(!b) return;
+    const c=(state.contacts||[]).find(x=>x.id===b.dataset.agc);
+    openCalModal(null,{contact_id:b.dataset.agc, kind:'llamada', location:(c&&c.venue)||''});
   });
 });
 
@@ -2577,6 +2981,55 @@ function lpInit(){
 lpInit();
 
 </script>
+
+<!-- ===== Estilos de Agenda / Calendario ===== -->
+<style>
+#agenda .agtoolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0}
+#agenda .agviews{display:flex;gap:6px}
+#agenda .agnav{display:flex;align-items:center;gap:6px}
+#agenda .agmonthlabel{font-weight:700;color:var(--navy);margin-left:6px;font-size:15px}
+#agenda .agnew{margin-left:auto}
+.agcard{padding:12px}
+.agdow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+.agdow span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.aggrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.agcell{min-height:96px;border:1px solid var(--line);border-radius:10px;padding:6px;background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:border-color .12s,background .12s;overflow:hidden}
+.agcell:hover{border-color:var(--gold-soft);background:#fffdf6}
+.agcell.agout{background:#faf8f2;opacity:.55}
+.agcell.agtoday{border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy)}
+.agdnum{font-size:12px;font-weight:700;color:var(--ink);align-self:flex-end;line-height:1}
+.agchip{display:block;width:100%;text-align:left;border:none;border-radius:6px;padding:3px 6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.agchip.k-rec{background:#b26a12}.agchip.k-reu{background:#1e3a5f}.agchip.k-lla{background:#2e7d5b}.agchip.k-vis{background:#7a5cad}.agchip.k-tar{background:#3a3f47}.agchip.k-otr{background:#6b7480}
+.agchip.agdone{opacity:.5;text-decoration:line-through}
+.agmore{font-size:10.5px;color:var(--muted);font-weight:600;padding-left:2px}
+/* lista */
+#agList{display:flex;flex-direction:column;gap:10px}
+.agitem{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.agitem.agdone{opacity:.6}
+.agi-main{flex:1;min-width:220px;cursor:pointer}
+.agi-when{font-size:12px;color:var(--muted);font-weight:600}
+.agi-title{font-size:15px;font-weight:700;color:var(--navy);margin-top:2px}
+.agok{font-size:11.5px;color:var(--ok);font-weight:700;margin-left:4px}
+.agi-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.agtag{font-size:11.5px;background:var(--cream);border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--ink)}
+.agi-cal{display:flex;gap:6px;flex-wrap:wrap}
+.agpasthd{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 2px}
+.agbtn{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none;background:#fff;color:var(--ink)}
+.agbtn:hover{border-color:var(--gold-soft);text-decoration:none}
+.agbtn-g{background:#fef2f2;border-color:#f3c9c9;color:#b23b3b}
+.agbtn-o{background:#eef4fb;border-color:#c7dbf0;color:#1e3a5f}
+.agbtn-i{background:#f4f2ec}
+.agmodallinks{margin-top:12px;padding:12px;border:1px dashed var(--line);border-radius:10px;background:#fbfaf6}
+.agbtns{display:flex;gap:8px;flex-wrap:wrap}
+.agallday{display:inline-flex;align-items:center;gap:6px}
+.agdonerow{margin-top:2px}
+@media(max-width:640px){
+  .agcell{min-height:74px;padding:4px}
+  .agchip{font-size:10px;padding:2px 4px}
+  .agdow span{font-size:10px}
+  #agenda .agnew{margin-left:0}
+}
+</style>
 
 <!-- ===== PWA: botón de instalación + registro del service worker ===== -->
 <style>
