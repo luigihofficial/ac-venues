@@ -36,13 +36,13 @@ h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
 .hidden{display:none !important}
 
 /* ---------- Login gate ---------- */
-#gate{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy2));display:grid;place-items:center;z-index:100;padding:20px}
-#gate .box{background:#fff;border-radius:16px;box-shadow:var(--shadow);max-width:420px;width:100%;padding:30px 28px;text-align:center}
-#gate small{color:var(--gold);font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
-#gate h2{color:var(--navy);font-size:22px;margin:8px 0 4px}
-#gate p{color:var(--muted);font-size:14px;margin:0 0 18px}
-#gate input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:15px;margin-bottom:12px}
-#gate .msg{font-size:13px;margin-top:12px;min-height:18px}
+#gate,#pwReset{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy2));display:grid;place-items:center;z-index:100;padding:20px}
+#gate .box,#pwReset .box{background:#fff;border-radius:16px;box-shadow:var(--shadow);max-width:420px;width:100%;padding:30px 28px;text-align:center}
+#gate small,#pwReset small{color:var(--gold);font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+#gate h2,#pwReset h2{color:var(--navy);font-size:22px;margin:8px 0 4px}
+#gate p,#pwReset p{color:var(--muted);font-size:14px;margin:0 0 18px}
+#gate input,#pwReset input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:15px;margin-bottom:12px}
+#gate .msg,#pwReset .msg{font-size:13px;margin-top:12px;min-height:18px}
 .btn{background:var(--navy);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-weight:600;font-size:14px;cursor:pointer;width:100%}
 .btn:hover{background:var(--navy2)}
 .btn.sm{width:auto;padding:8px 13px;font-size:12.5px;border-radius:8px}
@@ -457,6 +457,20 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
     <input id="gatePass" type="password" placeholder="contraseña" autocomplete="current-password">
     <button class="btn" id="gateBtn">Entrar</button>
     <div class="msg muted" id="gateMsg"></div>
+  </div>
+</div>
+
+<!-- ===== Crear nueva contraseña (al llegar por el enlace de recuperación) ===== -->
+<div id="pwReset" class="hidden">
+  <div class="box">
+    <span class="gate-logo brandimg" role="img" aria-label="Amor Consciente"></span>
+    <small>Amor Consciente</small>
+    <h2>Crea tu contraseña</h2>
+    <p id="prIntro">Elige una contraseña nueva para tu acceso. Debe tener al menos 8 caracteres.</p>
+    <input id="prPass" type="password" placeholder="Nueva contraseña" autocomplete="new-password">
+    <input id="prPass2" type="password" placeholder="Repite la contraseña" autocomplete="new-password">
+    <button class="btn" id="prBtn">Guardar contraseña</button>
+    <div class="msg muted" id="prMsg"></div>
   </div>
 </div>
 
@@ -1395,14 +1409,46 @@ function init(){
     auth: {
       persistSession: true,      // guarda la sesión en el dispositivo
       autoRefreshToken: true,    // renueva el token solo, sin pedir clave
-      detectSessionInUrl: false, // no usamos enlaces mágicos
+      detectSessionInUrl: true,  // detecta el enlace de recuperación de contraseña
       storage: window.localStorage
       // se mantiene la storageKey por defecto para no cerrar sesiones ya abiertas
     }
   });
   wireAuthUI();
-  sb.auth.onAuthStateChange((_e,session)=>handleSession(session));
-  sb.auth.getSession().then(({data})=>handleSession(data.session));
+  // Si llega por el enlace de "restablecer contraseña", mostrar la pantalla para crearla
+  if(/type=recovery/.test(location.hash) || /type=recovery/.test(location.search)) showResetPassword();
+  sb.auth.onAuthStateChange((event,session)=>{
+    if(event==='PASSWORD_RECOVERY'){ showResetPassword(); return; }
+    if(_recovering) return;              // en modo recuperación, no entrar hasta crear la clave
+    handleSession(session);
+  });
+  sb.auth.getSession().then(({data})=>{ if(!_recovering) handleSession(data.session); });
+}
+
+// ---------- Restablecer contraseña (enlace de recuperación) ----------
+let _recovering=false;
+function showResetPassword(){
+  _recovering=true;
+  const g=$('gate'); if(g) g.classList.add('hidden');
+  const a=$('app'); if(a) a.classList.add('hidden');
+  const pr=$('pwReset'); if(pr) pr.classList.remove('hidden');
+  setTimeout(()=>{ const p=$('prPass'); if(p) p.focus(); },60);
+}
+async function savePwReset(){
+  const p1=$('prPass').value||'', p2=$('prPass2').value||''; const msg=$('prMsg');
+  if(p1.length<8){ msg.style.color='#b23b3b'; msg.textContent='La contraseña debe tener al menos 8 caracteres.'; return; }
+  if(p1!==p2){ msg.style.color='#b23b3b'; msg.textContent='Las contraseñas no coinciden.'; return; }
+  const btn=$('prBtn'); const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…'; msg.style.color='#5b6472'; msg.textContent='Guardando…';
+  try{
+    const { error } = await sb.auth.updateUser({ password: p1 });
+    if(error){ btn.disabled=false; btn.textContent=old; msg.style.color='#b23b3b'; msg.textContent='No se pudo guardar: '+(/expired|invalid/i.test(error.message||'')?'el enlace caducó. Pide uno nuevo.':(error.message||error)); return; }
+    _recovering=false;
+    try{ history.replaceState(null,'',location.pathname); }catch(e){}
+    msg.style.color='#2e7d5b'; msg.textContent='✅ Contraseña creada. Entrando…';
+    const pr=$('pwReset'); if(pr) pr.classList.add('hidden');
+    const { data } = await sb.auth.getSession();
+    handleSession(data.session);
+  }catch(e){ btn.disabled=false; btn.textContent=old; msg.style.color='#b23b3b'; msg.textContent='No se pudo guardar: '+(e.message||e); }
 }
 
 // ---------- Auth ----------
@@ -1411,6 +1457,8 @@ function wireAuthUI(){
   $('gateEmail').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
   $('gatePass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
   $('logoutBtn').addEventListener('click', async()=>{await sb.auth.signOut();location.reload();});
+  const prBtn=$('prBtn'); if(prBtn) prBtn.addEventListener('click', savePwReset);
+  const pr2=$('prPass2'); if(pr2) pr2.addEventListener('keydown',e=>{if(e.key==='Enter')savePwReset();});
 }
 async function doLogin(){
   const email=($('gateEmail').value||'').trim().toLowerCase();
