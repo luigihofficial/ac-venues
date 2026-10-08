@@ -779,8 +779,8 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <!-- ===== Nuevo contacto ===== -->
   <div id="contactModal" class="hidden pw-overlay">
     <div class="pw-box cbox">
-      <h3>Nuevo contacto</h3>
-      <p class="muted" style="font-size:13px;margin:0 0 14px">Completa los datos. El contacto aparecerá de primero en el directorio.</p>
+      <h3 id="ncTitle">Nuevo contacto</h3>
+      <p class="muted" id="ncSubtitle" style="font-size:13px;margin:0 0 14px">Completa los datos. El contacto aparecerá de primero en el directorio.</p>
       <div class="cgrid">
         <label>Ciudad<input id="ncCity" placeholder="Ciudad, Estado"></label>
         <label>Hotel / Venue<input id="ncVenue" placeholder="Nombre del hotel"></label>
@@ -789,12 +789,19 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
         <label>Email<input id="ncEmail" type="email" placeholder="correo@hotel.com"></label>
         <label>Teléfono<input id="ncPhone" placeholder="Teléfono"></label>
         <label class="cfull">Dirección<input id="ncAddress" placeholder="Dirección del hotel/salón"></label>
-        <label class="cfull">Notas<textarea id="ncNotes" rows="2" placeholder="Notas (opcional)"></textarea></label>
+        <label class="ncedit-only" id="ncLastCallWrap">Última llamada<span style="display:flex;gap:6px;align-items:center;margin-top:4px"><input id="ncLastCall" type="date" style="flex:1"><button class="btn sm gold" type="button" id="ncCallToday" title="Marcar llamada de hoy">Hoy</button></span></label>
+        <label class="cfull">Notas<textarea id="ncNotes" rows="3" placeholder="Notas (opcional)"></textarea></label>
       </div>
       <div id="ncMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-        <button class="btn sm ghost" id="ncCancel">Cancelar</button>
-        <button class="btn sm gold" id="ncSave">Guardar contacto</button>
+      <div class="emfoot">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn sm ghost cdel ncedit-only" id="ncDelete">🗑 Eliminar</button>
+          <button class="btn sm ghost ncedit-only" id="ncAgendar">📅 Agendar</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm ghost" id="ncCancel">Cancelar</button>
+          <button class="btn sm gold" id="ncSave">Guardar contacto</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1942,7 +1949,7 @@ function renderContacts(){
        ${callBadge(c.last_call)}
      </div></td>
      <td><input class="cell" data-cfield="notes" value="${esc(c.notes)}"></td>
-     <td><div style="display:flex;gap:4px"><button class="btn sm ghost" data-agc="${c.id}" title="Agendar">📅</button><button class="btn sm ghost" data-delc="${c.id}">✕</button></div></td>
+     <td><div style="display:flex;gap:4px"><button class="btn sm gold" data-openc="${c.id}" title="Abrir para leer / editar">Abrir</button><button class="btn sm ghost" data-agc="${c.id}" title="Agendar">📅</button><button class="btn sm ghost" data-delc="${c.id}">✕</button></div></td>
    </tr>`).join('') || `<tr><td colspan="10" class="muted" style="padding:14px">${all.length? 'Ningún contacto coincide con la búsqueda o el filtro.' : 'Sin contactos todavía. Agrega el primero abajo.'}</td></tr>`;
 }
 function renderStatus(){
@@ -2353,9 +2360,46 @@ document.addEventListener('DOMContentLoaded',()=>{
   const fv=$('fVenue'); if(fv) fv.addEventListener('change', ()=>{ cFilter.venue=fv.value; renderContacts(); });
   const cc=$('cClear'); if(cc) cc.addEventListener('click', ()=>{ cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if(cs)cs.value=''; renderContacts(); });
   const NC_IDS=['ncCity','ncVenue','ncName','ncRole','ncEmail','ncPhone','ncAddress','ncNotes'];
-  function openContactModal(){ NC_IDS.forEach(id=>{ if($(id)) $(id).value=''; }); const m=$('ncMsg'); if(m){ m.textContent=''; } const cm=$('contactModal'); if(cm){ cm.classList.remove('hidden'); setTimeout(()=>{ if($('ncCity')) $('ncCity').focus(); },50); } }
-  function closeContactModal(){ const cm=$('contactModal'); if(cm) cm.classList.add('hidden'); }
-  const cNew=$('cNew'); if(cNew) cNew.addEventListener('click', openContactModal);
+  let _ncEditId=null;
+  function setContactEditUI(editing){ document.querySelectorAll('#contactModal .ncedit-only').forEach(el=>el.classList.toggle('hidden', !editing)); }
+  function openContactModal(contact){
+    const m=$('ncMsg'); if(m){ m.textContent=''; m.style.color=''; }
+    if(contact){
+      _ncEditId=contact.id;
+      $('ncTitle').textContent='Editar contacto';
+      const sub=$('ncSubtitle'); if(sub) sub.textContent='Lee y edita los datos. Los cambios se guardan para todo el equipo.';
+      $('ncCity').value=contact.city||''; $('ncVenue').value=contact.venue||''; $('ncName').value=contact.name||'';
+      $('ncRole').value=contact.role||''; $('ncEmail').value=contact.email||''; $('ncPhone').value=contact.phone||'';
+      $('ncAddress').value=contact.address||''; $('ncNotes').value=contact.notes||'';
+      if($('ncLastCall')) $('ncLastCall').value=contact.last_call||'';
+      $('ncSave').textContent='Guardar cambios';
+      setContactEditUI(true);
+    } else {
+      _ncEditId=null;
+      $('ncTitle').textContent='Nuevo contacto';
+      const sub=$('ncSubtitle'); if(sub) sub.textContent='Completa los datos. El contacto aparecerá de primero en el directorio.';
+      NC_IDS.forEach(id=>{ if($(id)) $(id).value=''; }); if($('ncLastCall')) $('ncLastCall').value='';
+      $('ncSave').textContent='Guardar contacto';
+      setContactEditUI(false);
+    }
+    const cm=$('contactModal'); if(cm){ cm.classList.remove('hidden'); setTimeout(()=>{ if($('ncName')) $('ncName').focus(); },50); }
+  }
+  function closeContactModal(){ const cm=$('contactModal'); if(cm) cm.classList.add('hidden'); _ncEditId=null; }
+  const cNew=$('cNew'); if(cNew) cNew.addEventListener('click', ()=> openContactModal());
+  // Abrir un contacto en su ventana individual (lectura / edición)
+  document.addEventListener('click',(e)=>{
+    const b=e.target.closest && e.target.closest('[data-openc]'); if(!b) return;
+    const c=(state.contacts||[]).find(x=>x.id===b.dataset.openc); if(c) openContactModal(c);
+  });
+  const ncToday=$('ncCallToday'); if(ncToday) ncToday.addEventListener('click', ()=>{ if($('ncLastCall')) $('ncLastCall').value=new Date().toISOString().slice(0,10); });
+  const ncAg=$('ncAgendar'); if(ncAg) ncAg.addEventListener('click', ()=>{ if(!_ncEditId) return; const id=_ncEditId; const ven=$('ncVenue').value||''; closeContactModal(); openCalModal(null,{contact_id:id, kind:'llamada', location:ven}); });
+  const ncDel=$('ncDelete'); if(ncDel) ncDel.addEventListener('click', async ()=>{
+    if(!sb||!USER||!_ncEditId) return;
+    const c=(state.contacts||[]).find(x=>x.id===_ncEditId);
+    if(!confirm('¿Eliminar este contacto?'+(c&&c.name?(' ('+c.name+')'):''))) return;
+    try{ await sb.from('contacts').delete().eq('id',_ncEditId); logChange('contacto','Contactos','eliminó un contacto'+(c&&c.name?(' ('+c.name+')'):'')); closeContactModal(); setTimeout(loadAll,300); }
+    catch(err){ const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='No se pudo eliminar: '+(err.message||err); }
+  });
   const emCancel=$('emCancel'); if(emCancel) emCancel.addEventListener('click', closeEventModal);
   const emSave=$('emSave'); if(emSave) emSave.addEventListener('click', saveEventModal);
   const emOv=$('eventModal'); if(emOv) emOv.addEventListener('click',(e)=>{ if(e.target===emOv) closeEventModal(); });
@@ -2374,22 +2418,26 @@ document.addEventListener('DOMContentLoaded',()=>{
   const ncSave=$('ncSave'); if(ncSave) ncSave.addEventListener('click', async ()=>{
     if(!sb||!USER) return;
     const row={city:$('ncCity').value.trim(),venue:$('ncVenue').value.trim(),name:$('ncName').value.trim(),role:$('ncRole').value.trim(),email:$('ncEmail').value.trim(),phone:$('ncPhone').value.trim(),address:$('ncAddress').value.trim(),notes:$('ncNotes').value.trim()};
+    if($('ncLastCall')) row.last_call = ($('ncLastCall').value || null);
     if(!row.city&&!row.venue&&!row.name){ const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='Agrega al menos ciudad, hotel o contacto.'; return; }
-    // Aviso anti-duplicados (nombre / teléfono / dirección)
-    const dup=findDuplicateContact(row);
+    // Aviso anti-duplicados (nombre / teléfono / dirección) — al editar, se ignora el propio contacto
+    const dup=findDuplicateContact(row, _ncEditId);
     if(dup){ const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='Ya existe un contacto parecido: '+(dup.name||'—')+(dup.venue?(' · '+dup.venue):'')+'. No se guardó para evitar duplicados.'; return; }
     const btn=$('ncSave'); const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…';
+    const editing=_ncEditId;
     try{
-      const { error }=await sb.from('contacts').insert(row);
+      const { error } = editing
+        ? await sb.from('contacts').update(row).eq('id', editing)
+        : await sb.from('contacts').insert(row);
       if(error){
         const dupErr=/duplic|23505/i.test(error.message||'');
         const m=$('ncMsg'); m.style.color='#b23b3b';
         m.textContent = dupErr ? 'Ya existe un contacto con ese nombre y teléfono o dirección. No se guardó para evitar duplicados.' : ('No se pudo guardar: '+(error.message||error));
         btn.disabled=false; btn.textContent=old; return;
       }
-      logChange('contacto','Contactos','agregó un contacto'+(row.name?' ('+row.name+')':''));
+      logChange('contacto','Contactos',(editing?'editó un contacto':'agregó un contacto')+(row.name?' ('+row.name+')':''));
       btn.disabled=false; btn.textContent=old; closeContactModal();
-      cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if($('cSearch')) $('cSearch').value='';
+      if(!editing){ cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if($('cSearch')) $('cSearch').value=''; }
       setTimeout(loadAll, 400);
     }catch(e){ btn.disabled=false; btn.textContent=old; const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='No se pudo guardar: '+(e.message||e); }
   });
