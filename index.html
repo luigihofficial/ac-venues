@@ -496,6 +496,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <a href="#ciudades">Ciudades / Eventos</a>
       <a href="#matriz">Evaluación</a>
       <a href="#ofertas">Ofertas</a>
+      <a href="#rfp">Enviar RFP</a>
       <a href="#pendientes">Pendientes</a>
     </div>
   </div>
@@ -707,6 +708,78 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <div id="agList"></div>
     </div>
   </section>
+
+  <!-- ENVIAR RFP (dinámico) -->
+  <section id="rfp">
+    <div class="sec-head"><div class="num">📤</div><div><h2>Enviar RFP a vendors</h2><p>Solicita cotizaciones a los vendors de una zona con una plantilla autollenada con los datos del evento. Las respuestas llegan al correo del equipo.</p></div></div>
+
+    <div class="card rfpcard">
+      <div class="rfprow">
+        <label class="rfplab">Evento
+          <select id="rfpEvent"></select>
+        </label>
+        <label class="rfplab">Idioma del correo
+          <select id="rfpLang"><option value="en">Inglés</option><option value="es">Español</option></select>
+        </label>
+      </div>
+
+      <div class="rfpsec">Datos del evento (ajústalos antes de enviar)</div>
+      <div class="rfpgrid">
+        <label>Nombre del evento<input id="rfField_name" placeholder="Ej. Despertar"></label>
+        <label>Zona / ciudad<input id="rfField_city" placeholder="Ciudad, Estado"></label>
+        <label>Fechas preferidas<input id="rfField_dates" placeholder="Ej. 23–27 sep 2026"></label>
+        <label>Fechas alternas<input id="rfField_alt" placeholder="Opcional"></label>
+        <label>Asistentes (aprox.)<input id="rfField_attendees" placeholder="Ej. 150"></label>
+        <label>Montaje del salón<input id="rfField_setup" placeholder="Ej. U-shape triple / escuela"></label>
+        <label>Salas adicionales<input id="rfField_breakouts" placeholder="Ej. 1 green room"></label>
+        <label>Días y horario<input id="rfField_schedule" placeholder="Ej. 3 días, 8:00am–6:00pm"></label>
+        <label>Catering<input id="rfField_catering" placeholder="Ej. café AM/PM + almuerzo"></label>
+        <label>Audio/Video<input id="rfField_av" placeholder="Ej. proyector, pantalla, sonido, micrófonos"></label>
+        <label>Parqueo<input id="rfField_parking" placeholder="Ej. incluido / costo por persona"></label>
+        <label>WiFi<input id="rfField_wifi" placeholder="Ej. incluido para asistentes"></label>
+        <label>Presupuesto (opcional)<input id="rfField_budget" placeholder="Rango, si quieres compartirlo"></label>
+        <label>Responder antes de<input id="rfField_deadline" type="date"></label>
+        <label>Contacto (nombre)<input id="rfField_cname" placeholder="Nombre del equipo"></label>
+        <label>Contacto (email)<input id="rfField_cemail" placeholder="global@amorconsciente.com"></label>
+        <label>Contacto (teléfono)<input id="rfField_cphone" placeholder="Opcional"></label>
+        <label class="cfull">Notas / requisitos especiales<textarea id="rfField_notes" rows="2" placeholder="Cualquier requerimiento adicional"></textarea></label>
+      </div>
+
+      <div class="rfpsec">Vendors de la zona <span id="rfpVenCount" class="muted" style="font-weight:400;font-size:12.5px"></span>
+        <span class="rfpselbtns"><button class="btn sm ghost" id="rfpSelAll" type="button">Todos</button><button class="btn sm ghost" id="rfpSelNone" type="button">Ninguno</button></span>
+      </div>
+      <div id="rfpVendors" class="rfpvendors"></div>
+
+      <div class="rfpsec">Vista previa del correo</div>
+      <div class="rfpprev">
+        <div class="rfpprev-subj"><b>Asunto:</b> <span id="rfpPrevSubj"></span></div>
+        <iframe id="rfpPrevFrame" title="Vista previa" style="width:100%;height:520px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe>
+      </div>
+
+      <div id="rfpMsg" class="muted" style="font-size:13px;min-height:18px;margin-top:10px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <span class="muted" style="font-size:12px;margin-right:auto">🔒 Se envía desde la app · respuestas al equipo · copia (CCO) al equipo</span>
+        <button class="btn sm gold" id="rfpSend">Enviar RFP</button>
+      </div>
+    </div>
+
+    <div class="rfpsec" style="margin-top:22px">Enviados recientemente</div>
+    <div id="rfpHistory" class="rfphist"></div>
+  </section>
+
+  <!-- ===== Confirmar envío de RFP ===== -->
+  <div id="rfpConfirm" class="hidden pw-overlay">
+    <div class="pw-box cbox">
+      <h3>Confirmar envío de RFP</h3>
+      <p class="muted" id="rfpConfirmSub" style="font-size:13px;margin:0 0 12px"></p>
+      <div id="rfpConfirmList" class="rfpconfirm-list"></div>
+      <div id="rfpConfirmMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn sm ghost" id="rfpConfirmCancel">Cancelar</button>
+        <button class="btn sm gold" id="rfpConfirmGo">Enviar ahora</button>
+      </div>
+    </div>
+  </div>
 
   <!-- PLANTILLA CORREO (estático) -->
   <section id="plantilla">
@@ -1146,7 +1219,7 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 
 // ---------- Estado ----------
 let sb=null, USER=null;
-const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[], audit:[], calendar:[]};
+const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[], audit:[], calendar:[], rfplog:[]};
 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
@@ -1171,6 +1244,7 @@ function routeView(){
   if(hash===HOME_VIEW) renderHome();
   if(hash==='ofertas' && typeof renderOffers==='function') renderOffers();
   if(hash==='agenda' && typeof renderAgenda==='function') renderAgenda();
+  if(hash==='rfp' && typeof renderRfp==='function') renderRfp();
   window.scrollTo({top:0});
 }
 window.addEventListener('hashchange', routeView);
@@ -1534,6 +1608,9 @@ async function loadAll(){
   try{ const cal=await sb.from('calendar_items').select('*').order('starts_at',{ascending:true});
        state.calendar=cal.data||[]; }
   catch(e){ state.calendar=[]; }
+  try{ const rl=await sb.from('rfp_log').select('*').order('sent_at',{ascending:false});
+       state.rfplog=rl.data||[]; }
+  catch(e){ state.rfplog=[]; }
   renderAll();
 }
 // ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
@@ -1560,7 +1637,7 @@ function subscribeRealtime(){
 }
 
 // ---------- Render ----------
-function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); }
+function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); if(typeof renderRfp==='function') renderRfp(); }
 
 const AUDIT_ICONS={fase:'📌',pendiente:'☑️',evaluación:'⭐',evento:'📅',fecha:'📅',hotel:'🏨',empresa:'🏢',contacto:'👤',nota:'📝',seguridad:'🔒'};
 function renderAudit(){
@@ -2803,6 +2880,198 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 /* ============================================================
+   ENVIAR RFP  (solicitud de cotización a vendors por zona)
+   ============================================================ */
+// Mapea un texto (ciudad/venue/dirección) a una de las 8 zonas (slug)
+function metroOf(text){
+  const s=(text||'').toLowerCase();
+  if(/houston/.test(s)) return 'houston';
+  if(/irving|grapevine|dallas|fort worth|dfw|plano|arlington/.test(s)) return 'dallas';
+  if(/glendale|los angeles|\blax\b|burbank|pasadena|santa monica|culver/.test(s)) return 'la';
+  if(/phoenix|scottsdale|tempe|mesa|chandler/.test(s)) return 'phoenix';
+  if(/salt lake|sandy|\but\b|utah/.test(s)) return 'slc';
+  if(/orlando|lake buena vista|kissimmee|seaworld/.test(s)) return 'orlando';
+  if(/atlanta|\bga\b|georgia/.test(s)) return 'atlanta';
+  if(/miami|doral|coral gables|brickell/.test(s)) return 'miami';
+  return '';
+}
+function contactMetro(c){ return metroOf([c.city,c.venue,c.address].filter(Boolean).join(' ')); }
+
+const RF_IDS=['name','city','dates','alt','attendees','setup','breakouts','schedule','catering','av','parking','wifi','budget','deadline','cname','cemail','cphone','notes'];
+const EN_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+let _rfpEvent='';            // date_id seleccionado
+let _rfpApplied='';          // date_id cuyos datos ya se autollenaron
+let _rfpSel=new Set();       // ids de contactos seleccionados
+
+function rfpGet(){ const d={}; RF_IDS.forEach(k=>{ const el=$('rfField_'+k); d[k]=el?el.value.trim():''; }); d.org='Amor Consciente'; return d; }
+const RF_MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function rfpDateRange(s,e){
+  if(!s) return '';
+  try{ const [sy,sm,sd]=s.split('-');
+    if(e && e!==s){ const [ey,em,ed]=e.split('-');
+      if(sy===ey&&sm===em) return `${+sd}–${+ed} ${RF_MES[+sm-1]} ${sy}`;
+      if(sy===ey) return `${+sd} ${RF_MES[+sm-1]} – ${+ed} ${RF_MES[+em-1]} ${sy}`;
+      return `${+sd} ${RF_MES[+sm-1]} ${sy} – ${+ed} ${RF_MES[+em-1]} ${ey}`;
+    }
+    return `${+sd} ${RF_MES[+sm-1]} ${sy}`;
+  }catch(err){ return s; }
+}
+function rfpFmtDeadline(iso,lang){
+  if(!iso) return '';
+  try{ const [y,m,dd]=iso.split('-'); return lang==='en' ? `${EN_MONTHS[+m-1]} ${+dd}, ${y}` : `${+dd} ${MES[+m-1]} ${y}`; }catch(e){ return iso; }
+}
+function buildRfpEmail(lang, d){
+  const T = lang==='en'
+    ? {rfp:'Request for Proposal',dates:'Preferred dates',alt:'Alternate dates',att:'Expected attendees',setup:'Room setup',bk:'Breakout rooms',sch:'Schedule',cat:'Catering',av:'Audio / Visual',park:'Parking',wifi:'WiFi',bud:'Budget range',notes:'Special requests',
+       subject:`RFP — ${d.org} event in ${d.city||''}${d.dates?(' ('+d.dates+')'):''}`,
+       hi:'Hello,',
+       intro:`We are ${d.org}, planning a corporate event${d.city?(' in <b>'+esc(d.city)+'</b>'):''}, and we would like to request a proposal from your venue.`,
+       ask:'Could you please share your availability and a quote for the requirements below',
+       by: d.deadline?(` by <b>${rfpFmtDeadline(d.deadline,'en')}</b>`):'',
+       close:'Please reply to this email with availability, pricing, and any options you recommend. Thank you — we look forward to your proposal.',
+       reqs:'Event requirements', contact:'Contact'}
+    : {rfp:'Solicitud de cotización',dates:'Fechas preferidas',alt:'Fechas alternas',att:'Asistentes (aprox.)',setup:'Montaje del salón',bk:'Salas adicionales',sch:'Días y horario',cat:'Catering',av:'Audio / Video',park:'Parqueo',wifi:'WiFi',bud:'Presupuesto',notes:'Requisitos especiales',
+       subject:`Solicitud de cotización (RFP) — Evento de ${d.org} en ${d.city||''}${d.dates?(' ('+d.dates+')'):''}`,
+       hi:'Hola,',
+       intro:`Somos ${d.org} y estamos organizando un evento corporativo${d.city?(' en <b>'+esc(d.city)+'</b>'):''}. Nos gustaría solicitar una cotización de su venue.`,
+       ask:'¿Podrían compartir su disponibilidad y una cotización para los requerimientos de abajo',
+       by: d.deadline?(` antes del <b>${rfpFmtDeadline(d.deadline,'es')}</b>`):'',
+       close:'Por favor responda a este correo con disponibilidad, precios y las opciones que recomienden. ¡Gracias! Quedamos atentos a su propuesta.',
+       reqs:'Requerimientos del evento', contact:'Contacto'};
+  const row=(k,v)=> v ? `<tr><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600">${esc(k)}</td><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#22303f;font-size:14px"><b>${esc(v)}</b></td></tr>` : '';
+  const rows=[row(T.dates,d.dates),row(T.alt,d.alt),row(T.att,d.attendees),row(T.setup,d.setup),row(T.bk,d.breakouts),row(T.sch,d.schedule),row(T.cat,d.catering),row(T.av,d.av),row(T.park,d.parking),row(T.wifi,d.wifi),row(T.bud,d.budget)].join('');
+  const contact=[esc(d.cname||''),esc(d.cemail||''),esc(d.cphone||'')].filter(Boolean).join(' · ');
+  const notesHtml = d.notes ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6"><b>${esc(T.notes)}:</b> ${esc(d.notes).replace(/\n/g,'<br>')}</p>` : '';
+  const html = `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
+  <div style="max-width:640px;margin:0 auto;padding:0 14px 40px">
+    <div style="text-align:center;background:linear-gradient(135deg,#1e3a5f,#14263f);border-radius:0 0 14px 14px;padding:22px 16px;border-bottom:3px solid #b8860b">
+      <div style="color:#fff;font-size:18px;font-weight:800">${esc(d.org)}</div>
+      <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:4px">${esc(T.rfp)}</div>
+    </div>
+    <div style="background:#fffdf8;border:1px solid #e6ddca;border-radius:14px;padding:22px 20px;margin-top:16px">
+      <p style="margin:0 0 10px;font-size:15px">${T.hi}</p>
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.6">${T.intro}</p>
+      <p style="margin:0 0 6px;font-size:14px;line-height:1.6">${T.ask}${T.by}?</p>
+      <div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px">${esc(T.reqs)}</div>
+      <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #efe8da;border-radius:10px;overflow:hidden">${rows||('<tr><td style="padding:12px;color:#8a9199;font-size:13px">—</td></tr>')}</table>
+      ${notesHtml}
+      <p style="margin:16px 0 0;font-size:14px;line-height:1.6">${T.close}</p>
+      ${contact?`<p style="margin:14px 0 0;font-size:13.5px;color:#22303f"><b>${esc(T.contact)}:</b> ${contact}</p>`:''}
+    </div>
+    <div style="text-align:center;color:#8a9199;font-size:11.5px;margin-top:16px">${esc(d.org)} · Venues</div>
+  </div></body></html>`;
+  return { subject:T.subject, html };
+}
+function rfpUpdatePreview(){
+  const lang=($('rfpLang')||{}).value||'en';
+  const d=rfpGet();
+  const { subject, html } = buildRfpEmail(lang, d);
+  const s=$('rfpPrevSubj'); if(s) s.textContent=subject;
+  const f=$('rfpPrevFrame'); if(f) f.srcdoc=html;
+}
+function rfpEventSlug(){ return _rfpEvent ? citySlugOfDate(_rfpEvent) : ''; }
+function rfpApplyEvent(dateId){
+  // autollena los campos a partir del evento elegido (no pisa si el usuario ya editó el mismo evento)
+  let d=null; for(const k in state.dates){ const f=(state.dates[k]||[]).find(x=>x.id===dateId); if(f){ d=f; break; } }
+  const slug=citySlugOfDate(dateId); const sh=(state.sheets&&state.sheets[dateId])||{};
+  const set=(k,v)=>{ const el=$('rfField_'+k); if(el) el.value=(v==null?'':v); };
+  set('name', d?(d.label||''):''); set('city', cityName(slug)); set('dates', (d?rfpDateRange(d.start_date,d.end_date):''));
+  set('setup', sh.room_name||''); set('parking', sh.parking_cost||''); set('wifi', sh.wifi_included==='si'?'Incluido':(sh.wifi_included==='no'?'No':''));
+  if(!$('rfField_cemail').value) set('cemail','global@amorconsciente.com');
+  _rfpApplied=dateId;
+  // reset selección: todos los de la zona con email
+  _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim()).map(c=>c.id));
+}
+function renderRfpVendors(){
+  const box=$('rfpVendors'); if(!box) return;
+  const slug=rfpEventSlug();
+  const list=(state.contacts||[]).filter(c=>contactMetro(c)===slug);
+  const cnt=$('rfpVenCount');
+  const withEmail=list.filter(c=>c.email&&c.email.trim()).length;
+  if(cnt) cnt.textContent = slug ? `· ${list.length} en la zona (${withEmail} con email · ${_rfpSel.size} seleccionados)` : '· elige un evento';
+  // historial de envíos por vendor para este evento
+  const sentEmails=new Set((state.rfplog||[]).filter(r=>r.date_id===_rfpEvent).map(r=>(r.to_email||'').toLowerCase()));
+  box.innerHTML = list.length ? list.map(c=>{
+    const has=!!(c.email&&c.email.trim());
+    const checked = has && _rfpSel.has(c.id) ? 'checked' : '';
+    const sent = has && sentEmails.has(c.email.trim().toLowerCase());
+    return `<label class="rfpven ${has?'':'noemail'}">
+      <input type="checkbox" data-rfpven="${c.id}" ${checked} ${has?'':'disabled'}>
+      <span><span class="vn">${esc(c.venue||c.name||'—')}</span>
+      <span class="vm">${has?esc(c.email):'<span class="noem">sin email</span>'}${c.name&&c.venue?(' · '+esc(c.name)):''}${sent?' · <span class="sentbadge">✓ enviado</span>':''}</span></span>
+    </label>`;
+  }).join('') : `<div class="muted" style="padding:10px">${slug?'No hay contactos en esta zona. Agrégalos en Contactos.':'Elige un evento para ver sus vendors.'}</div>`;
+}
+function renderRfpHistory(){
+  const box=$('rfpHistory'); if(!box) return;
+  const rows=(state.rfplog||[]).slice(0,25);
+  box.innerHTML = rows.length ? rows.map(r=>{
+    const ev = r.date_id ? dateLabelById(r.date_id) : (r.city_slug?cityName(r.city_slug).split(',')[0]:'');
+    return `<div class="rfphrow"><span><b>${esc(r.venue||r.to_name||r.to_email)}</b> <span class="muted">· ${esc(r.to_email)}</span>${ev?(' · '+esc(ev)):''}</span><span class="hwhen">${esc(fmtDateTime(r.sent_at))}</span></div>`;
+  }).join('') : '<div class="muted" style="font-size:13px">Aún no has enviado RFPs.</div>';
+}
+function renderRfp(){
+  const sel=$('rfpEvent'); if(!sel) return;
+  const opts=allDates().map(({city,d})=>({id:d.id, label:(cityName(city.slug)||'').split(',')[0]+' · '+(d.label||'Evento')+(d.start_date?(' · '+fmtDay(d.start_date)):'')}));
+  if(!_rfpEvent && opts.length) _rfpEvent=opts[0].id;
+  sel.innerHTML = opts.length ? opts.map(o=>`<option value="${esc(o.id)}"${o.id===_rfpEvent?' selected':''}>${esc(o.label)}</option>`).join('') : '<option value="">(sin eventos)</option>';
+  if(_rfpEvent && _rfpApplied!==_rfpEvent && !$('rfField_name').value){ rfpApplyEvent(_rfpEvent); }
+  renderRfpVendors();
+  renderRfpHistory();
+  rfpUpdatePreview();
+}
+function rfpRecipients(){
+  const slug=rfpEventSlug();
+  return (state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && _rfpSel.has(c.id))
+    .map(c=>({email:c.email.trim(), name:c.name||'', venue:c.venue||''}));
+}
+async function rfpDoSend(){
+  const recipients=rfpRecipients();
+  const lang=($('rfpLang')||{}).value||'en';
+  const d=rfpGet(); const { subject, html }=buildRfpEmail(lang,d);
+  const cmsg=$('rfpConfirmMsg'); const go=$('rfpConfirmGo'); const old=go.textContent;
+  go.disabled=true; go.textContent='Enviando…'; cmsg.style.color='#5b6472'; cmsg.textContent='Enviando '+recipients.length+' correo(s)…';
+  try{
+    const { data } = await sb.auth.getSession(); const token=data.session&&data.session.access_token;
+    if(!token){ cmsg.style.color='#b23b3b'; cmsg.textContent='Sesión no válida. Vuelve a entrar.'; go.disabled=false; go.textContent=old; return; }
+    const r=await fetch('/api/rfp-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({ subject, html, meta:{date_id:_rfpEvent||null, city_slug:rfpEventSlug(), lang}, recipients })});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok || j.error){ cmsg.style.color='#b23b3b'; cmsg.textContent='No se pudo enviar: '+(j.error||('HTTP '+r.status)); go.disabled=false; go.textContent=old; return; }
+    logChange('rfp', rfpEventSlug()?cityName(rfpEventSlug()).split(',')[0]:'RFP', 'envió RFP a '+j.sent+' vendor(es)');
+    closeRfpConfirm();
+    const m=$('rfpMsg'); m.style.color='#2e7d5b';
+    m.textContent='✅ Enviado a '+j.sent+' vendor(es)'+(j.skipped?(' · '+j.skipped+' con error'):'')+'.'+(j.errors&&j.errors.length?(' '+j.errors.join(' | ')):'');
+    go.disabled=false; go.textContent=old;
+    setTimeout(loadAll, 600);
+  }catch(e){ cmsg.style.color='#b23b3b'; cmsg.textContent='No se pudo enviar: '+(e.message||e); go.disabled=false; go.textContent=old; }
+}
+function openRfpConfirm(){
+  const recipients=rfpRecipients(); const m=$('rfpMsg');
+  if(!recipients.length){ m.style.color='#b23b3b'; m.textContent='Selecciona al menos un vendor con email.'; return; }
+  const d=rfpGet(); if(!d.city && !d.name){ m.style.color='#b23b3b'; m.textContent='Completa al menos la zona o el nombre del evento.'; return; }
+  m.textContent='';
+  $('rfpConfirmSub').textContent='Se enviará el RFP a '+recipients.length+' vendor(es). Cada uno recibe su propio correo (no se ven entre sí).';
+  $('rfpConfirmList').innerHTML=recipients.map(r=>`<div class="rc"><b>${esc(r.venue||r.name||'—')}</b> · ${esc(r.email)}</div>`).join('');
+  $('rfpConfirmMsg').textContent='';
+  $('rfpConfirm').classList.remove('hidden');
+}
+function closeRfpConfirm(){ const c=$('rfpConfirm'); if(c) c.classList.add('hidden'); }
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const sel=$('rfpEvent'); if(sel) sel.addEventListener('change', ()=>{ _rfpEvent=sel.value; rfpApplyEvent(_rfpEvent); renderRfpVendors(); rfpUpdatePreview(); });
+  const lang=$('rfpLang'); if(lang) lang.addEventListener('change', rfpUpdatePreview);
+  const sec=$('rfp'); if(sec) sec.addEventListener('input', (e)=>{ if(e.target && /^rfField_/.test(e.target.id)) rfpUpdatePreview(); });
+  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim()).map(c=>c.id)); renderRfpVendors(); });
+  const none=$('rfpSelNone'); if(none) none.addEventListener('click', ()=>{ _rfpSel=new Set(); renderRfpVendors(); });
+  const vbox=$('rfpVendors'); if(vbox) vbox.addEventListener('change', (e)=>{ const t=e.target; if(t && t.dataset && t.dataset.rfpven){ if(t.checked) _rfpSel.add(t.dataset.rfpven); else _rfpSel.delete(t.dataset.rfpven); const cnt=$('rfpVenCount'); if(cnt){ const slug=rfpEventSlug(); const list=(state.contacts||[]).filter(c=>contactMetro(c)===slug); const withEmail=list.filter(c=>c.email&&c.email.trim()).length; cnt.textContent=`· ${list.length} en la zona (${withEmail} con email · ${_rfpSel.size} seleccionados)`; } } });
+  const send=$('rfpSend'); if(send) send.addEventListener('click', openRfpConfirm);
+  const cc=$('rfpConfirmCancel'); if(cc) cc.addEventListener('click', closeRfpConfirm);
+  const cg=$('rfpConfirmGo'); if(cg) cg.addEventListener('click', rfpDoSend);
+  const cov=$('rfpConfirm'); if(cov) cov.addEventListener('click',(e)=>{ if(e.target===cov) closeRfpConfirm(); });
+});
+
+/* ============================================================
    LuigiPT — asistente (Fase 1: voz + chat sobre datos actuales)
    ============================================================ */
 function lpNorm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
@@ -3125,6 +3394,36 @@ lpInit();
   .agdow span{font-size:10px}
   #agenda .agnew{margin-left:0}
 }
+</style>
+
+<!-- ===== Estilos de Enviar RFP ===== -->
+<style>
+.rfpcard{padding:18px}
+.rfprow{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.rfplab{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--navy);flex:1;min-width:220px}
+.rfplab select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff}
+.rfpsec{font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 10px;display:flex;align-items:center;gap:10px}
+.rfpselbtns{margin-left:auto;display:flex;gap:6px}
+.rfpgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.rfpgrid label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted)}
+.rfpgrid label.cfull{grid-column:1/-1}
+.rfpgrid input,.rfpgrid textarea{padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:14px;color:var(--ink);font-family:inherit}
+.rfpvendors{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rfpven{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff}
+.rfpven input{margin-top:3px}
+.rfpven .vn{font-weight:700;color:var(--navy);font-size:13.5px}
+.rfpven .vm{font-size:12px;color:var(--muted);word-break:break-all}
+.rfpven.noemail{opacity:.6}
+.rfpven .noem{font-size:11.5px;color:var(--danger);font-weight:600}
+.rfpven .sentbadge{font-size:11px;color:var(--ok);font-weight:700}
+.rfpprev-subj{font-size:13.5px;margin-bottom:8px;color:var(--ink)}
+.rfpconfirm-list{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--cream)}
+.rfpconfirm-list .rc{font-size:13px;padding:4px 0;border-bottom:1px solid var(--line)}
+.rfpconfirm-list .rc:last-child{border-bottom:none}
+.rfphist{display:flex;flex-direction:column;gap:7px}
+.rfphrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px}
+.rfphrow .hwhen{color:var(--muted);font-size:12px}
+@media(max-width:640px){ .rfpgrid,.rfpvendors{grid-template-columns:1fr} }
 </style>
 
 <!-- ===== PWA: botón de instalación + registro del service worker ===== -->
