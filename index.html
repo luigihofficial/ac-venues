@@ -642,8 +642,23 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <!-- CIUDADES (dinámico) -->
   <section id="ciudades">
     <div class="sec-head"><div class="num">◧</div><div><h2>Ciudades</h2><p>Pipeline por ciudad, candidatos y notas. Cambios en vivo.</p></div></div>
+    <div style="display:flex;justify-content:flex-end;margin:-4px 0 12px"><button id="cityNew" class="btn sm gold">+ Nueva ciudad</button></div>
     <div class="grid g2" id="cityGrid"></div>
   </section>
+
+  <!-- ===== Nueva ciudad ===== -->
+  <div id="cityModal" class="hidden pw-overlay">
+    <div class="pw-box cbox">
+      <h3>Nueva ciudad</h3>
+      <p class="muted" style="font-size:13px;margin:0 0 14px">Escribe la ciudad y el estado, por ejemplo <b>Las Vegas, NV</b>. Aparecerá en Ciudades, en los eventos y en el RFP.</p>
+      <div class="cgrid"><label class="cfull">Ciudad, Estado<input id="ncyName" placeholder="Ciudad, Estado"></label></div>
+      <div id="ncyMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn sm ghost" id="ncyCancel">Cancelar</button>
+        <button class="btn sm gold" id="ncySave">Crear ciudad</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MATRIZ (dinámico) -->
   <section id="matriz">
@@ -1197,7 +1212,15 @@ Thanks so much,
 
 // ---------- Helpers ----------
 const $ = (id)=>document.getElementById(id);
-const cityName = (slug)=>{const c=CITIES.find(x=>x.slug===slug);return c?c.name:slug;};
+// Ciudades personalizadas (creadas desde la app) se suman a las base
+let CITIES_EXTRA=[];
+function allCities(){ return CITIES.concat(CITIES_EXTRA); }
+function isCustomCity(slug){ return CITIES_EXTRA.some(c=>c.slug===slug); }
+function slugifyCity(name){
+  let base=(name||'').split(',')[0].trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'ciudad';
+  let slug=base, i=2; while(allCities().some(c=>c.slug===slug)){ slug=base+'-'+i; i++; } return slug;
+}
+const cityName = (slug)=>{const c=allCities().find(x=>x.slug===slug);return c?c.name:slug;};
 // ---------- Registro de cambios (audit log) ----------
 async function logChange(action, target, detail){
   if(!sb||!USER) return;
@@ -1611,6 +1634,9 @@ async function loadAll(){
   try{ const rl=await sb.from('rfp_log').select('*').order('sent_at',{ascending:false});
        state.rfplog=rl.data||[]; }
   catch(e){ state.rfplog=[]; }
+  try{ const cc=await sb.from('custom_cities').select('*').order('created_at',{ascending:true});
+       CITIES_EXTRA=(cc.data||[]).map(r=>({slug:r.slug, name:r.name, leads:[], search:[]})); }
+  catch(e){ CITIES_EXTRA=[]; }
   renderAll();
 }
 // ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
@@ -1702,7 +1728,7 @@ function pendCount(id){ let d=0; for(let i=0;i<PEND_EVENTO.length;i++) if(pendDo
 function evalsFor(id){ return state.evals[id]||[]; }
 function evalAvg(ev){ const s=ev&&ev.scores||{}; const vals=EVAL_CRITERIA.map(c=>+s[c.k]).filter(v=>v>=1&&v<=5); return vals.length? (vals.reduce((a,b)=>a+b,0)/vals.length):0; }
 function evalRec(avg){ if(!avg) return null; if(avg>=4)return['Regresar ✓','p-ok']; if(avg>=3)return['Tal vez','p-prog']; return['No regresar','p-must']; }
-function allDates(){ const out=[]; CITIES.forEach(c=>citiesDates(c.slug).forEach(d=>out.push({city:c, d}))); return out; }
+function allDates(){ const out=[]; allCities().forEach(c=>citiesDates(c.slug).forEach(d=>out.push({city:c, d}))); return out; }
 // --- Encuestas: destinatarios, tokens, reviews agrupadas por hotel ---
 function recipientsFor(id){ return (state.recipients&&state.recipients[id])||[]; }
 function sheetFor(id){ return (state.sheets&&state.sheets[id])||{}; }
@@ -1951,7 +1977,7 @@ function cityCard(c, disabled){
   const avg = dates.length? Math.round(dates.reduce((s,d)=>s+datePct(d.id),0)/dates.length):0;
   card.innerHTML=`
    ${datalist}
-   <div class="top"><h3>${esc(c.name)}</h3><div style="font-size:12px;color:#c8d2df">${dates.length} fecha(s) · ${avg}%</div></div>
+   <div class="top"><h3>${esc(c.name)}</h3><div style="font-size:12px;color:#c8d2df;display:flex;align-items:center;gap:8px">${dates.length} fecha(s) · ${avg}%${(!disabled && isCustomCity(c.slug) && dates.length===0)?` <button class="btn sm ghost" data-delcity="${c.slug}" title="Eliminar ciudad" style="padding:1px 7px">✕</button>`:''}</div></div>
    <div class="body">
      <div class="dates">${datesHtml}</div>
      ${disabled?'':`<button class="btn sm gold" data-adddate="${c.slug}" style="margin-top:4px">+ Agregar fecha</button>`}
@@ -1964,11 +1990,11 @@ function cityCard(c, disabled){
    </div>`;
   return card;
 }
-function renderStaticCities(){ const grid=$('cityGrid'); grid.innerHTML=''; CITIES.forEach(c=>grid.appendChild(cityCard(c,true))); }
+function renderStaticCities(){ const grid=$('cityGrid'); grid.innerHTML=''; allCities().forEach(c=>grid.appendChild(cityCard(c,true))); }
 function renderCities(){
   const grid=$('cityGrid');
   const open=new Set([...grid.querySelectorAll('.dateblk.open [data-dlabel]')].map(el=>el.dataset.dlabel));
-  grid.innerHTML=''; CITIES.forEach(c=>grid.appendChild(cityCard(c,false)));
+  grid.innerHTML=''; allCities().forEach(c=>grid.appendChild(cityCard(c,false)));
   open.forEach(id=>{ const el=grid.querySelector(`[data-dlabel="${id}"]`); if(el){const b=el.closest('.dateblk'); if(b)b.classList.add('open');} });
 }
 function renderTimeline(){
@@ -2880,6 +2906,49 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 /* ============================================================
+   NUEVA CIUDAD  (crear ciudades desde la app)
+   ============================================================ */
+function openCityModal(){ const n=$('ncyName'); if(n) n.value=''; const m=$('ncyMsg'); if(m) m.textContent=''; const cm=$('cityModal'); if(cm){ cm.classList.remove('hidden'); setTimeout(()=>{ if($('ncyName')) $('ncyName').focus(); },50); } }
+function closeCityModal(){ const cm=$('cityModal'); if(cm) cm.classList.add('hidden'); }
+async function saveCity(){
+  if(!sb||!USER) return;
+  const name=($('ncyName').value||'').trim(); const msg=$('ncyMsg');
+  if(!name){ msg.style.color='#b23b3b'; msg.textContent='Escribe el nombre de la ciudad.'; return; }
+  if(allCities().some(c=>normName(c.name)===normName(name))){ msg.style.color='#b23b3b'; msg.textContent='Esa ciudad ya existe.'; return; }
+  const slug=slugifyCity(name);
+  const btn=$('ncySave'); const old=btn.textContent; btn.disabled=true; btn.textContent='Creando…';
+  try{
+    const { error }=await sb.from('custom_cities').insert({ slug, name, created_by:(USER.email||'') });
+    if(error){
+      btn.disabled=false; btn.textContent=old; msg.style.color='#b23b3b';
+      msg.textContent = /relation|does not exist|42P01|PGRST205/i.test(error.message||'') ? 'Falta crear la tabla custom_cities en Supabase (te envié el SQL).' : ('No se pudo crear: '+(error.message||error));
+      return;
+    }
+    logChange('ciudad', name, 'creó una ciudad nueva');
+    btn.disabled=false; btn.textContent=old; closeCityModal();
+    location.hash='#ciudades';
+    setTimeout(loadAll, 400);
+  }catch(e){ btn.disabled=false; btn.textContent=old; msg.style.color='#b23b3b'; msg.textContent='No se pudo crear: '+(e.message||e); }
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const nc=$('cityNew'); if(nc) nc.addEventListener('click', openCityModal);
+  const cc=$('ncyCancel'); if(cc) cc.addEventListener('click', closeCityModal);
+  const cs=$('ncySave'); if(cs) cs.addEventListener('click', saveCity);
+  const ni=$('ncyName'); if(ni) ni.addEventListener('keydown', e=>{ if(e.key==='Enter') saveCity(); });
+  const ov=$('cityModal'); if(ov) ov.addEventListener('click',(e)=>{ if(e.target===ov) closeCityModal(); });
+  // eliminar ciudad personalizada (solo si no tiene fechas)
+  document.addEventListener('click', async (e)=>{
+    const b=e.target.closest && e.target.closest('[data-delcity]'); if(!b) return;
+    if(!sb||!USER) return;
+    const slug=b.dataset.delcity;
+    if((state.dates[slug]||[]).length){ alert('Esta ciudad tiene fechas. Elimina las fechas antes de borrar la ciudad.'); return; }
+    if(!confirm('¿Eliminar la ciudad '+cityName(slug)+'?')) return;
+    try{ await sb.from('custom_cities').delete().eq('slug',slug); logChange('ciudad', cityName(slug), 'eliminó una ciudad'); setTimeout(loadAll,300); }
+    catch(err){ alert('No se pudo eliminar: '+(err.message||err)); }
+  });
+});
+
+/* ============================================================
    ENVIAR RFP  (solicitud de cotización a vendors por zona)
    ============================================================ */
 // Mapea un texto (ciudad/venue/dirección) a una de las 8 zonas (slug)
@@ -3081,7 +3150,7 @@ const LP_CITY_ALIASES = {
   la:['los angeles','l\\.a','\\bla\\b']
 };
 function lpFindCity(n){
-  for(const c of CITIES){
+  for(const c of allCities()){
     for(const a of (LP_CITY_ALIASES[c.slug]||[c.slug])){
       try{ if(new RegExp('(^|\\s)'+a+'(\\s|$|,|\\.|\\?)').test(n)) return c; }catch(e){}
     }
@@ -3102,7 +3171,7 @@ function lpCityStatus(c){
 }
 function lpOverall(){
   const rows=allDates(); const total=rows.length; let sum=0, closed=0, lines=[];
-  CITIES.forEach(c=>{ const ds=citiesDates(c.slug); if(!ds.length) return;
+  allCities().forEach(c=>{ const ds=citiesDates(c.slug); if(!ds.length) return;
     const avg=Math.round(ds.reduce((s,d)=>s+datePct(d.id),0)/ds.length);
     lines.push(`  · ${c.name.split(',')[0]} (${ds.length} fecha/s): ${avg}%`);
   });
@@ -3183,7 +3252,7 @@ function lpContext(){
   return {
     proyecto:'Amor Consciente — sourcing de venues en 8 ciudades',
     empresa: (state.company||[]).map(r=>({tipo:r.category, etiqueta:r.label, valor:r.value})),
-    ciudades: CITIES.map(c=>({ciudad:c.name, candidatos:(cityVenues(c.slug).length? cityVenues(c.slug).map(v=>v.name+(v.area?' ('+v.area+')':'')) : c.leads.map(l=>l.v+' ('+l.area+')')),
+    ciudades: allCities().map(c=>({ciudad:c.name, candidatos:(cityVenues(c.slug).length? cityVenues(c.slug).map(v=>v.name+(v.area?' ('+v.area+')':'')) : c.leads.map(l=>l.v+' ('+l.area+')')),
       fechas: citiesDates(c.slug).map(d=>({
         fecha:d.label, avance:datePct(d.id)+'%',
         fases_hechas:FASES.filter((s,i)=>dateDone(d.id,i)),
