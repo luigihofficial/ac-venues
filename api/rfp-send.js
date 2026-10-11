@@ -75,14 +75,16 @@ module.exports = async function handler(req, res){
     const html = String(body.html || "");
     const meta = body.meta || {};
     const recipients = Array.isArray(body.recipients) ? body.recipients : [];
-    if (!subject || !html){ res.status(400).json({ error: "Falta el asunto o el contenido del correo." }); return; }
     const valid = recipients.filter(r => validEmail(r && r.email));
     if (!valid.length){ res.status(400).json({ error: "No hay destinatarios con email válido." }); return; }
+    const everyHasHtml = valid.every(r => r && typeof r.html === "string" && r.html);
+    if (!subject || (!html && !everyHasHtml)){ res.status(400).json({ error: "Falta el asunto o el contenido del correo." }); return; }
 
     let sent = 0, skipped = 0; const errors = []; const logRows = []; let bccPending = true;
     const nowIso = new Date().toISOString();
     for (const r of valid){
-      const em = await sendEmail({ to: String(r.email).trim(), subject, html, bcc: bccPending ? TEAM_BCC : undefined });
+      const rhtml = (r && typeof r.html === "string" && r.html) ? r.html : html;   // html por destinatario (link de portal único)
+      const em = await sendEmail({ to: String(r.email).trim(), subject, html: rhtml, bcc: bccPending ? TEAM_BCC : undefined });
       if (em.ok){
         sent++; bccPending = false;
         logRows.push({
