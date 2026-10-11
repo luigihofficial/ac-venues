@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Venue Proposal · Amor Consciente</title>
+<style>
+  :root{--navy:#1e3a5f;--navyd:#14263f;--gold:#b8860b;--golds:#e3b23c;--bg:#f5f1e8;--card:#fffdf8;--line:#e6ddca;--ink:#22303f;--mut:#6b7480;--ok:#2e7d5b;--danger:#b23b3b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px 70px}
+  header{background:linear-gradient(135deg,var(--navy),var(--navyd));color:#fff;padding:24px 16px 20px;text-align:center;border-bottom:3px solid var(--gold)}
+  header img{height:42px;margin-bottom:8px}
+  header h1{margin:0;font-size:20px;font-weight:800}
+  header .s{font-size:11px;color:var(--golds);margin-top:4px;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
+  h2.sec{font-size:13px;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin:26px 0 10px;font-weight:800}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 16px;margin-top:14px;box-shadow:0 1px 3px rgba(20,38,63,.06)}
+  .reqtable{width:100%;border-collapse:collapse}
+  .reqtable td{padding:8px 10px;border-bottom:1px solid #efe8da;font-size:14px;vertical-align:top}
+  .reqtable td.k{color:#8a9199;font-size:12px;font-weight:700;white-space:nowrap;width:42%}
+  .reqtable tr:last-child td{border-bottom:none}
+  label.f{display:block;font-size:12.5px;font-weight:700;color:var(--navy);margin:0 0 4px}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-family:inherit;color:var(--ink);background:#fff}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+  .grid .full{grid-column:1/-1}
+  .fld{margin-bottom:12px}
+  .conc{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff}
+  .conc .cl{font-weight:700;color:var(--navy);font-size:14px;margin-bottom:8px}
+  .conc .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pill{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;background:#eef0f3;color:#5b6472}
+  .files .fitem{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-top:6px;font-size:13.5px;background:#fff}
+  .files .fitem a{color:var(--navy);font-weight:600;text-decoration:none;word-break:break-all}
+  .files .rm{cursor:pointer;color:var(--mut);font-weight:700;border:none;background:none;font-size:15px}
+  .btn{display:inline-block;background:linear-gradient(135deg,var(--navy),var(--navyd));color:#fff;border:none;border-radius:11px;padding:14px 22px;font-size:15px;font-weight:700;cursor:pointer}
+  .btn.block{width:100%}
+  .btn[disabled]{opacity:.6;cursor:default}
+  .ghost{background:#fff;border:1px solid var(--line);color:var(--navy);font-weight:600;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:14px}
+  .hint{font-size:12px;color:var(--mut);margin-top:4px}
+  .msg{font-size:14px;margin-top:12px;min-height:20px}
+  .state{padding:48px 16px;text-align:center;color:var(--mut)}
+  .state h2{color:var(--navy);font-size:20px;margin:0 0 6px}
+  .hidden{display:none!important}
+  .foot{margin-top:24px;text-align:center;color:var(--mut);font-size:12px}
+  .donebox{background:#e4f1ea;border:1px solid #bfe0cf;border-radius:12px;padding:16px;text-align:center;color:#1f6b4a;font-weight:600;margin-top:14px}
+</style>
+</head>
+<body>
+<header>
+  <img src="/logo.png" alt="Amor Consciente" onerror="this.style.display='none'">
+  <h1 id="hTitle">Venue Proposal</h1>
+  <div class="s">Amor Consciente · Venues</div>
+</header>
+
+<div class="wrap">
+  <div id="loading" class="state">Loading…</div>
+  <div id="invalid" class="state hidden">
+    <h2 id="invTitle">Invalid link</h2>
+    <p id="invText">This proposal link is not valid or has expired. Please contact <a href="mailto:global@amorconsciente.com">global@amorconsciente.com</a>.</p>
+  </div>
+
+  <div id="content" class="hidden">
+    <p id="intro" style="font-size:15px;margin:18px 2px 0"></p>
+
+    <h2 class="sec" id="lblNeed">What we're looking for</h2>
+    <div class="card"><table class="reqtable" id="reqTable"></table></div>
+
+    <div id="concWrap">
+      <h2 class="sec" id="lblConc">Concessions requested (please confirm)</h2>
+      <div id="concReqList" class="card" style="padding:14px 16px"></div>
+    </div>
+
+    <h2 class="sec" id="lblYour">Your proposal</h2>
+    <div class="card">
+      <div class="fld"><label class="f" id="lVenue">Hotel / venue</label><input id="fVenue"></div>
+      <div class="grid">
+        <div class="fld"><label class="f" id="lCname">Contact name</label><input id="fCname"></div>
+        <div class="fld"><label class="f" id="lCemail">Contact email</label><input id="fCemail" type="email"></div>
+        <div class="fld"><label class="f" id="lCphone">Contact phone</label><input id="fCphone"></div>
+        <div class="fld"><label class="f" id="lAvail">Dates available</label><input id="fAvail"></div>
+        <div class="fld"><label class="f" id="lRoom">Room / hall offered</label><input id="fRoom"></div>
+        <div class="fld"><label class="f" id="lCap">Capacity</label><input id="fCap"></div>
+        <div class="fld"><label class="f" id="lRental">Room rental (USD)</label><input id="fRental" type="number" min="0" step="0.01"></div>
+        <div class="fld"><label class="f" id="lFb">F&amp;B minimum (USD)</label><input id="fFb" type="number" min="0" step="0.01"></div>
+        <div class="fld"><label class="f" id="lDeposit">Deposit / payment terms</label><input id="fDeposit"></div>
+        <div class="fld"><label class="f" id="lTotal">Estimated total (USD)</label><input id="fTotal" type="number" min="0" step="0.01"></div>
+      </div>
+    </div>
+
+    <h2 class="sec" id="lblConc2">Concessions — what you can offer</h2>
+    <div id="concForm"></div>
+
+    <h2 class="sec" id="lblFiles">Attachments (proposal, photos, floor plans…)</h2>
+    <div class="card files" id="filesCard">
+      <input type="file" id="fFiles" multiple>
+      <div class="hint" id="filesHint">PDF, images, Word, etc. Up to 15 MB each.</div>
+      <div id="fileList"></div>
+    </div>
+
+    <h2 class="sec" id="lblNotes">Anything else?</h2>
+    <div class="card"><textarea id="fNotes" rows="4" placeholder=""></textarea></div>
+
+    <div id="sendMsg" class="msg"></div>
+    <button class="btn block" id="sendBtn">Submit proposal</button>
+    <div id="doneBox" class="donebox hidden"></div>
+
+    <div class="foot" id="foot">Thank you — Amor Consciente · Venues</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB_URL="https://dwhwbcplgcqvuvnzqmne.supabase.co";
+const SB_KEY="sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa";
+const $=id=>document.getElementById(id);
+const token=new URLSearchParams(location.search).get('t')||new URLSearchParams(location.search).get('token')||'';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG='en', CONC=[], UPLOADS=[];
+
+const DICT={
+  en:{title:'Venue Proposal',need:"What we're looking for",concReq:'Concessions requested (please confirm)',your:'Your proposal',concOffer:'Concessions — what you can offer',files:'Attachments (proposal, photos, floor plans…)',notes:'Anything else?',
+    venue:'Hotel / venue',cname:'Contact name',cemail:'Contact email',cphone:'Contact phone',avail:'Dates available',room:'Room / hall offered',cap:'Capacity',rental:'Room rental (USD)',fb:'F&B minimum (USD)',deposit:'Deposit / payment terms',total:'Estimated total (USD)',
+    submit:'Submit proposal',sending:'Sending…',filesHint:'PDF, images, Word, etc. Up to 15 MB each.',
+    intro:v=>`Hello${v?(' '+v):''}, thank you for considering our event. Please review what we need and share your best proposal below.`,
+    done:'✅ Thank you! Your proposal was received. You can return to this link anytime to update it.',
+    invalid:'Invalid link',invalidText:'This proposal link is not valid or has expired. Please contact global@amorconsciente.com.',
+    offer:'Can you offer this?',comp:'Complimentary',cost:'With cost',no:'Not available',amount:'Amount (if any)',cNotes:'Notes',foot:'Thank you — Amor Consciente · Venues',
+    req:{name:'Event',city:'City',dates:'Preferred dates',alt:'Alternate dates',attendees:'Expected attendees',setup:'Room setup',breakouts:'Breakout rooms',schedule:'Schedule',catering:'Catering',av:'Audio / Visual',parking:'Parking',wifi:'WiFi',budget:'Budget range',notes:'Special requests'},
+    needEmail:'Please add your contact email.'},
+  es:{title:'Propuesta de venue',need:'Lo que estamos buscando',concReq:'Concesiones solicitadas (por favor confirme)',your:'Su propuesta',concOffer:'Concesiones — lo que puede ofrecer',files:'Adjuntos (propuesta, fotos, planos…)',notes:'¿Algo más?',
+    venue:'Hotel / venue',cname:'Nombre de contacto',cemail:'Email de contacto',cphone:'Teléfono de contacto',avail:'Fechas disponibles',room:'Salón ofrecido',cap:'Capacidad',rental:'Renta de salón (USD)',fb:'Mínimo de A&B (USD)',deposit:'Depósito / términos de pago',total:'Total estimado (USD)',
+    submit:'Enviar propuesta',sending:'Enviando…',filesHint:'PDF, imágenes, Word, etc. Hasta 15 MB cada uno.',
+    intro:v=>`Hola${v?(' '+v):''}, gracias por considerar nuestro evento. Revise lo que necesitamos y comparta su mejor propuesta abajo.`,
+    done:'✅ ¡Gracias! Recibimos su propuesta. Puede volver a este enlace cuando quiera para actualizarla.',
+    invalid:'Enlace no válido',invalidText:'Este enlace de propuesta no es válido o expiró. Escríbanos a global@amorconsciente.com.',
+    offer:'¿Puede ofrecerlo?',comp:'Cortesía',cost:'Con costo',no:'No disponible',amount:'Monto (si aplica)',cNotes:'Notas',foot:'Gracias — Amor Consciente · Venues',
+    req:{name:'Evento',city:'Ciudad',dates:'Fechas preferidas',alt:'Fechas alternas',attendees:'Asistentes (aprox.)',setup:'Montaje del salón',breakouts:'Salas adicionales',schedule:'Días y horario',catering:'Catering',av:'Audio / Video',parking:'Parqueo',wifi:'WiFi',budget:'Presupuesto',notes:'Requisitos especiales'},
+    needEmail:'Por favor agregue su email de contacto.'}
+};
+function L(){ return DICT[LANG]||DICT.en; }
+function show(id){ ['loading','invalid','content'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); }
+
+function applyLabels(){
+  const t=L();
+  $('hTitle').textContent=t.title; $('lblNeed').textContent=t.need; $('lblConc').textContent=t.concReq;
+  $('lblYour').textContent=t.your; $('lblConc2').textContent=t.concOffer; $('lblFiles').textContent=t.files; $('lblNotes').textContent=t.notes;
+  $('lVenue').textContent=t.venue; $('lCname').textContent=t.cname; $('lCemail').textContent=t.cemail; $('lCphone').textContent=t.cphone;
+  $('lAvail').textContent=t.avail; $('lRoom').textContent=t.room; $('lCap').textContent=t.cap; $('lRental').textContent=t.rental;
+  $('lFb').textContent=t.fb; $('lDeposit').textContent=t.deposit; $('lTotal').textContent=t.total;
+  $('sendBtn').textContent=t.submit; $('filesHint').textContent=t.filesHint; $('foot').textContent=t.foot;
+  $('invTitle').textContent=t.invalid; $('invText').textContent=t.invalidText;
+}
+function renderReq(req){
+  const t=L(); const rows=[];
+  const R=(k,v)=>{ if(v) rows.push(`<tr><td class="k">${esc(t.req[k]||k)}</td><td>${esc(v)}</td></tr>`); };
+  ['name','city','dates','alt','attendees','setup','breakouts','schedule','catering','av','parking','wifi','budget','notes'].forEach(k=>R(k,req[k]));
+  $('reqTable').innerHTML = rows.join('') || `<tr><td>—</td></tr>`;
+}
+function renderConcReq(){
+  if(!CONC.length){ $('concWrap').classList.add('hidden'); return; }
+  $('concReqList').innerHTML = CONC.map(c=>`<div style="padding:5px 0;font-size:14px">• ${esc(c.label)}</div>`).join('');
+}
+function renderConcForm(resp){
+  const t=L();
+  const prev={}; ((resp&&resp.concessions)||[]).forEach(c=>{ prev[c.key]=c; });
+  $('concForm').innerHTML = CONC.map(c=>{
+    const p=prev[c.key]||{}; const st=p.status||'';
+    const opt=(v,lbl)=>`<option value="${v}"${st===v?' selected':''}>${lbl}</option>`;
+    return `<div class="conc" data-ckey="${esc(c.key)}">
+      <div class="cl">${esc(c.label)}</div>
+      <div class="row">
+        <div><label class="f">${t.offer}</label><select data-cf="status"><option value="">—</option>${opt('comp',t.comp)}${opt('cost',t.cost)}${opt('no',t.no)}</select></div>
+        <div><label class="f">${t.amount}</label><input data-cf="amount" value="${esc(p.amount||'')}" placeholder=""></div>
+      </div>
+      <div style="margin-top:8px"><label class="f">${t.cNotes}</label><input data-cf="notes" value="${esc(p.notes||'')}"></div>
+    </div>`;
+  }).join('');
+}
+function renderFiles(){
+  $('fileList').innerHTML = UPLOADS.map((f,i)=>`<div class="fitem"><a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name)}</a><button class="rm" data-rmfile="${i}" title="Remove">✕</button></div>`).join('');
+}
+function collect(){
+  const concessions=[...document.querySelectorAll('#concForm .conc')].map(el=>{
+    const key=el.getAttribute('data-ckey'); const lbl=(CONC.find(c=>c.key===key)||{}).label||'';
+    const g=f=>{ const x=el.querySelector('[data-cf="'+f+'"]'); return x?x.value.trim():''; };
+    return {key, label:lbl, status:g('status'), amount:g('amount'), notes:g('notes')};
+  });
+  return {
+    venue:$('fVenue').value.trim(), contact_name:$('fCname').value.trim(), contact_email:$('fCemail').value.trim(),
+    contact_phone:$('fCphone').value.trim(), available:$('fAvail').value.trim(), room_name:$('fRoom').value.trim(),
+    capacity:$('fCap').value.trim(), room_rental:$('fRental').value.trim(), fb_minimum:$('fFb').value.trim(),
+    deposit:$('fDeposit').value.trim(), total_estimate:$('fTotal').value.trim(),
+    concessions, files:UPLOADS, notes:$('fNotes').value.trim()
+  };
+}
+
+async function load(){
+  if(!token){ show('invalid'); return; }
+  try{
+    const { data, error } = await sb.rpc('get_rfp',{p_token:token});
+    if(error || !data || !data.ok){ show('invalid'); return; }
+    LANG = (data.lang==='es')?'es':'en';
+    document.documentElement.lang=LANG;
+    CONC = (data.concessions||[]).map((c,i)=>({ key:c.key||('c'+i), label:c.label||('Concession '+(i+1)) }));
+    applyLabels();
+    $('intro').textContent = L().intro(data.to_name||'');
+    renderReq(data.requirements||{});
+    renderConcReq();
+    const resp=data.response;
+    renderConcForm(resp);
+    // prefill venue + respuesta previa
+    $('fVenue').value = (resp&&resp.venue) || data.venue || '';
+    if(resp){
+      $('fCname').value=resp.contact_name||''; $('fCemail').value=resp.contact_email||''; $('fCphone').value=resp.contact_phone||'';
+      $('fAvail').value=resp.available||''; $('fRoom').value=resp.room_name||''; $('fCap').value=resp.capacity||'';
+      $('fRental').value=resp.room_rental!=null?resp.room_rental:''; $('fFb').value=resp.fb_minimum!=null?resp.fb_minimum:'';
+      $('fDeposit').value=resp.deposit||''; $('fTotal').value=resp.total_estimate!=null?resp.total_estimate:''; $('fNotes').value=resp.notes||'';
+      UPLOADS=(resp.files||[]).slice(); renderFiles();
+    }
+    show('content');
+  }catch(e){ show('invalid'); }
+}
+
+$('fFiles').addEventListener('change', async (e)=>{
+  const files=[...(e.target.files||[])]; e.target.value='';
+  for(const file of files){
+    if(file.size>15*1024*1024){ $('sendMsg').style.color='var(--danger)'; $('sendMsg').textContent=file.name+': > 15 MB'; continue; }
+    const safe=file.name.replace(/[^\w.\-]+/g,'_').slice(-80);
+    const path=token+'/'+Date.now()+'_'+safe;
+    const { error }=await sb.storage.from('rfp-uploads').upload(path, file, {upsert:true, contentType:file.type||'application/octet-stream'});
+    if(error){ $('sendMsg').style.color='var(--danger)'; $('sendMsg').textContent='Upload failed: '+(error.message||error); continue; }
+    const { data }=sb.storage.from('rfp-uploads').getPublicUrl(path);
+    UPLOADS.push({name:file.name, url:data.publicUrl}); renderFiles();
+    $('sendMsg').textContent='';
+  }
+});
+$('fileList').addEventListener('click',(e)=>{ const b=e.target.closest('[data-rmfile]'); if(b){ UPLOADS.splice(+b.dataset.rmfile,1); renderFiles(); } });
+
+$('sendBtn').addEventListener('click', async ()=>{
+  const t=L(); const payload=collect();
+  const msg=$('sendMsg');
+  if(!payload.contact_email){ msg.style.color='var(--danger)'; msg.textContent=t.needEmail; return; }
+  const btn=$('sendBtn'); const old=btn.textContent; btn.disabled=true; btn.textContent=t.sending; msg.textContent='';
+  try{
+    const { data, error }=await sb.rpc('submit_rfp',{p_token:token, p_payload:payload});
+    if(error || !data || !data.ok){ msg.style.color='var(--danger)'; msg.textContent='Error: '+((error&&error.message)||(data&&data.error)||'try again'); btn.disabled=false; btn.textContent=old; return; }
+    $('doneBox').textContent=t.done; $('doneBox').classList.remove('hidden');
+    btn.disabled=false; btn.textContent=old;
+    window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+  }catch(e){ msg.style.color='var(--danger)'; msg.textContent='Error: '+(e.message||e); btn.disabled=false; btn.textContent=old; }
+});
+
+load();
+</script>
+</body>
+</html>

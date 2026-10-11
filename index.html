@@ -497,6 +497,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <a href="#matriz">Evaluación</a>
       <a href="#ofertas">Ofertas</a>
       <a href="#rfp">Enviar RFP</a>
+      <a href="#rfpcompare">Comparar RFP</a>
       <a href="#pendientes">Pendientes</a>
     </div>
   </div>
@@ -760,10 +761,24 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
         <label class="cfull">Notas / requisitos especiales<textarea id="rfField_notes" rows="2" placeholder="Cualquier requerimiento adicional"></textarea></label>
       </div>
 
+      <div class="rfpsec">Concesiones que pedimos (complimentary)
+        <span class="rfpselbtns"><button class="btn sm ghost" id="rfpConcAdd" type="button">+ Agregar</button><button class="btn sm ghost" id="rfpConcReset" type="button">Restaurar</button></span>
+      </div>
+      <div id="rfpConc" class="rfpconc"></div>
+
       <div class="rfpsec">Vendors de la zona <span id="rfpVenCount" class="muted" style="font-weight:400;font-size:12.5px"></span>
         <span class="rfpselbtns"><button class="btn sm ghost" id="rfpSelAll" type="button">Todos</button><button class="btn sm ghost" id="rfpSelNone" type="button">Ninguno</button></span>
       </div>
       <div id="rfpVendors" class="rfpvendors"></div>
+
+      <div class="rfpsec">Agregar correo manual (fuera de la lista)</div>
+      <div class="rfpmanrow">
+        <input id="rfpManEmail" type="email" placeholder="correo@hotel.com">
+        <input id="rfpManVenue" placeholder="Hotel / venue">
+        <input id="rfpManName" placeholder="Contacto (opcional)">
+        <button class="btn sm gold" id="rfpManAdd" type="button">Agregar</button>
+      </div>
+      <div id="rfpManList" class="rfpmanlist"></div>
 
       <div class="rfpsec">Vista previa del correo</div>
       <div class="rfpprev">
@@ -792,6 +807,40 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button class="btn sm ghost" id="rfpConfirmCancel">Cancelar</button>
         <button class="btn sm gold" id="rfpConfirmGo">Enviar ahora</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARAR RFP (dinámico) -->
+  <section id="rfpcompare">
+    <div class="sec-head"><div class="num">📊</div><div><h2>Comparar RFP</h2><p>Respuestas de los hoteles lado a lado. Elige el ganador y la app genera el correo de aprobación.</p></div></div>
+    <div class="rfprow" style="margin:6px 0 14px">
+      <label class="rfplab">Evento<select id="rcEvent"></select></label>
+      <span id="rcSummary" class="muted" style="align-self:center;font-size:13px"></span>
+    </div>
+    <div id="rcMatrixWrap" class="card" style="overflow-x:auto;padding:10px"><div id="rcMatrix"></div></div>
+  </section>
+
+  <!-- ===== Correo de aprobación del ganador ===== -->
+  <div id="rfpApprove" class="hidden pw-overlay">
+    <div class="pw-box cbox">
+      <h3>Aprobar oferta y pedir contrato</h3>
+      <p class="muted" id="rapSub" style="font-size:13px;margin:0 0 12px"></p>
+      <div class="cgrid">
+        <label>Idioma<select id="rapLang"><option value="en">Inglés</option><option value="es">Español</option></select></label>
+        <label>Contrato antes de<input id="rapDeadline" type="date"></label>
+        <label class="cfull">Datos de pago nuestros (para el depósito)<input id="rapPay" placeholder="Ej. Pagamos por ACH/cheque; envíen factura e instrucciones"></label>
+        <label class="cfull">Nota adicional<textarea id="rapNote" rows="2" placeholder="Opcional"></textarea></label>
+      </div>
+      <div class="rfpprev" style="margin-top:12px">
+        <div class="rfpprev-subj"><b>Para:</b> <span id="rapTo"></span></div>
+        <div class="rfpprev-subj"><b>Asunto:</b> <span id="rapSubj"></span></div>
+        <iframe id="rapFrame" title="Vista previa" style="width:100%;height:420px;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe>
+      </div>
+      <div id="rapMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:8px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn sm ghost" id="rapCancel">Cancelar</button>
+        <button class="btn sm gold" id="rapSend">Enviar aprobación</button>
       </div>
     </div>
   </div>
@@ -1242,7 +1291,7 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 
 // ---------- Estado ----------
 let sb=null, USER=null;
-const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[], audit:[], calendar:[], rfplog:[]};
+const state={company:[], venues:{}, dates:{}, dprogress:{}, dmeta:{}, evals:{}, contacts:[], notes:[], deadlines:[], gtasks:[], documents:[], audit:[], calendar:[], rfplog:[], rfpReq:{}, rfpInvites:[], rfpOffers:[]};
 
 // ---------- Arranque ----------
 document.addEventListener('DOMContentLoaded', init);
@@ -1268,6 +1317,7 @@ function routeView(){
   if(hash==='ofertas' && typeof renderOffers==='function') renderOffers();
   if(hash==='agenda' && typeof renderAgenda==='function') renderAgenda();
   if(hash==='rfp' && typeof renderRfp==='function') renderRfp();
+  if(hash==='rfpcompare' && typeof renderRfpCompare==='function') renderRfpCompare();
   window.scrollTo({top:0});
 }
 window.addEventListener('hashchange', routeView);
@@ -1637,6 +1687,9 @@ async function loadAll(){
   try{ const cc=await sb.from('custom_cities').select('*').order('created_at',{ascending:true});
        CITIES_EXTRA=(cc.data||[]).map(r=>({slug:r.slug, name:r.name, leads:[], search:[]})); }
   catch(e){ CITIES_EXTRA=[]; }
+  try{ const rq=await sb.from('rfp_requests').select('*'); state.rfpReq={}; (rq.data||[]).forEach(r=>{ state.rfpReq[r.id]=r; }); }catch(e){ state.rfpReq={}; }
+  try{ const ri=await sb.from('rfp_invites').select('*'); state.rfpInvites=ri.data||[]; }catch(e){ state.rfpInvites=[]; }
+  try{ const ro=await sb.from('rfp_offers').select('*').order('updated_at',{ascending:false}); state.rfpOffers=ro.data||[]; }catch(e){ state.rfpOffers=[]; }
   renderAll();
 }
 // ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
@@ -1663,7 +1716,7 @@ function subscribeRealtime(){
 }
 
 // ---------- Render ----------
-function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); if(typeof renderRfp==='function') renderRfp(); }
+function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); if(typeof renderRfp==='function') renderRfp(); if(typeof renderRfpCompare==='function') renderRfpCompare(); }
 
 const AUDIT_ICONS={fase:'📌',pendiente:'☑️',evaluación:'⭐',evento:'📅',fecha:'📅',hotel:'🏨',empresa:'🏢',contacto:'👤',nota:'📝',seguridad:'🔒'};
 function renderAudit(){
@@ -2971,6 +3024,13 @@ const EN_MONTHS=['January','February','March','April','May','June','July','Augus
 let _rfpEvent='';            // date_id seleccionado
 let _rfpApplied='';          // date_id cuyos datos ya se autollenaron
 let _rfpSel=new Set();       // ids de contactos seleccionados
+let _rfpConc=[];             // [{label}] concesiones que pedimos (editable)
+let _rfpConcEdited=false;
+let _rfpManual=[];           // [{email,name,venue}] recipientes manuales
+const RFP_CONC_EN=['Complimentary meeting room rental (waived with F&B minimum)','Complimentary self-parking for attendees','Complimentary WiFi in meeting space and guest rooms','Complimentary room upgrades / staff rooms (1 per 40 paid)','Complimentary or discounted A/V','Complimentary daily water & coffee station','Flexible attrition and cancellation terms','Reduced group room rate / rebate'];
+const RFP_CONC_ES=['Renta de salón cortesía (waived con mínimo de A&B)','Parqueo cortesía para asistentes','WiFi cortesía en salón y habitaciones','Upgrades / habitaciones de staff cortesía (1 por 40 pagadas)','A/V cortesía o con descuento','Estación diaria de agua y café cortesía','Términos flexibles de atrición y cancelación','Tarifa de grupo reducida / rebate'];
+function rfpConcDefaults(lang){ return (lang==='es'?RFP_CONC_ES:RFP_CONC_EN).map(l=>({label:l})); }
+function rfpConcList(){ return _rfpConc.filter(c=>c.label&&c.label.trim()).map((c,i)=>({key:'c'+i, label:c.label.trim()})); }
 
 function rfpGet(){ const d={}; RF_IDS.forEach(k=>{ const el=$('rfField_'+k); d[k]=el?el.value.trim():''; }); d.org='Amor Consciente'; return d; }
 const RF_MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -2989,28 +3049,35 @@ function rfpFmtDeadline(iso,lang){
   if(!iso) return '';
   try{ const [y,m,dd]=iso.split('-'); return lang==='en' ? `${EN_MONTHS[+m-1]} ${+dd}, ${y}` : `${+dd} ${MES[+m-1]} ${y}`; }catch(e){ return iso; }
 }
-function buildRfpEmail(lang, d){
+function buildRfpEmail(lang, d, conc, portalUrl){
+  conc=conc||[]; portalUrl=portalUrl||'#';
   const T = lang==='en'
     ? {rfp:'Request for Proposal',dates:'Preferred dates',alt:'Alternate dates',att:'Expected attendees',setup:'Room setup',bk:'Breakout rooms',sch:'Schedule',cat:'Catering',av:'Audio / Visual',park:'Parking',wifi:'WiFi',bud:'Budget range',notes:'Special requests',
-       subject:`RFP — ${d.org} event in ${d.city||''}${d.dates?(' ('+d.dates+')'):''}`,
+       subject:`Request for Proposal — ${d.org} event in ${d.city||''}${d.dates?(' · '+d.dates):''}`,
        hi:'Hello,',
-       intro:`We are ${d.org}, planning a corporate event${d.city?(' in <b>'+esc(d.city)+'</b>'):''}, and we would like to request a proposal from your venue.`,
-       ask:'Could you please share your availability and a quote for the requirements below',
-       by: d.deadline?(` by <b>${rfpFmtDeadline(d.deadline,'en')}</b>`):'',
-       close:'Please reply to this email with availability, pricing, and any options you recommend. Thank you — we look forward to your proposal.',
-       reqs:'Event requirements', contact:'Contact'}
+       intro:`We're ${d.org}, and we're planning a corporate event${d.city?(' in <b>'+esc(d.city)+'</b>'):''}${d.dates?(' around <b>'+esc(d.dates)+'</b>'):''}. We'd love to consider your venue and invite you to submit a proposal.`,
+       reqs:'What we need', concTitle:'Concessions we’re requesting (complimentary)',
+       cta:'To make it easy, please submit your proposal through our quick online portal — it takes a few minutes and lets you confirm pricing, concessions, and attach your materials:',
+       btn:'Submit your proposal',
+       by: d.deadline?(`Kindly submit by <b>${rfpFmtDeadline(d.deadline,'en')}</b>.`):'',
+       close:'If you have any questions, just reply to this email — we’re happy to help. Thank you, and we look forward to your proposal.',
+       contact:'Contact'}
     : {rfp:'Solicitud de cotización',dates:'Fechas preferidas',alt:'Fechas alternas',att:'Asistentes (aprox.)',setup:'Montaje del salón',bk:'Salas adicionales',sch:'Días y horario',cat:'Catering',av:'Audio / Video',park:'Parqueo',wifi:'WiFi',bud:'Presupuesto',notes:'Requisitos especiales',
-       subject:`Solicitud de cotización (RFP) — Evento de ${d.org} en ${d.city||''}${d.dates?(' ('+d.dates+')'):''}`,
+       subject:`Solicitud de cotización — Evento de ${d.org} en ${d.city||''}${d.dates?(' · '+d.dates):''}`,
        hi:'Hola,',
-       intro:`Somos ${d.org} y estamos organizando un evento corporativo${d.city?(' en <b>'+esc(d.city)+'</b>'):''}. Nos gustaría solicitar una cotización de su venue.`,
-       ask:'¿Podrían compartir su disponibilidad y una cotización para los requerimientos de abajo',
-       by: d.deadline?(` antes del <b>${rfpFmtDeadline(d.deadline,'es')}</b>`):'',
-       close:'Por favor responda a este correo con disponibilidad, precios y las opciones que recomienden. ¡Gracias! Quedamos atentos a su propuesta.',
-       reqs:'Requerimientos del evento', contact:'Contacto'};
+       intro:`Somos ${d.org} y estamos organizando un evento corporativo${d.city?(' en <b>'+esc(d.city)+'</b>'):''}${d.dates?(' alrededor del <b>'+esc(d.dates)+'</b>'):''}. Nos encantaría considerar su venue y los invitamos a enviarnos una propuesta.`,
+       reqs:'Lo que necesitamos', concTitle:'Concesiones que pedimos (cortesía)',
+       cta:'Para hacerlo fácil, por favor envíe su propuesta por nuestro portal en línea — toma unos minutos y le permite confirmar precios, concesiones y adjuntar sus materiales:',
+       btn:'Enviar su propuesta',
+       by: d.deadline?(`Agradecemos su respuesta antes del <b>${rfpFmtDeadline(d.deadline,'es')}</b>.`):'',
+       close:'Si tiene cualquier duda, responda a este correo — con gusto le ayudamos. ¡Gracias! Quedamos atentos a su propuesta.',
+       contact:'Contacto'};
   const row=(k,v)=> v ? `<tr><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600">${esc(k)}</td><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#22303f;font-size:14px"><b>${esc(v)}</b></td></tr>` : '';
   const rows=[row(T.dates,d.dates),row(T.alt,d.alt),row(T.att,d.attendees),row(T.setup,d.setup),row(T.bk,d.breakouts),row(T.sch,d.schedule),row(T.cat,d.catering),row(T.av,d.av),row(T.park,d.parking),row(T.wifi,d.wifi),row(T.bud,d.budget)].join('');
   const contact=[esc(d.cname||''),esc(d.cemail||''),esc(d.cphone||'')].filter(Boolean).join(' · ');
   const notesHtml = d.notes ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6"><b>${esc(T.notes)}:</b> ${esc(d.notes).replace(/\n/g,'<br>')}</p>` : '';
+  const concHtml = conc.length ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(T.concTitle)}</div><ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7">${conc.map(c=>`<li>${esc(c.label)}</li>`).join('')}</ul>` : '';
+  const btn=`<div style="text-align:center;margin:20px 0 6px"><a href="${esc(portalUrl)}" style="display:inline-block;background-color:#b8860b;background-image:linear-gradient(135deg,#c9970d,#a9790a);color:#fff;text-decoration:none;font-weight:700;padding:14px 30px;border-radius:12px;border:1px solid #8a6208;font-size:15px">${esc(T.btn)} →</a></div>`;
   const html = `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
   <div style="max-width:640px;margin:0 auto;padding:0 14px 40px">
     <div style="text-align:center;background:linear-gradient(135deg,#1e3a5f,#14263f);border-radius:0 0 14px 14px;padding:22px 16px;border-bottom:3px solid #b8860b">
@@ -3020,11 +3087,14 @@ function buildRfpEmail(lang, d){
     <div style="background:#fffdf8;border:1px solid #e6ddca;border-radius:14px;padding:22px 20px;margin-top:16px">
       <p style="margin:0 0 10px;font-size:15px">${T.hi}</p>
       <p style="margin:0 0 14px;font-size:14px;line-height:1.6">${T.intro}</p>
-      <p style="margin:0 0 6px;font-size:14px;line-height:1.6">${T.ask}${T.by}?</p>
       <div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px">${esc(T.reqs)}</div>
       <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #efe8da;border-radius:10px;overflow:hidden">${rows||('<tr><td style="padding:12px;color:#8a9199;font-size:13px">—</td></tr>')}</table>
+      ${concHtml}
       ${notesHtml}
-      <p style="margin:16px 0 0;font-size:14px;line-height:1.6">${T.close}</p>
+      <p style="margin:18px 0 2px;font-size:14px;line-height:1.6">${T.cta}</p>
+      ${btn}
+      ${T.by?`<p style="margin:8px 0 0;font-size:13px;color:#6b7480;text-align:center">${T.by}</p>`:''}
+      <p style="margin:18px 0 0;font-size:14px;line-height:1.6">${T.close}</p>
       ${contact?`<p style="margin:14px 0 0;font-size:13.5px;color:#22303f"><b>${esc(T.contact)}:</b> ${contact}</p>`:''}
     </div>
     <div style="text-align:center;color:#8a9199;font-size:11.5px;margin-top:16px">${esc(d.org)} · Venues</div>
@@ -3034,9 +3104,19 @@ function buildRfpEmail(lang, d){
 function rfpUpdatePreview(){
   const lang=($('rfpLang')||{}).value||'en';
   const d=rfpGet();
-  const { subject, html } = buildRfpEmail(lang, d);
+  const placeholder = lang==='es' ? 'https://ac-venues.vercel.app/rfp-portal.html (enlace personalizado por hotel)' : 'https://ac-venues.vercel.app/rfp-portal.html (personal link per hotel)';
+  const { subject, html } = buildRfpEmail(lang, d, rfpConcList(), placeholder);
   const s=$('rfpPrevSubj'); if(s) s.textContent=subject;
   const f=$('rfpPrevFrame'); if(f) f.srcdoc=html;
+}
+function renderRfpConc(){
+  const box=$('rfpConc'); if(!box) return;
+  box.innerHTML=_rfpConc.map((c,i)=>`<div class="rfpconcrow"><input data-rfpconc="${i}" value="${esc(c.label||'')}" placeholder="Concesión que pedimos"><button class="rm" data-rfpconcdel="${i}" type="button" title="Quitar">✕</button></div>`).join('')
+    || '<div class="muted" style="font-size:12.5px">Sin concesiones. Agrega con “+ Agregar”.</div>';
+}
+function renderRfpManual(){
+  const box=$('rfpManList'); if(!box) return;
+  box.innerHTML=_rfpManual.map((m,i)=>`<span class="rfpmanchip"><b>${esc(m.venue||m.name||m.email)}</b> · ${esc(m.email)} <span class="rm" data-rfpmandel="${i}" title="Quitar">✕</span></span>`).join('');
 }
 function rfpEventSlug(){ return _rfpEvent ? citySlugOfDate(_rfpEvent) : ''; }
 function rfpApplyEvent(dateId){
@@ -3085,34 +3165,60 @@ function renderRfp(){
   if(!_rfpEvent && opts.length) _rfpEvent=opts[0].id;
   sel.innerHTML = opts.length ? opts.map(o=>`<option value="${esc(o.id)}"${o.id===_rfpEvent?' selected':''}>${esc(o.label)}</option>`).join('') : '<option value="">(sin eventos)</option>';
   if(_rfpEvent && _rfpApplied!==_rfpEvent && !$('rfField_name').value){ rfpApplyEvent(_rfpEvent); }
+  if(!_rfpConc.length && !_rfpConcEdited){ _rfpConc=rfpConcDefaults(($('rfpLang')||{}).value||'en'); }
+  renderRfpConc();
+  renderRfpManual();
   renderRfpVendors();
   renderRfpHistory();
   rfpUpdatePreview();
 }
 function rfpRecipients(){
   const slug=rfpEventSlug();
-  return (state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && _rfpSel.has(c.id))
+  const fromList=(state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && _rfpSel.has(c.id))
     .map(c=>({email:c.email.trim(), name:c.name||'', venue:c.venue||''}));
+  const all=fromList.concat(_rfpManual.map(m=>({email:(m.email||'').trim(), name:m.name||'', venue:m.venue||''})));
+  const seen={}; const out=[];
+  all.forEach(r=>{ const k=r.email.toLowerCase(); if(!r.email||seen[k]) return; seen[k]=1; out.push(r); });
+  return out;
 }
+function rfpToken(){ try{ return (crypto.randomUUID&&crypto.randomUUID().replace(/-/g,'')) || (Date.now().toString(36)+Math.random().toString(36).slice(2,12)); }catch(e){ return Date.now().toString(36)+Math.random().toString(36).slice(2,12); } }
 async function rfpDoSend(){
   const recipients=rfpRecipients();
   const lang=($('rfpLang')||{}).value||'en';
-  const d=rfpGet(); const { subject, html }=buildRfpEmail(lang,d);
+  const d=rfpGet(); const conc=rfpConcList();
   const cmsg=$('rfpConfirmMsg'); const go=$('rfpConfirmGo'); const old=go.textContent;
-  go.disabled=true; go.textContent='Enviando…'; cmsg.style.color='#5b6472'; cmsg.textContent='Enviando '+recipients.length+' correo(s)…';
+  go.disabled=true; go.textContent='Enviando…'; cmsg.style.color='#5b6472'; cmsg.textContent='Preparando portales y enviando '+recipients.length+' correo(s)…';
   try{
-    const { data } = await sb.auth.getSession(); const token=data.session&&data.session.access_token;
+    const { data:sdata } = await sb.auth.getSession(); const token=sdata.session&&sdata.session.access_token;
     if(!token){ cmsg.style.color='#b23b3b'; cmsg.textContent='Sesión no válida. Vuelve a entrar.'; go.disabled=false; go.textContent=old; return; }
-    const r=await fetch('/api/rfp-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify({ subject, html, meta:{date_id:_rfpEvent||null, city_slug:rfpEventSlug(), lang}, recipients })});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok || j.error){ cmsg.style.color='#b23b3b'; cmsg.textContent='No se pudo enviar: '+(j.error||('HTTP '+r.status)); go.disabled=false; go.textContent=old; return; }
-    logChange('rfp', rfpEventSlug()?cityName(rfpEventSlug()).split(',')[0]:'RFP', 'envió RFP a '+j.sent+' vendor(es)');
+    // 1) crear la campaña (request) con requisitos + concesiones
+    const reqIns = await sb.from('rfp_requests').insert({ date_id:_rfpEvent||null, city_slug:rfpEventSlug(), lang, requirements:d, concessions:conc, created_by:(USER.email||'') }).select('id').single();
+    if(reqIns.error) throw reqIns.error;
+    const requestId=reqIns.data.id;
+    // 2) una invitación (token + portal) por hotel, y armar el correo individual
+    const base=location.origin;
+    const payloadRecipients=[];
+    for(const r of recipients){
+      const tok=rfpToken();
+      const inv=await sb.from('rfp_invites').insert({ request_id:requestId, date_id:_rfpEvent||null, token:tok, to_email:r.email, to_name:r.name||'', venue:r.venue||'', status:'sent' });
+      if(inv.error) throw inv.error;
+      const portalUrl=base+'/rfp-portal.html?t='+tok;
+      const dd=Object.assign({}, d); // el saludo del correo puede personalizar el venue
+      const { html }=buildRfpEmail(lang, dd, conc, portalUrl);
+      payloadRecipients.push({ email:r.email, name:r.name, venue:r.venue, html });
+    }
+    const { subject }=buildRfpEmail(lang, d, conc, base+'/rfp-portal.html');
+    const resp=await fetch('/api/rfp-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({ subject, meta:{date_id:_rfpEvent||null, city_slug:rfpEventSlug(), lang}, recipients:payloadRecipients })});
+    const j=await resp.json().catch(()=>({}));
+    if(!resp.ok || j.error){ cmsg.style.color='#b23b3b'; cmsg.textContent='No se pudo enviar: '+(j.error||('HTTP '+resp.status)); go.disabled=false; go.textContent=old; return; }
+    logChange('rfp', rfpEventSlug()?cityName(rfpEventSlug()).split(',')[0]:'RFP', 'envió RFP (con portal) a '+j.sent+' vendor(es)');
     closeRfpConfirm();
+    _rfpManual=[]; renderRfpManual();
     const m=$('rfpMsg'); m.style.color='#2e7d5b';
-    m.textContent='✅ Enviado a '+j.sent+' vendor(es)'+(j.skipped?(' · '+j.skipped+' con error'):'')+'.'+(j.errors&&j.errors.length?(' '+j.errors.join(' | ')):'');
+    m.textContent='✅ Enviado a '+j.sent+' vendor(es)'+(j.skipped?(' · '+j.skipped+' con error'):'')+'. Cada hotel responde por su portal; revisa "Comparar RFP".'+(j.errors&&j.errors.length?(' '+j.errors.join(' | ')):'');
     go.disabled=false; go.textContent=old;
-    setTimeout(loadAll, 600);
+    setTimeout(loadAll, 700);
   }catch(e){ cmsg.style.color='#b23b3b'; cmsg.textContent='No se pudo enviar: '+(e.message||e); go.disabled=false; go.textContent=old; }
 }
 function openRfpConfirm(){
@@ -3129,8 +3235,31 @@ function closeRfpConfirm(){ const c=$('rfpConfirm'); if(c) c.classList.add('hidd
 
 document.addEventListener('DOMContentLoaded', ()=>{
   const sel=$('rfpEvent'); if(sel) sel.addEventListener('change', ()=>{ _rfpEvent=sel.value; rfpApplyEvent(_rfpEvent); renderRfpVendors(); rfpUpdatePreview(); });
-  const lang=$('rfpLang'); if(lang) lang.addEventListener('change', rfpUpdatePreview);
+  const lang=$('rfpLang'); if(lang) lang.addEventListener('change', ()=>{ if(!_rfpConcEdited){ _rfpConc=rfpConcDefaults(lang.value||'en'); renderRfpConc(); } rfpUpdatePreview(); });
   const sec=$('rfp'); if(sec) sec.addEventListener('input', (e)=>{ if(e.target && /^rfField_/.test(e.target.id)) rfpUpdatePreview(); });
+  // --- Concesiones que pedimos (editable) ---
+  const cAdd=$('rfpConcAdd'); if(cAdd) cAdd.addEventListener('click', ()=>{ _rfpConcEdited=true; _rfpConc.push({label:''}); renderRfpConc(); const box=$('rfpConc'); const ins=box&&box.querySelectorAll('input'); if(ins&&ins.length) ins[ins.length-1].focus(); rfpUpdatePreview(); });
+  const cReset=$('rfpConcReset'); if(cReset) cReset.addEventListener('click', ()=>{ _rfpConcEdited=false; _rfpConc=rfpConcDefaults(($('rfpLang')||{}).value||'en'); renderRfpConc(); rfpUpdatePreview(); });
+  const cBox=$('rfpConc');
+  if(cBox){
+    cBox.addEventListener('input', (e)=>{ const t=e.target; if(t&&t.dataset&&t.dataset.rfpconc!=null){ const i=+t.dataset.rfpconc; if(_rfpConc[i]){ _rfpConc[i].label=t.value; _rfpConcEdited=true; rfpUpdatePreview(); } } });
+    cBox.addEventListener('click', (e)=>{ const b=e.target.closest&&e.target.closest('[data-rfpconcdel]'); if(!b) return; const i=+b.dataset.rfpconcdel; _rfpConc.splice(i,1); _rfpConcEdited=true; renderRfpConc(); rfpUpdatePreview(); });
+  }
+  // --- Recipientes manuales (fuera de la lista por ciudad) ---
+  const mAdd=$('rfpManAdd');
+  const addManual=()=>{
+    const em=($('rfpManEmail')||{}).value||''; const vn=($('rfpManVenue')||{}).value||''; const nm=($('rfpManName')||{}).value||'';
+    const e=em.trim(); const msg=$('rfpMsg');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='Escribe un correo válido para agregarlo manualmente.'; } return; }
+    if(_rfpManual.some(m=>(m.email||'').toLowerCase()===e.toLowerCase())){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='Ese correo ya está en la lista manual.'; } return; }
+    _rfpManual.push({email:e, venue:vn.trim(), name:nm.trim()});
+    if($('rfpManEmail')) $('rfpManEmail').value=''; if($('rfpManVenue')) $('rfpManVenue').value=''; if($('rfpManName')) $('rfpManName').value='';
+    if(msg) msg.textContent=''; renderRfpManual();
+  };
+  if(mAdd) mAdd.addEventListener('click', addManual);
+  const mEmail=$('rfpManEmail'); if(mEmail) mEmail.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
+  const mName=$('rfpManName'); if(mName) mName.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
+  const mBox=$('rfpManList'); if(mBox) mBox.addEventListener('click', (e)=>{ const b=e.target.closest&&e.target.closest('[data-rfpmandel]'); if(!b) return; _rfpManual.splice(+b.dataset.rfpmandel,1); renderRfpManual(); });
   const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim()).map(c=>c.id)); renderRfpVendors(); });
   const none=$('rfpSelNone'); if(none) none.addEventListener('click', ()=>{ _rfpSel=new Set(); renderRfpVendors(); });
   const vbox=$('rfpVendors'); if(vbox) vbox.addEventListener('change', (e)=>{ const t=e.target; if(t && t.dataset && t.dataset.rfpven){ if(t.checked) _rfpSel.add(t.dataset.rfpven); else _rfpSel.delete(t.dataset.rfpven); const cnt=$('rfpVenCount'); if(cnt){ const slug=rfpEventSlug(); const list=(state.contacts||[]).filter(c=>contactMetro(c)===slug); const withEmail=list.filter(c=>c.email&&c.email.trim()).length; cnt.textContent=`· ${list.length} en la zona (${withEmail} con email · ${_rfpSel.size} seleccionados)`; } } });
@@ -3138,6 +3267,205 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const cc=$('rfpConfirmCancel'); if(cc) cc.addEventListener('click', closeRfpConfirm);
   const cg=$('rfpConfirmGo'); if(cg) cg.addEventListener('click', rfpDoSend);
   const cov=$('rfpConfirm'); if(cov) cov.addEventListener('click',(e)=>{ if(e.target===cov) closeRfpConfirm(); });
+});
+
+/* ============================================================
+   COMPARAR RFP — matriz de respuestas de hoteles + ganador
+   ============================================================ */
+let _rcEvent='';
+let _rapInvite=null;   // {inv, off} elegido para aprobación
+
+function rcEventOptions(){
+  const ids=new Set();
+  (state.rfpInvites||[]).forEach(i=>{ if(i.date_id) ids.add(i.date_id); });
+  (state.rfpOffers||[]).forEach(o=>{ if(o.date_id) ids.add(o.date_id); });
+  return allDates().filter(({d})=>ids.has(d.id)).map(({city,d})=>({id:d.id, label:(cityName(city.slug)||'').split(',')[0]+' · '+(d.label||'Evento')}));
+}
+function rcLatestReq(dateId){
+  return Object.values(state.rfpReq||{}).filter(r=>r.date_id===dateId)
+    .sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''))[0]||null;
+}
+function rcConcLabels(dateId){
+  const r=rcLatestReq(dateId);
+  const list=(r&&Array.isArray(r.concessions))?r.concessions:[];
+  return list.map(c=>({key:c.key||'', label:c.label||''}));
+}
+function renderRfpCompare(){
+  const sel=$('rcEvent'); if(!sel) return;
+  const opts=rcEventOptions();
+  if(!_rcEvent && opts.length) _rcEvent=opts[0].id;
+  if(_rcEvent && !opts.some(o=>o.id===_rcEvent)) _rcEvent = opts.length?opts[0].id:'';
+  sel.innerHTML = opts.length ? opts.map(o=>`<option value="${esc(o.id)}"${o.id===_rcEvent?' selected':''}>${esc(o.label)}</option>`).join('') : '<option value="">(aún no hay RFP enviados)</option>';
+  rcRenderMatrix();
+}
+function rcRenderMatrix(){
+  const wrap=$('rcMatrix'); const sum=$('rcSummary'); if(!wrap) return;
+  if(!_rcEvent){ wrap.innerHTML='<div class="muted" style="padding:16px">Envía un RFP desde “Enviar RFP” para empezar a comparar respuestas aquí.</div>'; if(sum) sum.textContent=''; return; }
+  const invites=(state.rfpInvites||[]).filter(i=>i.date_id===_rcEvent);
+  const offers=(state.rfpOffers||[]).filter(o=>o.date_id===_rcEvent);
+  const offerByInvite={}; offers.forEach(o=>{ offerByInvite[o.invite_id]=o; });
+  const cols=invites.filter(i=>offerByInvite[i.id]).map(i=>({inv:i, off:offerByInvite[i.id]}));
+  const pending=invites.filter(i=>!offerByInvite[i.id]);
+  if(sum) sum.textContent = `${invites.length} invitado(s) · ${cols.length} respondieron · ${pending.length} pendiente(s)`;
+  if(!cols.length){ wrap.innerHTML=`<div class="muted" style="padding:16px">Aún no hay respuestas. ${invites.length?('Invitados que faltan por responder: '+invites.map(i=>esc(i.venue||i.to_email)).join(', ')):'No hay invitaciones para este evento.'}</div>`; return; }
+  const conc=rcConcLabels(_rcEvent);
+  const n=v=> (v==null||v==='')?null:Number(v);
+  const bestOf=(key)=>{ const vals=cols.map(c=>n(c.off[key])).filter(v=>v!=null&&!isNaN(v)); return vals.length?Math.min(...vals):null; };
+  const bRoom=bestOf('room_rental'), bFb=bestOf('fb_minimum'), bTot=bestOf('total_estimate');
+  const money=v=>{ v=n(v); return v==null||isNaN(v)?'—':fmtMoney(v); };
+  const headcells=cols.map(c=>`<th class="${c.inv.status==='won'?'wincol':''}">${esc(c.off.venue||c.inv.venue||c.off.contact_name||'Hotel')}${c.inv.status==='won'?' <span class="rcwon">GANADOR</span>':''}</th>`).join('');
+  const mkrow=(label, fn, cls)=> `<tr><td class="rk">${esc(label)}</td>${cols.map(c=>`<td class="${(c.inv.status==='won'?'wincol ':'')+(cls?cls(c):'')}">${fn(c)}</td>`).join('')}</tr>`;
+  const rowsHtml=[];
+  rowsHtml.push(mkrow('Contacto', c=>{ const o=c.off; return [esc(o.contact_name||''),esc(o.contact_email||''),esc(o.contact_phone||'')].filter(Boolean).join('<br>')||'—'; }));
+  rowsHtml.push(mkrow('Disponible en fechas', c=> esc(c.off.available||'—')));
+  rowsHtml.push(mkrow('Salón / capacidad', c=> esc([c.off.room_name,c.off.capacity].filter(Boolean).join(' · ')||'—')));
+  rowsHtml.push(mkrow('Renta de salón', c=> money(c.off.room_rental), c=> (bRoom!=null && n(c.off.room_rental)===bRoom)?'best':''));
+  rowsHtml.push(mkrow('Mínimo de A&B', c=> money(c.off.fb_minimum), c=> (bFb!=null && n(c.off.fb_minimum)===bFb)?'best':''));
+  rowsHtml.push(mkrow('Depósito', c=> esc(c.off.deposit||'—')));
+  rowsHtml.push(mkrow('Estimado total', c=> money(c.off.total_estimate), c=> (bTot!=null && n(c.off.total_estimate)===bTot)?'best':''));
+  conc.forEach(cc=>{
+    rowsHtml.push(mkrow(cc.label, c=>{
+      const arr=Array.isArray(c.off.concessions)?c.off.concessions:[];
+      const m=arr.find(x=>x.key===cc.key) || arr.find(x=>(x.label||'')===cc.label);
+      if(!m) return '—';
+      const st=(m.status||'').toLowerCase();
+      const tag = st==='comp'?'<span class="cc-comp">✓ Cortesía</span>': st==='cost'?('<span class="cc-cost">Con costo</span>'+(m.amount?(' · '+esc(m.amount)):'')): st==='no'?'<span class="cc-no">No</span>':'—';
+      return tag+(m.notes?('<br><span class="muted" style="font-size:11px">'+esc(m.notes)+'</span>'):'');
+    }));
+  });
+  rowsHtml.push(mkrow('Archivos', c=>{ const fs=Array.isArray(c.off.files)?c.off.files:[]; return fs.length?fs.map(f=>`<a class="mxfile" href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name||'archivo')}</a>`).join(''):'—'; }));
+  rowsHtml.push(mkrow('Notas', c=> c.off.notes?esc(c.off.notes).replace(/\n/g,'<br>'):'—'));
+  rowsHtml.push(`<tr><td class="rk">Decisión</td>${cols.map(c=>`<td class="${c.inv.status==='won'?'wincol':''}">${c.inv.status==='won'?'<span class="rcwon">Elegido ✓</span><div class="winbtn"><button class="btn sm ghost" data-rcwin="${esc(c.inv.id)}">Reenviar aprobación</button></div>':`<button class="btn sm gold winbtn" data-rcwin="${esc(c.inv.id)}">Elegir y aprobar</button>`}</td>`).join('')}</tr>`);
+  wrap.innerHTML = `<table><thead><tr><th>Criterio</th>${headcells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table>`
+    + (pending.length?`<div class="muted" style="font-size:12.5px;margin-top:10px">⏳ Pendientes por responder: ${pending.map(i=>esc(i.venue||i.to_email)).join(', ')}</div>`:'');
+}
+
+/* ---- Correo de aprobación del ganador ---- */
+function rapRecap(lang, off){
+  const T = lang==='es'
+    ? {room:'Renta de salón',fb:'Mínimo de A&B',dep:'Depósito',tot:'Estimado total',room2:'Salón',cap:'Capacidad'}
+    : {room:'Room rental',fb:'F&B minimum',dep:'Deposit',tot:'Estimated total',room2:'Room',cap:'Capacity'};
+  const money=v=>{ v=(v==null||v==='')?null:Number(v); return v==null||isNaN(v)?'':fmtMoney(v); };
+  const row=(k,v)=> v? `<tr><td style="padding:8px 12px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;font-weight:600">${esc(k)}</td><td style="padding:8px 12px;border-bottom:1px solid #efe8da;color:#22303f;font-size:14px"><b>${esc(v)}</b></td></tr>`:'';
+  return [row(T.room2,off.room_name),row(T.cap,off.capacity),row(T.room,money(off.room_rental)),row(T.fb,money(off.fb_minimum)),row(T.dep,off.deposit),row(T.tot,money(off.total_estimate))].join('');
+}
+function buildApprovalEmail(lang, ctx){
+  const org=ctx.org||'Amor Consciente'; const venue=ctx.venue||'';
+  const T = lang==='en'
+    ? { tag:'Proposal approved', hi:`Hello${ctx.contactName?(' '+ctx.contactName):''},`,
+        subject:`Proposal approved — ${org}${ctx.event?(' · '+ctx.event):''}`,
+        glad:`Great news — after reviewing the proposals, we're delighted to move forward with <b>${esc(venue)}</b> for our ${esc(org)} event${ctx.dates?(' ('+esc(ctx.dates)+')'):''}.`,
+        recapT:'Terms we’re confirming', next:'To confirm the booking, here are the next steps:',
+        step1:'Please send us the <b>agreement / contract</b> for signature.',
+        step2: ctx.pay?`For the deposit and payment: ${esc(ctx.pay)}`:'Please include the deposit amount and payment instructions (we can pay by ACH or check) so we can process it promptly.',
+        by: ctx.deadline?`We’d appreciate receiving the contract by <b>${rfpFmtDeadline(ctx.deadline,'en')}</b>.`:'',
+        close:'Thank you for the excellent proposal — we’re looking forward to working with your team. Just reply to this email with the agreement or any questions.',
+        contact:'Contact' }
+    : { tag:'Propuesta aprobada', hi:`Hola${ctx.contactName?(' '+ctx.contactName):''},`,
+        subject:`Propuesta aprobada — ${org}${ctx.event?(' · '+ctx.event):''}`,
+        glad:`¡Excelentes noticias! Luego de revisar las propuestas, nos complace avanzar con <b>${esc(venue)}</b> para nuestro evento de ${esc(org)}${ctx.dates?(' ('+esc(ctx.dates)+')'):''}.`,
+        recapT:'Términos que confirmamos', next:'Para confirmar la reserva, estos son los siguientes pasos:',
+        step1:'Por favor envíennos el <b>contrato / acuerdo</b> para firma.',
+        step2: ctx.pay?`Para el depósito y el pago: ${esc(ctx.pay)}`:'Incluyan el monto del depósito y las instrucciones de pago (podemos pagar por ACH o cheque) para procesarlo a la brevedad.',
+        by: ctx.deadline?`Agradecemos recibir el contrato antes del <b>${rfpFmtDeadline(ctx.deadline,'es')}</b>.`:'',
+        close:'Gracias por la excelente propuesta — tenemos muchas ganas de trabajar con su equipo. Respondan a este correo con el contrato o cualquier duda.',
+        contact:'Contacto' };
+  const recap=rapRecap(lang, ctx.offer||{});
+  const recapHtml = recap ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px">${esc(T.recapT)}</div><table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #efe8da;border-radius:10px;overflow:hidden">${recap}</table>` : '';
+  const note = ctx.note ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6">${esc(ctx.note).replace(/\n/g,'<br>')}</p>` : '';
+  const contact=[esc(ctx.cname||''),esc(ctx.cemail||''),esc(ctx.cphone||'')].filter(Boolean).join(' · ');
+  const html = `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
+  <div style="max-width:640px;margin:0 auto;padding:0 14px 40px">
+    <div style="text-align:center;background:linear-gradient(135deg,#1e3a5f,#14263f);border-radius:0 0 14px 14px;padding:22px 16px;border-bottom:3px solid #b8860b">
+      <div style="color:#fff;font-size:18px;font-weight:800">${esc(org)}</div>
+      <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:4px">${esc(T.tag)}</div>
+    </div>
+    <div style="background:#fffdf8;border:1px solid #e6ddca;border-radius:14px;padding:22px 20px;margin-top:16px">
+      <p style="margin:0 0 10px;font-size:15px">${T.hi}</p>
+      <p style="margin:0 0 6px;font-size:14px;line-height:1.6">${T.glad}</p>
+      ${recapHtml}
+      <p style="margin:18px 0 6px;font-size:14px;line-height:1.6"><b>${esc(T.next)}</b></p>
+      <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.7"><li>${T.step1}</li><li>${T.step2}</li></ol>
+      ${T.by?`<p style="margin:12px 0 0;font-size:13px;color:#6b7480">${T.by}</p>`:''}
+      ${note}
+      <p style="margin:18px 0 0;font-size:14px;line-height:1.6">${T.close}</p>
+      ${contact?`<p style="margin:14px 0 0;font-size:13.5px;color:#22303f"><b>${esc(T.contact)}:</b> ${contact}</p>`:''}
+    </div>
+    <div style="text-align:center;color:#8a9199;font-size:11.5px;margin-top:16px">${esc(org)} · Venues</div>
+  </div></body></html>`;
+  return { subject:T.subject, html };
+}
+function rapCtx(){
+  if(!_rapInvite) return null;
+  const inv=_rapInvite.inv, off=_rapInvite.off||{};
+  const lang=($('rapLang')||{}).value||'en';
+  const req=rcLatestReq(inv.date_id)||{}; const r=req.requirements||{};
+  let drec=null; for(const k in state.dates){ const f=(state.dates[k]||[]).find(x=>x.id===inv.date_id); if(f){ drec=f; break; } }
+  const event=inv.date_id?dateLabelById(inv.date_id):'';
+  const dates=r.dates || (drec?rfpDateRange(drec.start_date,drec.end_date):'');
+  return { lang, org:'Amor Consciente', venue:off.venue||inv.venue||'', event, dates,
+    contactName:(off.contact_name||'').split(' ')[0]||'', offer:off,
+    deadline:($('rapDeadline')||{}).value||'', pay:($('rapPay')||{}).value||'', note:($('rapNote')||{}).value||'',
+    cname:r.cname||'', cemail:r.cemail||'global@amorconsciente.com', cphone:r.cphone||'' };
+}
+function rapUpdatePreview(){
+  const ctx=rapCtx(); if(!ctx) return;
+  const {subject, html}=buildApprovalEmail(ctx.lang, ctx);
+  if($('rapSubj')) $('rapSubj').textContent=subject;
+  if($('rapFrame')) $('rapFrame').srcdoc=html;
+}
+function openRfpApprove(inviteId){
+  const inv=(state.rfpInvites||[]).find(i=>i.id===inviteId); if(!inv) return;
+  const off=(state.rfpOffers||[]).find(o=>o.invite_id===inviteId)||{};
+  _rapInvite={inv, off};
+  const sub=$('rapSub'); if(sub) sub.textContent='Vas a aprobar la oferta de '+(off.venue||inv.venue||'este hotel')+' y enviarles el correo pidiendo el contrato y los datos para el pago. Al enviarlo se marca como ganador del evento.';
+  const lsel=$('rapLang'); if(lsel) lsel.value=(rcLatestReq(inv.date_id)||{}).lang||'en';
+  if($('rapDeadline')) $('rapDeadline').value='';
+  if($('rapPay')) $('rapPay').value='';
+  if($('rapNote')) $('rapNote').value='';
+  if($('rapMsg')) $('rapMsg').textContent='';
+  if($('rapTo')) $('rapTo').textContent=(off.contact_email||inv.to_email||'')+( (off.venue||inv.venue)?(' · '+(off.venue||inv.venue)):'' );
+  rapUpdatePreview();
+  const m=$('rfpApprove'); if(m) m.classList.remove('hidden');
+}
+function closeRfpApprove(){ const m=$('rfpApprove'); if(m) m.classList.add('hidden'); _rapInvite=null; }
+async function rapDoSend(){
+  if(!_rapInvite){ return; }
+  const ctx=rapCtx(); const inv=_rapInvite.inv, off=_rapInvite.off||{};
+  const to=(off.contact_email||inv.to_email||'').trim();
+  const msg=$('rapMsg'); const btn=$('rapSend'); const old=btn.textContent;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='El hotel no tiene un correo válido en su respuesta.'; } return; }
+  btn.disabled=true; btn.textContent='Enviando…'; if(msg){ msg.style.color='#5b6472'; msg.textContent='Enviando aprobación y registrando al ganador…'; }
+  try{
+    const { data:sdata }=await sb.auth.getSession(); const token=sdata.session&&sdata.session.access_token;
+    if(!token){ msg.style.color='#b23b3b'; msg.textContent='Sesión no válida. Vuelve a entrar.'; btn.disabled=false; btn.textContent=old; return; }
+    const {subject, html}=buildApprovalEmail(ctx.lang, ctx);
+    const resp=await fetch('/api/rfp-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({ subject, meta:{date_id:inv.date_id||null, city_slug:inv.date_id?citySlugOfDate(inv.date_id):'', lang:ctx.lang}, recipients:[{email:to, name:off.contact_name||inv.to_name||'', venue:ctx.venue, html}] })});
+    const j=await resp.json().catch(()=>({}));
+    if(!resp.ok || j.error){ msg.style.color='#b23b3b'; msg.textContent='No se pudo enviar: '+(j.error||('HTTP '+resp.status)); btn.disabled=false; btn.textContent=old; return; }
+    try{
+      await sb.from('rfp_invites').update({status:'won'}).eq('id', inv.id);
+      if(inv.date_id){
+        await sb.from('date_meta').upsert({date_id:inv.date_id, chosen_venue:ctx.venue||'', updated_at:new Date().toISOString()},{onConflict:'date_id'});
+        await sb.from('event_sheet').upsert({date_id:inv.date_id, hotel_name:ctx.venue||'', room_name:off.room_name||'', contact_name:off.contact_name||'', contact_phone:off.contact_phone||'', updated_at:new Date().toISOString()},{onConflict:'date_id'});
+        if(off.total_estimate!=null && off.total_estimate!==''){ await sb.from('event_payments').upsert({date_id:inv.date_id, total_amount:Number(off.total_estimate)||0, updated_at:new Date().toISOString()},{onConflict:'date_id'}); }
+      }
+    }catch(pe){ /* no romper por permisos de alguna tabla */ }
+    logChange('rfp', ctx.venue||'RFP', 'aprobó la oferta ganadora y pidió el contrato'+(ctx.venue?(' ('+ctx.venue+')'):''));
+    if(msg){ msg.style.color='#2e7d5b'; msg.textContent='✅ Aprobación enviada a '+to+'. Ganador registrado en el evento.'; }
+    btn.disabled=false; btn.textContent=old;
+    setTimeout(()=>{ closeRfpApprove(); loadAll(); }, 1300);
+  }catch(e){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='No se pudo completar: '+(e.message||e); } btn.disabled=false; btn.textContent=old; }
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const rc=$('rcEvent'); if(rc) rc.addEventListener('change', ()=>{ _rcEvent=rc.value; rcRenderMatrix(); });
+  const mx=$('rcMatrix'); if(mx) mx.addEventListener('click', (e)=>{ const b=e.target.closest&&e.target.closest('[data-rcwin]'); if(b) openRfpApprove(b.dataset.rcwin); });
+  const rl=$('rapLang'); if(rl) rl.addEventListener('change', rapUpdatePreview);
+  ['rapDeadline','rapPay','rapNote'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', rapUpdatePreview); });
+  const rcc=$('rapCancel'); if(rcc) rcc.addEventListener('click', closeRfpApprove);
+  const rcs=$('rapSend'); if(rcs) rcs.addEventListener('click', rapDoSend);
+  const rov=$('rfpApprove'); if(rov) rov.addEventListener('click',(e)=>{ if(e.target===rov) closeRfpApprove(); });
 });
 
 /* ============================================================
@@ -3493,6 +3821,31 @@ lpInit();
 .rfphrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px}
 .rfphrow .hwhen{color:var(--muted);font-size:12px}
 @media(max-width:640px){ .rfpgrid,.rfpvendors{grid-template-columns:1fr} }
+/* concesiones */
+.rfpconc{display:flex;flex-direction:column;gap:8px}
+.rfpconcrow{display:flex;gap:8px;align-items:center}
+.rfpconcrow input{flex:1;padding:8px 11px;border:1px solid var(--line);border-radius:9px;font-size:13.5px}
+.rfpconcrow .rm{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;color:var(--muted)}
+/* recipientes manuales */
+.rfpmanrow{display:grid;grid-template-columns:1.3fr 1.1fr 1fr auto;gap:8px}
+.rfpmanrow input{padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:14px}
+.rfpmanlist{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.rfpmanchip{display:inline-flex;align-items:center;gap:8px;background:var(--cream);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}
+.rfpmanchip .rm{cursor:pointer;color:var(--muted);font-weight:700}
+/* matriz de comparación */
+#rcMatrix table{border-collapse:collapse;width:100%;font-size:13px}
+#rcMatrix th,#rcMatrix td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+#rcMatrix th{background:var(--navy);color:#fff;font-size:12.5px;position:sticky;top:0}
+#rcMatrix td.rk{background:var(--cream);font-weight:700;color:var(--navy);white-space:nowrap;font-size:12px}
+#rcMatrix .best{background:#e4f1ea;font-weight:700}
+#rcMatrix .cc-comp{color:var(--ok);font-weight:700}
+#rcMatrix .cc-cost{color:var(--warn)}
+#rcMatrix .cc-no{color:var(--danger)}
+#rcMatrix .wincol{background:#fff7e6}
+#rcMatrix .mxfile{display:block;color:var(--navy);font-weight:600;text-decoration:none;font-size:12px}
+#rcMatrix .winbtn{margin-top:6px}
+.rcwon{display:inline-block;font-size:11px;font-weight:800;color:#fff;background:var(--ok);border-radius:999px;padding:2px 9px}
+@media(max-width:640px){ .rfpmanrow{grid-template-columns:1fr 1fr} }
 </style>
 
 <!-- ===== PWA: botón de instalación + registro del service worker ===== -->
