@@ -747,12 +747,9 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
         <label>Fechas alternas<input id="rfField_alt" placeholder="Opcional"></label>
         <label>Asistentes (aprox.)<input id="rfField_attendees" placeholder="Ej. 150"></label>
         <label>Montaje del salón<input id="rfField_setup" placeholder="Ej. U-shape triple / escuela"></label>
-        <label>Salas adicionales<input id="rfField_breakouts" placeholder="Ej. 1 green room"></label>
         <label>Días y horario<input id="rfField_schedule" placeholder="Ej. 3 días, 8:00am–6:00pm"></label>
         <label>Catering<input id="rfField_catering" placeholder="Ej. café AM/PM + almuerzo"></label>
         <label>Audio/Video<input id="rfField_av" placeholder="Ej. proyector, pantalla, sonido, micrófonos"></label>
-        <label>Parqueo<input id="rfField_parking" placeholder="Ej. incluido / costo por persona"></label>
-        <label>WiFi<input id="rfField_wifi" placeholder="Ej. incluido para asistentes"></label>
         <label>Presupuesto (opcional)<input id="rfField_budget" placeholder="Rango, si quieres compartirlo"></label>
         <label>Responder antes de<input id="rfField_deadline" type="date"></label>
         <label>Contacto (nombre)<input id="rfField_cname" placeholder="Nombre del equipo"></label>
@@ -3019,7 +3016,7 @@ function metroOf(text){
 }
 function contactMetro(c){ return metroOf([c.city,c.venue,c.address].filter(Boolean).join(' ')); }
 
-const RF_IDS=['name','city','dates','alt','attendees','setup','breakouts','schedule','catering','av','parking','wifi','budget','deadline','cname','cemail','cphone','notes'];
+const RF_IDS=['name','city','dates','alt','attendees','setup','schedule','catering','av','budget','deadline','cname','cemail','cphone','notes'];
 const EN_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let _rfpEvent='';            // date_id seleccionado
 let _rfpApplied='';          // date_id cuyos datos ya se autollenaron
@@ -3027,6 +3024,7 @@ let _rfpSel=new Set();       // ids de contactos seleccionados
 let _rfpConc=[];             // [{label}] concesiones que pedimos (editable)
 let _rfpConcEdited=false;
 let _rfpManual=[];           // [{email,name,venue}] recipientes manuales
+let _rfpStart='', _rfpEnd='', _rfpDatesAuto='';  // fechas crudas del evento + valor autogenerado (para reformatear al cambiar idioma)
 const RFP_CONC_EN=['Complimentary meeting room rental (waived with F&B minimum)','Complimentary self-parking for attendees','Complimentary WiFi in meeting space and guest rooms','Complimentary room upgrades / staff rooms (1 per 40 paid)','Complimentary or discounted A/V','Complimentary daily water & coffee station','Flexible attrition and cancellation terms','Reduced group room rate / rebate'];
 const RFP_CONC_ES=['Renta de salón cortesía (waived con mínimo de A&B)','Parqueo cortesía para asistentes','WiFi cortesía en salón y habitaciones','Upgrades / habitaciones de staff cortesía (1 por 40 pagadas)','A/V cortesía o con descuento','Estación diaria de agua y café cortesía','Términos flexibles de atrición y cancelación','Tarifa de grupo reducida / rebate'];
 function rfpConcDefaults(lang){ return (lang==='es'?RFP_CONC_ES:RFP_CONC_EN).map(l=>({label:l})); }
@@ -3045,6 +3043,20 @@ function rfpDateRange(s,e){
     return `${+sd} ${RF_MES[+sm-1]} ${sy}`;
   }catch(err){ return s; }
 }
+// Rango de fechas en inglés americano: "December 9–13, 2026"
+function rfpDateRangeEN(s,e){
+  if(!s) return '';
+  try{ const [sy,sm,sd]=s.split('-');
+    if(e && e!==s){ const [ey,em,ed]=e.split('-');
+      if(sy===ey&&sm===em) return `${EN_MONTHS[+sm-1]} ${+sd}–${+ed}, ${sy}`;
+      if(sy===ey) return `${EN_MONTHS[+sm-1]} ${+sd} – ${EN_MONTHS[+em-1]} ${+ed}, ${sy}`;
+      return `${EN_MONTHS[+sm-1]} ${+sd}, ${sy} – ${EN_MONTHS[+em-1]} ${+ed}, ${ey}`;
+    }
+    return `${EN_MONTHS[+sm-1]} ${+sd}, ${sy}`;
+  }catch(err){ return s; }
+}
+// Formatea el rango según el idioma del correo
+function rfpDatesFor(lang,s,e){ return lang==='en' ? rfpDateRangeEN(s,e) : rfpDateRange(s,e); }
 function rfpFmtDeadline(iso,lang){
   if(!iso) return '';
   try{ const [y,m,dd]=iso.split('-'); return lang==='en' ? `${EN_MONTHS[+m-1]} ${+dd}, ${y}` : `${+dd} ${MES[+m-1]} ${y}`; }catch(e){ return iso; }
@@ -3073,17 +3085,20 @@ function buildRfpEmail(lang, d, conc, portalUrl){
        close:'Si tiene cualquier duda, responda a este correo — con gusto le ayudamos. ¡Gracias! Quedamos atentos a su propuesta.',
        contact:'Contacto'};
   const row=(k,v)=> v ? `<tr><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600">${esc(k)}</td><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#22303f;font-size:14px"><b>${esc(v)}</b></td></tr>` : '';
-  const rows=[row(T.dates,d.dates),row(T.alt,d.alt),row(T.att,d.attendees),row(T.setup,d.setup),row(T.bk,d.breakouts),row(T.sch,d.schedule),row(T.cat,d.catering),row(T.av,d.av),row(T.park,d.parking),row(T.wifi,d.wifi),row(T.bud,d.budget)].join('');
+  const rows=[row(T.dates,d.dates),row(T.alt,d.alt),row(T.att,d.attendees),row(T.setup,d.setup),row(T.sch,d.schedule),row(T.cat,d.catering),row(T.av,d.av),row(T.bud,d.budget)].join('');
   const contact=[esc(d.cname||''),esc(d.cemail||''),esc(d.cphone||'')].filter(Boolean).join(' · ');
   const notesHtml = d.notes ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6"><b>${esc(T.notes)}:</b> ${esc(d.notes).replace(/\n/g,'<br>')}</p>` : '';
   const concHtml = conc.length ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(T.concTitle)}</div><ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7">${conc.map(c=>`<li>${esc(c.label)}</li>`).join('')}</ul>` : '';
   const btn=`<div style="text-align:center;margin:20px 0 6px"><a href="${esc(portalUrl)}" style="display:inline-block;background-color:#b8860b;background-image:linear-gradient(135deg,#c9970d,#a9790a);color:#fff;text-decoration:none;font-weight:700;padding:14px 30px;border-radius:12px;border:1px solid #8a6208;font-size:15px">${esc(T.btn)} →</a></div>`;
   const html = `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
   <div style="max-width:640px;margin:0 auto;padding:0 14px 40px">
-    <div style="text-align:center;background:linear-gradient(135deg,#1e3a5f,#14263f);border-radius:0 0 14px 14px;padding:22px 16px;border-bottom:3px solid #b8860b">
-      <div style="color:#fff;font-size:18px;font-weight:800">${esc(d.org)}</div>
-      <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:4px">${esc(T.rfp)}</div>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%"><tr>
+      <td align="center" bgcolor="#14263f" style="background-color:#14263f;border-radius:0 0 14px 14px;padding:26px 16px 20px;border-bottom:3px solid #b8860b">
+        <img src="https://ac-venues.vercel.app/logo-gold.png" width="58" height="58" alt="${esc(d.org)}" style="display:block;margin:0 auto 10px;border:0;outline:none;text-decoration:none">
+        <div style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:.01em;font-family:Georgia,'Times New Roman',serif">${esc(d.org)}</div>
+        <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:6px">${esc(T.rfp)}</div>
+      </td>
+    </tr></table>
     <div style="background:#fffdf8;border:1px solid #e6ddca;border-radius:14px;padding:22px 20px;margin-top:16px">
       <p style="margin:0 0 10px;font-size:15px">${T.hi}</p>
       <p style="margin:0 0 14px;font-size:14px;line-height:1.6">${T.intro}</p>
@@ -3124,8 +3139,11 @@ function rfpApplyEvent(dateId){
   let d=null; for(const k in state.dates){ const f=(state.dates[k]||[]).find(x=>x.id===dateId); if(f){ d=f; break; } }
   const slug=citySlugOfDate(dateId); const sh=(state.sheets&&state.sheets[dateId])||{};
   const set=(k,v)=>{ const el=$('rfField_'+k); if(el) el.value=(v==null?'':v); };
-  set('name', d?(d.label||''):''); set('city', cityName(slug)); set('dates', (d?rfpDateRange(d.start_date,d.end_date):''));
-  set('setup', sh.room_name||''); set('parking', sh.parking_cost||''); set('wifi', sh.wifi_included==='si'?'Incluido':(sh.wifi_included==='no'?'No':''));
+  const lang=($('rfpLang')||{}).value||'en';
+  _rfpStart = d?(d.start_date||''):''; _rfpEnd = d?(d.end_date||''):'';
+  const dstr = d?rfpDatesFor(lang, _rfpStart, _rfpEnd):''; _rfpDatesAuto = dstr;
+  set('name', d?(d.label||''):''); set('city', cityName(slug)); set('dates', dstr);
+  set('setup', sh.room_name||'');
   if(!$('rfField_cemail').value) set('cemail','global@amorconsciente.com');
   _rfpApplied=dateId;
   // reset selección: todos los de la zona con email
@@ -3235,7 +3253,13 @@ function closeRfpConfirm(){ const c=$('rfpConfirm'); if(c) c.classList.add('hidd
 
 document.addEventListener('DOMContentLoaded', ()=>{
   const sel=$('rfpEvent'); if(sel) sel.addEventListener('change', ()=>{ _rfpEvent=sel.value; rfpApplyEvent(_rfpEvent); renderRfpVendors(); rfpUpdatePreview(); });
-  const lang=$('rfpLang'); if(lang) lang.addEventListener('change', ()=>{ if(!_rfpConcEdited){ _rfpConc=rfpConcDefaults(lang.value||'en'); renderRfpConc(); } rfpUpdatePreview(); });
+  const lang=$('rfpLang'); if(lang) lang.addEventListener('change', ()=>{
+    if(!_rfpConcEdited){ _rfpConc=rfpConcDefaults(lang.value||'en'); renderRfpConc(); }
+    // reformatea las fechas al idioma elegido si el usuario no las editó a mano
+    const df=$('rfField_dates');
+    if(df && _rfpStart && (df.value===_rfpDatesAuto || !df.value.trim())){ const nv=rfpDatesFor(lang.value||'en', _rfpStart, _rfpEnd); df.value=nv; _rfpDatesAuto=nv; }
+    rfpUpdatePreview();
+  });
   const sec=$('rfp'); if(sec) sec.addEventListener('input', (e)=>{ if(e.target && /^rfField_/.test(e.target.id)) rfpUpdatePreview(); });
   // --- Concesiones que pedimos (editable) ---
   const cAdd=$('rfpConcAdd'); if(cAdd) cAdd.addEventListener('click', ()=>{ _rfpConcEdited=true; _rfpConc.push({label:''}); renderRfpConc(); const box=$('rfpConc'); const ins=box&&box.querySelectorAll('input'); if(ins&&ins.length) ins[ins.length-1].focus(); rfpUpdatePreview(); });
@@ -3376,10 +3400,13 @@ function buildApprovalEmail(lang, ctx){
   const contact=[esc(ctx.cname||''),esc(ctx.cemail||''),esc(ctx.cphone||'')].filter(Boolean).join(' · ');
   const html = `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
   <div style="max-width:640px;margin:0 auto;padding:0 14px 40px">
-    <div style="text-align:center;background:linear-gradient(135deg,#1e3a5f,#14263f);border-radius:0 0 14px 14px;padding:22px 16px;border-bottom:3px solid #b8860b">
-      <div style="color:#fff;font-size:18px;font-weight:800">${esc(org)}</div>
-      <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:4px">${esc(T.tag)}</div>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%"><tr>
+      <td align="center" bgcolor="#14263f" style="background-color:#14263f;border-radius:0 0 14px 14px;padding:26px 16px 20px;border-bottom:3px solid #b8860b">
+        <img src="https://ac-venues.vercel.app/logo-gold.png" width="58" height="58" alt="${esc(org)}" style="display:block;margin:0 auto 10px;border:0;outline:none;text-decoration:none">
+        <div style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:.01em;font-family:Georgia,'Times New Roman',serif">${esc(org)}</div>
+        <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:6px">${esc(T.tag)}</div>
+      </td>
+    </tr></table>
     <div style="background:#fffdf8;border:1px solid #e6ddca;border-radius:14px;padding:22px 20px;margin-top:16px">
       <p style="margin:0 0 10px;font-size:15px">${T.hi}</p>
       <p style="margin:0 0 6px;font-size:14px;line-height:1.6">${T.glad}</p>
