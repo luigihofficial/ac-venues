@@ -3089,6 +3089,11 @@ function buildRfpEmail(lang, d, conc, portalUrl){
   const contact=[esc(d.cname||''),esc(d.cemail||''),esc(d.cphone||'')].filter(Boolean).join(' · ');
   const notesHtml = d.notes ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6"><b>${esc(T.notes)}:</b> ${esc(d.notes).replace(/\n/g,'<br>')}</p>` : '';
   const concHtml = conc.length ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(T.concTitle)}</div><ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7">${conc.map(c=>`<li>${esc(c.label)}</li>`).join('')}</ul>` : '';
+  // Diagrama del montaje solicitado (por ahora: U-shape). Imagen alojada (los correos no renderizan SVG inline).
+  const isUShape = /u-?\s*shape|u\s*shaped|herradura|\ben\s*u\b/i.test(d.setup||'');
+  const layT   = lang==='en' ? 'Requested room layout' : 'Montaje solicitado';
+  const layCap = lang==='en' ? 'U-shape (horseshoe): seating on the outside, open end facing the screen.' : 'En U (herradura): sillas por fuera, extremo abierto hacia la pantalla.';
+  const layoutHtml = isUShape ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(layT)}</div><div style="text-align:center;background:#fff;border:1px solid #efe8da;border-radius:10px;padding:12px 10px"><img src="https://ac-venues.vercel.app/ushape.png" alt="U-shape layout diagram" width="470" style="width:100%;max-width:470px;height:auto;border:0;outline:none;display:block;margin:0 auto"><div style="font-size:12.5px;color:#6b7480;line-height:1.5;margin-top:8px">${esc(layCap)}</div></div>` : '';
   const btn=`<div style="text-align:center;margin:20px 0 6px"><a href="${esc(portalUrl)}" style="display:inline-block;background-color:#b8860b;background-image:linear-gradient(135deg,#c9970d,#a9790a);color:#fff;text-decoration:none;font-weight:700;padding:14px 30px;border-radius:12px;border:1px solid #8a6208;font-size:15px">${esc(T.btn)} →</a></div>`;
   const html = `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
   <div style="max-width:640px;margin:0 auto;padding:0 14px 40px">
@@ -3104,6 +3109,7 @@ function buildRfpEmail(lang, d, conc, portalUrl){
       <p style="margin:0 0 14px;font-size:14px;line-height:1.6">${T.intro}</p>
       <div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px">${esc(T.reqs)}</div>
       <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #efe8da;border-radius:10px;overflow:hidden">${rows||('<tr><td style="padding:12px;color:#8a9199;font-size:13px">—</td></tr>')}</table>
+      ${layoutHtml}
       ${concHtml}
       ${notesHtml}
       <p style="margin:18px 0 2px;font-size:14px;line-height:1.6">${T.cta}</p>
