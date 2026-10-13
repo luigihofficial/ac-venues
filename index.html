@@ -3146,26 +3146,44 @@ function rfpApplyEvent(dateId){
   set('setup', sh.room_name||'');
   if(!$('rfField_cemail').value) set('cemail','global@amorconsciente.com');
   _rfpApplied=dateId;
-  // reset selección: todos los de la zona con email
-  _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim()).map(c=>c.id));
+  // reset selección: todos los de la zona con email que NO hayan recibido ya el RFP de este evento
+  const sent=rfpSentEmails(dateId);
+  _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id));
+}
+// Correos que YA recibieron el RFP de ESTE evento (no se les reenvía en un nuevo batch).
+// Fuente: invitaciones creadas (rfp_invites) + historial de envíos (rfp_log), por date_id.
+function rfpSentEmails(dateId){
+  const s=new Set();
+  (state.rfpInvites||[]).forEach(i=>{ if(i.date_id===dateId && i.to_email) s.add(i.to_email.trim().toLowerCase()); });
+  (state.rfplog||[]).forEach(r=>{ if(r.date_id===dateId && r.to_email) s.add((r.to_email||'').trim().toLowerCase()); });
+  return s;
+}
+function rfpVenCountText(){
+  const slug=rfpEventSlug(); if(!slug) return '· elige un evento';
+  const list=(state.contacts||[]).filter(c=>contactMetro(c)===slug);
+  const sent=rfpSentEmails(_rfpEvent);
+  const withEmail=list.filter(c=>c.email&&c.email.trim()).length;
+  const sentCount=list.filter(c=>c.email&&c.email.trim()&&sent.has(c.email.trim().toLowerCase())).length;
+  return `· ${list.length} en la zona (${withEmail} con email${sentCount?(' · '+sentCount+' ya enviados'):''} · ${_rfpSel.size} seleccionados)`;
 }
 function renderRfpVendors(){
   const box=$('rfpVendors'); if(!box) return;
   const slug=rfpEventSlug();
   const list=(state.contacts||[]).filter(c=>contactMetro(c)===slug);
+  const sentEmails=rfpSentEmails(_rfpEvent);
+  // nunca dejar seleccionado a quien ya recibió el RFP de este evento
+  (state.contacts||[]).forEach(c=>{ if(c.email && _rfpSel.has(c.id) && sentEmails.has(c.email.trim().toLowerCase())) _rfpSel.delete(c.id); });
   const cnt=$('rfpVenCount');
-  const withEmail=list.filter(c=>c.email&&c.email.trim()).length;
-  if(cnt) cnt.textContent = slug ? `· ${list.length} en la zona (${withEmail} con email · ${_rfpSel.size} seleccionados)` : '· elige un evento';
-  // historial de envíos por vendor para este evento
-  const sentEmails=new Set((state.rfplog||[]).filter(r=>r.date_id===_rfpEvent).map(r=>(r.to_email||'').toLowerCase()));
+  if(cnt) cnt.textContent = rfpVenCountText();
   box.innerHTML = list.length ? list.map(c=>{
     const has=!!(c.email&&c.email.trim());
-    const checked = has && _rfpSel.has(c.id) ? 'checked' : '';
     const sent = has && sentEmails.has(c.email.trim().toLowerCase());
-    return `<label class="rfpven ${has?'':'noemail'}">
-      <input type="checkbox" data-rfpven="${c.id}" ${checked} ${has?'':'disabled'}>
+    const checked = has && !sent && _rfpSel.has(c.id) ? 'checked' : '';
+    const disabled = (!has || sent) ? 'disabled' : '';
+    return `<label class="rfpven ${(!has||sent)?'noemail':''}" title="${sent?'Ya recibió el RFP de este evento':''}">
+      <input type="checkbox" data-rfpven="${c.id}" ${checked} ${disabled}>
       <span><span class="vn">${esc(c.venue||c.name||'—')}</span>
-      <span class="vm">${has?esc(c.email):'<span class="noem">sin email</span>'}${c.name&&c.venue?(' · '+esc(c.name)):''}${sent?' · <span class="sentbadge">✓ enviado</span>':''}</span></span>
+      <span class="vm">${has?esc(c.email):'<span class="noem">sin email</span>'}${c.name&&c.venue?(' · '+esc(c.name)):''}${sent?' · <span class="sentbadge">✓ ya enviado</span>':''}</span></span>
     </label>`;
   }).join('') : `<div class="muted" style="padding:10px">${slug?'No hay contactos en esta zona. Agrégalos en Contactos.':'Elige un evento para ver sus vendors.'}</div>`;
 }
@@ -3195,8 +3213,9 @@ function rfpRecipients(){
   const fromList=(state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && _rfpSel.has(c.id))
     .map(c=>({email:c.email.trim(), name:c.name||'', venue:c.venue||''}));
   const all=fromList.concat(_rfpManual.map(m=>({email:(m.email||'').trim(), name:m.name||'', venue:m.venue||''})));
+  const sent=rfpSentEmails(_rfpEvent);   // nunca reenviar a quien ya recibió el RFP de este evento
   const seen={}; const out=[];
-  all.forEach(r=>{ const k=r.email.toLowerCase(); if(!r.email||seen[k]) return; seen[k]=1; out.push(r); });
+  all.forEach(r=>{ const k=(r.email||'').toLowerCase(); if(!r.email||seen[k]||sent.has(k)) return; seen[k]=1; out.push(r); });
   return out;
 }
 function rfpToken(){ try{ return (crypto.randomUUID&&crypto.randomUUID().replace(/-/g,'')) || (Date.now().toString(36)+Math.random().toString(36).slice(2,12)); }catch(e){ return Date.now().toString(36)+Math.random().toString(36).slice(2,12); } }
@@ -3276,6 +3295,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const e=em.trim(); const msg=$('rfpMsg');
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='Escribe un correo válido para agregarlo manualmente.'; } return; }
     if(_rfpManual.some(m=>(m.email||'').toLowerCase()===e.toLowerCase())){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='Ese correo ya está en la lista manual.'; } return; }
+    if(rfpSentEmails(_rfpEvent).has(e.toLowerCase())){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='A ese correo ya se le envió el RFP de este evento; no se reenvía.'; } return; }
     _rfpManual.push({email:e, venue:vn.trim(), name:nm.trim()});
     if($('rfpManEmail')) $('rfpManEmail').value=''; if($('rfpManVenue')) $('rfpManVenue').value=''; if($('rfpManName')) $('rfpManName').value='';
     if(msg) msg.textContent=''; renderRfpManual();
@@ -3284,9 +3304,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const mEmail=$('rfpManEmail'); if(mEmail) mEmail.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
   const mName=$('rfpManName'); if(mName) mName.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
   const mBox=$('rfpManList'); if(mBox) mBox.addEventListener('click', (e)=>{ const b=e.target.closest&&e.target.closest('[data-rfpmandel]'); if(!b) return; _rfpManual.splice(+b.dataset.rfpmandel,1); renderRfpManual(); });
-  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim()).map(c=>c.id)); renderRfpVendors(); });
+  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); const sent=rfpSentEmails(_rfpEvent); _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id)); renderRfpVendors(); });
   const none=$('rfpSelNone'); if(none) none.addEventListener('click', ()=>{ _rfpSel=new Set(); renderRfpVendors(); });
-  const vbox=$('rfpVendors'); if(vbox) vbox.addEventListener('change', (e)=>{ const t=e.target; if(t && t.dataset && t.dataset.rfpven){ if(t.checked) _rfpSel.add(t.dataset.rfpven); else _rfpSel.delete(t.dataset.rfpven); const cnt=$('rfpVenCount'); if(cnt){ const slug=rfpEventSlug(); const list=(state.contacts||[]).filter(c=>contactMetro(c)===slug); const withEmail=list.filter(c=>c.email&&c.email.trim()).length; cnt.textContent=`· ${list.length} en la zona (${withEmail} con email · ${_rfpSel.size} seleccionados)`; } } });
+  const vbox=$('rfpVendors'); if(vbox) vbox.addEventListener('change', (e)=>{ const t=e.target; if(t && t.dataset && t.dataset.rfpven){ if(t.checked) _rfpSel.add(t.dataset.rfpven); else _rfpSel.delete(t.dataset.rfpven); const cnt=$('rfpVenCount'); if(cnt) cnt.textContent=rfpVenCountText(); } });
   const send=$('rfpSend'); if(send) send.addEventListener('click', openRfpConfirm);
   const cc=$('rfpConfirmCancel'); if(cc) cc.addEventListener('click', closeRfpConfirm);
   const cg=$('rfpConfirmGo'); if(cg) cg.addEventListener('click', rfpDoSend);
