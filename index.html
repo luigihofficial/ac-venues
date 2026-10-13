@@ -747,6 +747,13 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
         <label>Fechas alternas<input id="rfField_alt" placeholder="Opcional"></label>
         <label>Asistentes (aprox.)<input id="rfField_attendees" placeholder="Ej. 150"></label>
         <label>Montaje del salón<input id="rfField_setup" placeholder="Ej. U-shape triple / escuela"></label>
+        <label>Diagrama U-shape (en el correo)<select id="rfField_ulayout">
+          <option value="">— Sin diagrama</option>
+          <option value="1">U-shape · Single (1 fila)</option>
+          <option value="2">U-shape · Double (2 filas)</option>
+          <option value="3">U-shape · Triple (3 filas)</option>
+          <option value="4">U-shape · Quadruple (4 filas)</option>
+        </select></label>
         <label>Días y horario<input id="rfField_schedule" placeholder="Ej. 3 días, 8:00am–6:00pm"></label>
         <label>Catering<input id="rfField_catering" placeholder="Ej. café AM/PM + almuerzo"></label>
         <label>Audio/Video<input id="rfField_av" placeholder="Ej. proyector, pantalla, sonido, micrófonos"></label>
@@ -3016,7 +3023,7 @@ function metroOf(text){
 }
 function contactMetro(c){ return metroOf([c.city,c.venue,c.address].filter(Boolean).join(' ')); }
 
-const RF_IDS=['name','city','dates','alt','attendees','setup','schedule','catering','av','budget','deadline','cname','cemail','cphone','notes'];
+const RF_IDS=['name','city','dates','alt','attendees','setup','ulayout','schedule','catering','av','budget','deadline','cname','cemail','cphone','notes'];
 const EN_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let _rfpEvent='';            // date_id seleccionado
 let _rfpApplied='';          // date_id cuyos datos ya se autollenaron
@@ -3089,11 +3096,15 @@ function buildRfpEmail(lang, d, conc, portalUrl){
   const contact=[esc(d.cname||''),esc(d.cemail||''),esc(d.cphone||'')].filter(Boolean).join(' · ');
   const notesHtml = d.notes ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6"><b>${esc(T.notes)}:</b> ${esc(d.notes).replace(/\n/g,'<br>')}</p>` : '';
   const concHtml = conc.length ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(T.concTitle)}</div><ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7">${conc.map(c=>`<li>${esc(c.label)}</li>`).join('')}</ul>` : '';
-  // Diagrama del montaje solicitado (por ahora: U-shape). Imagen alojada (los correos no renderizan SVG inline).
-  const isUShape = /u-?\s*shape|u\s*shaped|herradura|\ben\s*u\b/i.test(d.setup||'');
+  // Diagrama del montaje solicitado (U-shape single/double/triple/quadruple = U's concéntricas).
+  // Imagen alojada (los correos no renderizan SVG inline). El número lo da el desplegable del form.
+  let uN = parseInt(d.ulayout, 10);
+  if(!(uN>=1 && uN<=4)){ uN = /u-?\s*shape|u\s*shaped|herradura|\ben\s*u\b/i.test(d.setup||'') ? 1 : 0; }
+  const uCapEn={1:'U-shape (single row)',2:'Double U-shape — 2 concentric rows',3:'Triple U-shape — 3 concentric rows',4:'Quadruple U-shape — 4 concentric rows'};
+  const uCapEs={1:'En U (una fila)',2:'Doble U — 2 filas concéntricas',3:'Triple U — 3 filas concéntricas',4:'Cuádruple U — 4 filas concéntricas'};
   const layT   = lang==='en' ? 'Requested room layout' : 'Montaje solicitado';
-  const layCap = lang==='en' ? 'U-shape (horseshoe): seating on the outside, open end facing the screen.' : 'En U (herradura): sillas por fuera, extremo abierto hacia la pantalla.';
-  const layoutHtml = isUShape ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(layT)}</div><div style="text-align:center;background:#fff;border:1px solid #efe8da;border-radius:10px;padding:12px 10px"><img src="https://ac-venues.vercel.app/ushape.png" alt="U-shape layout diagram" width="470" style="width:100%;max-width:470px;height:auto;border:0;outline:none;display:block;margin:0 auto"><div style="font-size:12.5px;color:#6b7480;line-height:1.5;margin-top:8px">${esc(layCap)}</div></div>` : '';
+  const layCap = uN ? ((lang==='en'?uCapEn:uCapEs)[uN] + (lang==='en'?' · seating on the outside, open end facing the screen.':' · sillas por fuera, extremo abierto hacia la pantalla.')) : '';
+  const layoutHtml = uN ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(layT)}</div><div style="text-align:center;background:#fff;border:1px solid #efe8da;border-radius:10px;padding:12px 10px"><img src="https://ac-venues.vercel.app/ushape-${uN}.png" alt="${esc((lang==='en'?uCapEn:uCapEs)[uN])}" width="470" style="width:100%;max-width:470px;height:auto;border:0;outline:none;display:block;margin:0 auto"><div style="font-size:12.5px;color:#6b7480;line-height:1.5;margin-top:8px">${esc(layCap)}</div></div>` : '';
   const btn=`<div style="text-align:center;margin:20px 0 6px"><a href="${esc(portalUrl)}" style="display:inline-block;background-color:#b8860b;background-image:linear-gradient(135deg,#c9970d,#a9790a);color:#fff;text-decoration:none;font-weight:700;padding:14px 30px;border-radius:12px;border:1px solid #8a6208;font-size:15px">${esc(T.btn)} →</a></div>`;
   const html = `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
   <div style="max-width:640px;margin:0 auto;padding:0 14px 40px">
@@ -3150,6 +3161,13 @@ function rfpApplyEvent(dateId){
   const dstr = d?rfpDatesFor(lang, _rfpStart, _rfpEnd):''; _rfpDatesAuto = dstr;
   set('name', d?(d.label||''):''); set('city', cityName(slug)); set('dates', dstr);
   set('setup', sh.room_name||'');
+  // sugerir el diagrama U-shape según el montaje del evento (editable con el desplegable)
+  const sv=(sh.room_name||'').toLowerCase();
+  let ul='';
+  if(/u-?\s*shape|u\s*shaped|herradura|\ben\s*u\b/.test(sv)){
+    ul = /quad|cu[aá]dru|\b4\b/.test(sv)?'4' : /tripl|\b3\b/.test(sv)?'3' : /doubl|dobl|\b2\b/.test(sv)?'2' : '1';
+  }
+  set('ulayout', ul);
   if(!$('rfField_cemail').value) set('cemail','global@amorconsciente.com');
   _rfpApplied=dateId;
   // reset selección: todos los de la zona con email que NO hayan recibido ya el RFP de este evento
@@ -3286,6 +3304,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     rfpUpdatePreview();
   });
   const sec=$('rfp'); if(sec) sec.addEventListener('input', (e)=>{ if(e.target && /^rfField_/.test(e.target.id)) rfpUpdatePreview(); });
+  if(sec) sec.addEventListener('change', (e)=>{ if(e.target && /^rfField_/.test(e.target.id)) rfpUpdatePreview(); });   // <select> del diagrama U-shape
   // --- Concesiones que pedimos (editable) ---
   const cAdd=$('rfpConcAdd'); if(cAdd) cAdd.addEventListener('click', ()=>{ _rfpConcEdited=true; _rfpConc.push({label:''}); renderRfpConc(); const box=$('rfpConc'); const ins=box&&box.querySelectorAll('input'); if(ins&&ins.length) ins[ins.length-1].focus(); rfpUpdatePreview(); });
   const cReset=$('rfpConcReset'); if(cReset) cReset.addEventListener('click', ()=>{ _rfpConcEdited=false; _rfpConc=rfpConcDefaults(($('rfpLang')||{}).value||'en'); renderRfpConc(); rfpUpdatePreview(); });
