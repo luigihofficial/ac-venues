@@ -1831,6 +1831,19 @@ function contactCitySlug(cityStr){
   if(/orlando|lake buena vista|kissimmee|seaworld/.test(s)) return 'orlando';
   if(/atlanta|\bga\b|georgia/.test(s)) return 'atlanta';
   if(/miami|doral|coral gables|brickell/.test(s)) return 'miami';
+  return extraCitySlugOf(cityStr);
+}
+// Resuelve un texto (ciudad/venue/dirección) a una CIUDAD PERSONALIZADA (p.ej. Newark) por su nombre o slug.
+// Sin esto, las ciudades creadas a mano no hacían match y la lista de vendors del RFP salía vacía o mezclada.
+function extraCitySlugOf(text){
+  const s=normName(text); if(!s) return '';
+  const words=s.split(/[^a-z0-9]+/).filter(Boolean);
+  for(const c of (CITIES_EXTRA||[])){
+    const base=normName((c.name||'').split(',')[0]);
+    if(base.length>=3 && (s===base || words.includes(base) || s.indexOf(base)>=0)) return c.slug;
+    const sw=normName((c.slug||'').replace(/-/g,' '));
+    if(sw.length>=3 && (s===sw || words.includes(sw) || s.indexOf(sw)>=0)) return c.slug;
+  }
   return '';
 }
 // Nombres de hotel/venue únicos de los contactos que caen en una ciudad (para el datalist del evento)
@@ -3037,7 +3050,10 @@ function metroOf(text){
   if(/miami|doral|coral gables|brickell/.test(s)) return 'miami';
   return '';
 }
-function contactMetro(c){ return metroOf([c.city,c.venue,c.address].filter(Boolean).join(' ')); }
+function contactMetro(c){
+  const txt=[c.city,c.venue,c.address].filter(Boolean).join(' ');
+  return metroOf(txt) || extraCitySlugOf(c.city) || extraCitySlugOf(txt);
+}
 
 const RF_IDS=['name','city','dates','alt','attendees','setup','ulayout','schedule','catering','av','budget','deadline','cname','cemail','cphone','notes'];
 const EN_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -3192,7 +3208,7 @@ function rfpApplyEvent(dateId){
   _rfpApplied=dateId;
   // reset selección: todos los de la zona con email que NO hayan recibido ya el RFP de este evento
   const sent=rfpSentEmails(dateId);
-  _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id));
+  _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id));
 }
 // Correos que YA recibieron el RFP de ESTE evento (no se les reenvía en un nuevo batch).
 // Fuente: invitaciones creadas (rfp_invites) + historial de envíos (rfp_log), por date_id.
@@ -3204,7 +3220,7 @@ function rfpSentEmails(dateId){
 }
 function rfpVenCountText(){
   const slug=rfpEventSlug(); if(!slug) return '· elige un evento';
-  const list=(state.contacts||[]).filter(c=>contactMetro(c)===slug);
+  const list=(state.contacts||[]).filter(c=>slug && contactMetro(c)===slug);
   const sent=rfpSentEmails(_rfpEvent);
   const withEmail=list.filter(c=>c.email&&c.email.trim()).length;
   const sentCount=list.filter(c=>c.email&&c.email.trim()&&sent.has(c.email.trim().toLowerCase())).length;
@@ -3213,7 +3229,7 @@ function rfpVenCountText(){
 function renderRfpVendors(){
   const box=$('rfpVendors'); if(!box) return;
   const slug=rfpEventSlug();
-  const list=(state.contacts||[]).filter(c=>contactMetro(c)===slug);
+  const list=(state.contacts||[]).filter(c=>slug && contactMetro(c)===slug);
   const sentEmails=rfpSentEmails(_rfpEvent);
   // nunca dejar seleccionado a quien ya recibió el RFP de este evento
   (state.contacts||[]).forEach(c=>{ if(c.email && _rfpSel.has(c.id) && sentEmails.has(c.email.trim().toLowerCase())) _rfpSel.delete(c.id); });
@@ -3254,7 +3270,7 @@ function renderRfp(){
 }
 function rfpRecipients(){
   const slug=rfpEventSlug();
-  const fromList=(state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && _rfpSel.has(c.id))
+  const fromList=(state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && _rfpSel.has(c.id))
     .map(c=>({email:c.email.trim(), name:c.name||'', venue:c.venue||''}));
   const all=fromList.concat(_rfpManual.map(m=>({email:(m.email||'').trim(), name:m.name||'', venue:m.venue||''})));
   const sent=rfpSentEmails(_rfpEvent);   // nunca reenviar a quien ya recibió el RFP de este evento
@@ -3349,7 +3365,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const mEmail=$('rfpManEmail'); if(mEmail) mEmail.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
   const mName=$('rfpManName'); if(mName) mName.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
   const mBox=$('rfpManList'); if(mBox) mBox.addEventListener('click', (e)=>{ const b=e.target.closest&&e.target.closest('[data-rfpmandel]'); if(!b) return; _rfpManual.splice(+b.dataset.rfpmandel,1); renderRfpManual(); });
-  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); const sent=rfpSentEmails(_rfpEvent); _rfpSel=new Set((state.contacts||[]).filter(c=>contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id)); renderRfpVendors(); });
+  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); const sent=rfpSentEmails(_rfpEvent); _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id)); renderRfpVendors(); });
   const none=$('rfpSelNone'); if(none) none.addEventListener('click', ()=>{ _rfpSel=new Set(); renderRfpVendors(); });
   const vbox=$('rfpVendors'); if(vbox) vbox.addEventListener('change', (e)=>{ const t=e.target; if(t && t.dataset && t.dataset.rfpven){ if(t.checked) _rfpSel.add(t.dataset.rfpven); else _rfpSel.delete(t.dataset.rfpven); const cnt=$('rfpVenCount'); if(cnt) cnt.textContent=rfpVenCountText(); } });
   const send=$('rfpSend'); if(send) send.addEventListener('click', openRfpConfirm);
