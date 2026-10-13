@@ -82,6 +82,17 @@ nav.tabs a.active{color:var(--navy);border-bottom-color:var(--gold)}
 .navmenu a{display:block;padding:9px 12px;border-radius:7px;font-size:13.5px;color:var(--ink);border:none}
 .navmenu a:hover{background:var(--cream);text-decoration:none;color:var(--navy)}
 .navmenu a.active{background:var(--cream);color:var(--navy)}
+/* aviso de respuestas de RFP sin ver */
+.navbtn{position:relative}
+.rdot{display:none;width:8px;height:8px;border-radius:50%;background:#e53935;position:absolute;top:8px;right:4px;box-shadow:0 0 0 2px #fff}
+.rdot.on{display:inline-block;animation:rfppulse 1.8s infinite}
+.rcount{display:none;min-width:18px;text-align:center;background:#e53935;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+.rcount.on{display:inline-block}
+.rfp-alert{display:flex;align-items:center;gap:11px;background:#fff4f3;border:1px solid #f3c9c9;border-radius:12px;padding:12px 16px;margin:0 0 16px;text-decoration:none;color:#b23b3b;font-weight:600;box-shadow:var(--shadow)}
+.rfp-alert:hover{border-color:#e08c8c;text-decoration:none;color:#b23b3b}
+.rfp-alert-dot{width:11px;height:11px;border-radius:50%;background:#e53935;flex:none;animation:rfppulse 1.6s infinite}
+.rfp-alert-go{margin-left:auto;font-weight:800;font-size:13px;white-space:nowrap}
+@keyframes rfppulse{0%{box-shadow:0 0 0 0 rgba(229,57,53,.45)}70%{box-shadow:0 0 0 7px rgba(229,57,53,0)}100%{box-shadow:0 0 0 0 rgba(229,57,53,0)}}
 
 /* ---------- Inicio (dashboard) ---------- */
 .home-hd{margin-bottom:16px}
@@ -491,13 +502,13 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
 <nav class="tabs"><div class="wrap">
   <a href="#inicio">Inicio</a>
   <div class="navgroup">
-    <button type="button" class="navbtn" data-navbtn>Trabajo <span class="car">▾</span></button>
+    <button type="button" class="navbtn" data-navbtn>Trabajo <span class="car">▾</span><span class="rdot" data-rfpdot></span></button>
     <div class="navmenu">
       <a href="#ciudades">Ciudades / Eventos</a>
       <a href="#matriz">Evaluación</a>
       <a href="#ofertas">Ofertas</a>
       <a href="#rfp">Enviar RFP</a>
-      <a href="#rfpcompare">Comparar RFP</a>
+      <a href="#rfpcompare">Comparar RFP <span class="rcount" data-rfpcount></span></a>
       <a href="#pendientes">Pendientes</a>
     </div>
   </div>
@@ -528,6 +539,11 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <!-- INICIO (dashboard ligero) -->
   <section id="inicio">
     <div class="home-hd"><h2>Resumen</h2><p class="muted">Vista rápida del sourcing. Entra a un área para trabajar en detalle.</p></div>
+    <a id="rfpAlert" href="#rfpcompare" class="rfp-alert hidden">
+      <span class="rfp-alert-dot"></span>
+      <span id="rfpAlertTxt">Tienes respuestas de RFP sin ver</span>
+      <span class="rfp-alert-go">Ver respuestas →</span>
+    </a>
     <div class="stat-row">
       <div class="stat"><div class="sn" id="hAvance">0%</div><div class="sl">Avance promedio</div></div>
       <div class="stat"><div class="sn" id="hCerradas">0/0</div><div class="sl">Fechas cerradas</div></div>
@@ -3363,13 +3379,29 @@ function rcConcLabels(dateId){
   const list=(r&&Array.isArray(r.concessions))?r.concessions:[];
   return list.map(c=>({key:c.key||'', label:c.label||''}));
 }
+/* --- Aviso de respuestas de RFP no vistas (punto rojo, por dispositivo) --- */
+function rfpSeenKey(){ return 'ac_rfp_seen_'+((USER&&USER.email)||'anon'); }
+function rfpSeenMap(){ try{ return JSON.parse(localStorage.getItem(rfpSeenKey())||'{}')||{}; }catch(e){ return {}; } }
+function rfpSaveSeen(m){ try{ localStorage.setItem(rfpSeenKey(), JSON.stringify(m)); }catch(e){} }
+function rfpUnseenCount(){ const seen=rfpSeenMap(); return (state.rfpOffers||[]).filter(o=>o&&o.id&&seen[o.id]!==o.updated_at).length; }
+function rfpMarkAllSeen(){ const m={}; (state.rfpOffers||[]).forEach(o=>{ if(o&&o.id) m[o.id]=o.updated_at; }); rfpSaveSeen(m); updateRfpBadges(); }
+function updateRfpBadges(){
+  const n=rfpUnseenCount();
+  document.querySelectorAll('[data-rfpcount]').forEach(el=>{ el.textContent=n; el.classList.toggle('on', n>0); });
+  document.querySelectorAll('[data-rfpdot]').forEach(el=>{ el.classList.toggle('on', n>0); });
+  const hb=$('rfpAlert');
+  if(hb){ if(n>0){ hb.classList.remove('hidden'); const t=$('rfpAlertTxt'); if(t) t.textContent = (n===1?'Tienes 1 respuesta de RFP sin ver':('Tienes '+n+' respuestas de RFP sin ver')); } else hb.classList.add('hidden'); }
+  try{ const base=document.title.replace(/^\(\d+\)\s*/,''); document.title=(n>0?('('+n+') '):'')+base; }catch(e){}
+}
 function renderRfpCompare(){
-  const sel=$('rcEvent'); if(!sel) return;
+  const sel=$('rcEvent'); if(!sel){ updateRfpBadges(); return; }
   const opts=rcEventOptions();
   if(!_rcEvent && opts.length) _rcEvent=opts[0].id;
   if(_rcEvent && !opts.some(o=>o.id===_rcEvent)) _rcEvent = opts.length?opts[0].id:'';
   sel.innerHTML = opts.length ? opts.map(o=>`<option value="${esc(o.id)}"${o.id===_rcEvent?' selected':''}>${esc(o.label)}</option>`).join('') : '<option value="">(aún no hay RFP enviados)</option>';
   rcRenderMatrix();
+  // si el usuario está viendo esta sección, marca todo como visto; si no, solo refresca los puntos
+  if((location.hash||'').replace(/^#/,'')==='rfpcompare') rfpMarkAllSeen(); else updateRfpBadges();
 }
 function rcRenderMatrix(){
   const wrap=$('rcMatrix'); const sum=$('rcSummary'); if(!wrap) return;
