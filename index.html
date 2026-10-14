@@ -754,6 +754,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
           <select id="rfpLang"><option value="en">Inglés</option><option value="es">Español</option></select>
         </label>
       </div>
+      <div class="rfphint">💡 ¿Reenviar este mismo RFP a <b>otra ciudad</b>? Solo cambia el <b>Evento</b> aquí arriba: se conservan los datos que ya escribiste (montaje, concesiones, notas, etc.) y se actualizan los vendors de la nueva zona.</div>
 
       <div class="rfpsec">Datos del evento (ajústalos antes de enviar)</div>
       <div class="rfpgrid">
@@ -789,6 +790,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <div class="rfpsec">Vendors de la zona <span id="rfpVenCount" class="muted" style="font-weight:400;font-size:12.5px"></span>
         <span class="rfpselbtns"><button class="btn sm ghost" id="rfpSelAll" type="button">Todos</button><button class="btn sm ghost" id="rfpSelNone" type="button">Ninguno</button></span>
       </div>
+      <label class="rfpresend"><input type="checkbox" id="rfpAllowResend"> Permitir reenviar a hoteles que <b>ya recibieron</b> este RFP (por si no les llegó o no lo encuentran). Se reenvía su mismo enlace, sin duplicar.</label>
       <div id="rfpVendors" class="rfpvendors"></div>
 
       <div class="rfpsec">Agregar correo manual (fuera de la lista)</div>
@@ -3064,8 +3066,9 @@ let _rfpConc=[];             // [{label}] concesiones que pedimos (editable)
 let _rfpConcEdited=false;
 let _rfpManual=[];           // [{email,name,venue}] recipientes manuales
 let _rfpStart='', _rfpEnd='', _rfpDatesAuto='';  // fechas crudas del evento + valor autogenerado (para reformatear al cambiar idioma)
-const RFP_CONC_EN=['Complimentary meeting room rental (waived with F&B minimum)','Complimentary self-parking for attendees','Complimentary WiFi in meeting space and guest rooms','Complimentary room upgrades / staff rooms (1 per 40 paid)','Complimentary or discounted A/V','Complimentary daily water & coffee station','Flexible attrition and cancellation terms','Reduced group room rate / rebate'];
-const RFP_CONC_ES=['Renta de salón cortesía (waived con mínimo de A&B)','Parqueo cortesía para asistentes','WiFi cortesía en salón y habitaciones','Upgrades / habitaciones de staff cortesía (1 por 40 pagadas)','A/V cortesía o con descuento','Estación diaria de agua y café cortesía','Términos flexibles de atrición y cancelación','Tarifa de grupo reducida / rebate'];
+let _rfpAllowResend=false;   // permitir reenviar a hoteles que ya recibieron este RFP (reusa su mismo enlace)
+const RFP_CONC_EN=['Complimentary self-parking for attendees','Complimentary WiFi','Complimentary green room','Fee waived for using our own AV/production equipment','Complimentary water stations','Climate-controlled / A/C foyer or pre-function area with a 6\' table and 3 chairs for registration','Block of 10 guest rooms at a reduced rate, with no commitment or obligation to use them'];
+const RFP_CONC_ES=['Estacionamiento (self-parking) cortesía para asistentes','WiFi cortesía','Green room (sala para speakers) cortesía','Sin cargo por usar nuestro propio equipo de AV/producción','Estaciones de agua cortesía','Foyer o área pre-función con clima/A-C, con una mesa de 6\' y 3 sillas para registro','Bloque de 10 habitaciones a tarifa reducida, sin compromiso ni obligación de usarlas'];
 function rfpConcDefaults(lang){ return (lang==='es'?RFP_CONC_ES:RFP_CONC_EN).map(l=>({label:l})); }
 function rfpConcList(){ return _rfpConc.filter(c=>c.label&&c.label.trim()).map((c,i)=>({key:'c'+i, label:c.label.trim()})); }
 
@@ -3196,18 +3199,24 @@ function rfpApplyEvent(dateId){
   _rfpStart = d?(d.start_date||''):''; _rfpEnd = d?(d.end_date||''):'';
   const dstr = d?rfpDatesFor(lang, _rfpStart, _rfpEnd):''; _rfpDatesAuto = dstr;
   set('name', d?(d.label||''):''); set('city', cityName(slug)); set('dates', dstr);
-  set('setup', sh.room_name||'');
-  // sugerir el diagrama U-shape según el montaje del evento (editable con el desplegable)
-  const sv=(sh.room_name||'').toLowerCase();
-  let ul='';
-  if(/u-?\s*shape|u\s*shaped|herradura|\ben\s*u\b/.test(sv)){
-    ul = /quad|cu[aá]dru|\b4\b/.test(sv)?'4' : /tripl|\b3\b/.test(sv)?'3' : /doubl|dobl|\b2\b/.test(sv)?'2' : '1';
+  // "Reenviar a otra ciudad": al cambiar de evento se CONSERVAN los requisitos ya escritos
+  // (montaje, diagrama, asistentes, horario, catering, notas, concesiones…) y solo se
+  // autollenan los que estén vacíos. Lo único que cambia siempre es la identidad (nombre/ciudad/fechas).
+  const curSetup=($('rfField_setup')||{}).value||'';
+  if(!curSetup && sh.room_name) set('setup', sh.room_name);
+  const curUl=($('rfField_ulayout')||{}).value||'';
+  if(!curUl){
+    const sv=(sh.room_name||'').toLowerCase();
+    let ul='';
+    if(/u-?\s*shape|u\s*shaped|herradura|\ben\s*u\b/.test(sv)){
+      ul = /quad|cu[aá]dru|\b4\b/.test(sv)?'4' : /tripl|\b3\b/.test(sv)?'3' : /doubl|dobl|\b2\b/.test(sv)?'2' : '1';
+    }
+    if(ul) set('ulayout', ul);
   }
-  set('ulayout', ul);
   if(!$('rfField_cemail').value) set('cemail','global@amorconsciente.com');
   _rfpApplied=dateId;
-  // reset selección: todos los de la zona con email que NO hayan recibido ya el RFP de este evento
-  const sent=rfpSentEmails(dateId);
+  // selección por defecto: vendors de la nueva zona con email (si NO se permite reenviar, excluye a los ya enviados)
+  const sent=_rfpAllowResend?new Set():rfpSentEmails(dateId);
   _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id));
 }
 // Correos que YA recibieron el RFP de ESTE evento (no se les reenvía en un nuevo batch).
@@ -3231,19 +3240,22 @@ function renderRfpVendors(){
   const slug=rfpEventSlug();
   const list=(state.contacts||[]).filter(c=>slug && contactMetro(c)===slug);
   const sentEmails=rfpSentEmails(_rfpEvent);
-  // nunca dejar seleccionado a quien ya recibió el RFP de este evento
-  (state.contacts||[]).forEach(c=>{ if(c.email && _rfpSel.has(c.id) && sentEmails.has(c.email.trim().toLowerCase())) _rfpSel.delete(c.id); });
+  const allowResend=_rfpAllowResend;
+  // si NO se permite reenviar, nunca dejar seleccionado a quien ya recibió el RFP de este evento
+  if(!allowResend){ (state.contacts||[]).forEach(c=>{ if(c.email && _rfpSel.has(c.id) && sentEmails.has(c.email.trim().toLowerCase())) _rfpSel.delete(c.id); }); }
   const cnt=$('rfpVenCount');
   if(cnt) cnt.textContent = rfpVenCountText();
   box.innerHTML = list.length ? list.map(c=>{
     const has=!!(c.email&&c.email.trim());
     const sent = has && sentEmails.has(c.email.trim().toLowerCase());
-    const checked = has && !sent && _rfpSel.has(c.id) ? 'checked' : '';
-    const disabled = (!has || sent) ? 'disabled' : '';
-    return `<label class="rfpven ${(!has||sent)?'noemail':''}" title="${sent?'Ya recibió el RFP de este evento':''}">
+    const blocked = sent && !allowResend;   // solo se bloquea si NO se permite reenviar
+    const checked = has && !blocked && _rfpSel.has(c.id) ? 'checked' : '';
+    const disabled = (!has || blocked) ? 'disabled' : '';
+    const badge = sent ? (allowResend ? ' · <span class="resendbadge">↻ reenviar</span>' : ' · <span class="sentbadge">✓ ya enviado</span>') : '';
+    return `<label class="rfpven ${(!has||blocked)?'noemail':''} ${sent&&allowResend?'resent':''}" title="${sent?(allowResend?'Ya recibió este RFP — se reenviará su mismo enlace':'Ya recibió el RFP de este evento'):''}">
       <input type="checkbox" data-rfpven="${c.id}" ${checked} ${disabled}>
       <span><span class="vn">${esc(c.venue||c.name||'—')}</span>
-      <span class="vm">${has?esc(c.email):'<span class="noem">sin email</span>'}${c.name&&c.venue?(' · '+esc(c.name)):''}${sent?' · <span class="sentbadge">✓ ya enviado</span>':''}</span></span>
+      <span class="vm">${has?esc(c.email):'<span class="noem">sin email</span>'}${c.name&&c.venue?(' · '+esc(c.name)):''}${badge}</span></span>
     </label>`;
   }).join('') : `<div class="muted" style="padding:10px">${slug?'No hay contactos en esta zona. Agrégalos en Contactos.':'Elige un evento para ver sus vendors.'}</div>`;
 }
@@ -3273,7 +3285,7 @@ function rfpRecipients(){
   const fromList=(state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && _rfpSel.has(c.id))
     .map(c=>({email:c.email.trim(), name:c.name||'', venue:c.venue||''}));
   const all=fromList.concat(_rfpManual.map(m=>({email:(m.email||'').trim(), name:m.name||'', venue:m.venue||''})));
-  const sent=rfpSentEmails(_rfpEvent);   // nunca reenviar a quien ya recibió el RFP de este evento
+  const sent=_rfpAllowResend?new Set():rfpSentEmails(_rfpEvent);   // si NO se permite reenviar, excluye a los ya enviados
   const seen={}; const out=[];
   all.forEach(r=>{ const k=(r.email||'').toLowerCase(); if(!r.email||seen[k]||sent.has(k)) return; seen[k]=1; out.push(r); });
   return out;
@@ -3288,17 +3300,30 @@ async function rfpDoSend(){
   try{
     const { data:sdata } = await sb.auth.getSession(); const token=sdata.session&&sdata.session.access_token;
     if(!token){ cmsg.style.color='#b23b3b'; cmsg.textContent='Sesión no válida. Vuelve a entrar.'; go.disabled=false; go.textContent=old; return; }
-    // 1) crear la campaña (request) con requisitos + concesiones
-    const reqIns = await sb.from('rfp_requests').insert({ date_id:_rfpEvent||null, city_slug:rfpEventSlug(), lang, requirements:d, concessions:conc, created_by:(USER.email||'') }).select('id').single();
-    if(reqIns.error) throw reqIns.error;
-    const requestId=reqIns.data.id;
-    // 2) una invitación (token + portal) por hotel, y armar el correo individual
     const base=location.origin;
+    // invitaciones existentes de ESTE evento → para reenviar con su MISMO enlace, sin duplicar
+    const existingByEmail={};
+    (state.rfpInvites||[]).forEach(i=>{ if(i.date_id===_rfpEvent && i.to_email) existingByEmail[i.to_email.trim().toLowerCase()]=i; });
+    const newOnes=recipients.filter(r=>!existingByEmail[(r.email||'').toLowerCase()]);
+    // 1) crear la campaña (request) solo si hay destinatarios NUEVOS
+    let requestId=null;
+    if(newOnes.length){
+      const reqIns = await sb.from('rfp_requests').insert({ date_id:_rfpEvent||null, city_slug:rfpEventSlug(), lang, requirements:d, concessions:conc, created_by:(USER.email||'') }).select('id').single();
+      if(reqIns.error) throw reqIns.error;
+      requestId=reqIns.data.id;
+    }
+    // 2) por hotel: nuevo → crea invitación (token nuevo); ya invitado → reusa su token (reenvío)
+    let reused=0;
     const payloadRecipients=[];
     for(const r of recipients){
-      const tok=rfpToken();
-      const inv=await sb.from('rfp_invites').insert({ request_id:requestId, date_id:_rfpEvent||null, token:tok, to_email:r.email, to_name:r.name||'', venue:r.venue||'', status:'sent' });
-      if(inv.error) throw inv.error;
+      const ex=existingByEmail[(r.email||'').toLowerCase()];
+      let tok;
+      if(ex){ tok=ex.token; reused++; }
+      else{
+        tok=rfpToken();
+        const inv=await sb.from('rfp_invites').insert({ request_id:requestId, date_id:_rfpEvent||null, token:tok, to_email:r.email, to_name:r.name||'', venue:r.venue||'', status:'sent' });
+        if(inv.error) throw inv.error;
+      }
       const portalUrl=base+'/rfp-portal.html?t='+tok;
       const dd=Object.assign({}, d); // el saludo del correo puede personalizar el venue
       const { html }=buildRfpEmail(lang, dd, conc, portalUrl);
@@ -3309,11 +3334,11 @@ async function rfpDoSend(){
       body:JSON.stringify({ subject, meta:{date_id:_rfpEvent||null, city_slug:rfpEventSlug(), lang}, recipients:payloadRecipients })});
     const j=await resp.json().catch(()=>({}));
     if(!resp.ok || j.error){ cmsg.style.color='#b23b3b'; cmsg.textContent='No se pudo enviar: '+(j.error||('HTTP '+resp.status)); go.disabled=false; go.textContent=old; return; }
-    logChange('rfp', rfpEventSlug()?cityName(rfpEventSlug()).split(',')[0]:'RFP', 'envió RFP (con portal) a '+j.sent+' vendor(es)');
+    logChange('rfp', rfpEventSlug()?cityName(rfpEventSlug()).split(',')[0]:'RFP', (reused?('reenvió RFP a '+j.sent+' vendor(es)'+(reused?(' · '+reused+' reenvío/s'):'')):('envió RFP (con portal) a '+j.sent+' vendor(es)')));
     closeRfpConfirm();
     _rfpManual=[]; renderRfpManual();
     const m=$('rfpMsg'); m.style.color='#2e7d5b';
-    m.textContent='✅ Enviado a '+j.sent+' vendor(es)'+(j.skipped?(' · '+j.skipped+' con error'):'')+'. Cada hotel responde por su portal; revisa "Comparar RFP".'+(j.errors&&j.errors.length?(' '+j.errors.join(' | ')):'');
+    m.textContent='✅ Enviado a '+j.sent+' vendor(es)'+(reused?(' ('+reused+' reenvío/s con el mismo enlace)'):'')+(j.skipped?(' · '+j.skipped+' con error'):'')+'. Cada hotel responde por su portal; revisa "Comparar RFP".'+(j.errors&&j.errors.length?(' '+j.errors.join(' | ')):'');
     go.disabled=false; go.textContent=old;
     setTimeout(loadAll, 700);
   }catch(e){ cmsg.style.color='#b23b3b'; cmsg.textContent='No se pudo enviar: '+(e.message||e); go.disabled=false; go.textContent=old; }
@@ -3356,7 +3381,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const e=em.trim(); const msg=$('rfpMsg');
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='Escribe un correo válido para agregarlo manualmente.'; } return; }
     if(_rfpManual.some(m=>(m.email||'').toLowerCase()===e.toLowerCase())){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='Ese correo ya está en la lista manual.'; } return; }
-    if(rfpSentEmails(_rfpEvent).has(e.toLowerCase())){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='A ese correo ya se le envió el RFP de este evento; no se reenvía.'; } return; }
+    if(!_rfpAllowResend && rfpSentEmails(_rfpEvent).has(e.toLowerCase())){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='A ese correo ya se le envió el RFP de este evento. Marca “Permitir reenviar” si quieres volver a enviárselo.'; } return; }
     _rfpManual.push({email:e, venue:vn.trim(), name:nm.trim()});
     if($('rfpManEmail')) $('rfpManEmail').value=''; if($('rfpManVenue')) $('rfpManVenue').value=''; if($('rfpManName')) $('rfpManName').value='';
     if(msg) msg.textContent=''; renderRfpManual();
@@ -3365,8 +3390,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const mEmail=$('rfpManEmail'); if(mEmail) mEmail.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
   const mName=$('rfpManName'); if(mName) mName.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
   const mBox=$('rfpManList'); if(mBox) mBox.addEventListener('click', (e)=>{ const b=e.target.closest&&e.target.closest('[data-rfpmandel]'); if(!b) return; _rfpManual.splice(+b.dataset.rfpmandel,1); renderRfpManual(); });
-  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); const sent=rfpSentEmails(_rfpEvent); _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id)); renderRfpVendors(); });
+  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); const sent=_rfpAllowResend?new Set():rfpSentEmails(_rfpEvent); _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id)); renderRfpVendors(); });
   const none=$('rfpSelNone'); if(none) none.addEventListener('click', ()=>{ _rfpSel=new Set(); renderRfpVendors(); });
+  const ar=$('rfpAllowResend'); if(ar) ar.addEventListener('change', ()=>{ _rfpAllowResend=ar.checked; renderRfpVendors(); });
   const vbox=$('rfpVendors'); if(vbox) vbox.addEventListener('change', (e)=>{ const t=e.target; if(t && t.dataset && t.dataset.rfpven){ if(t.checked) _rfpSel.add(t.dataset.rfpven); else _rfpSel.delete(t.dataset.rfpven); const cnt=$('rfpVenCount'); if(cnt) cnt.textContent=rfpVenCountText(); } });
   const send=$('rfpSend'); if(send) send.addEventListener('click', openRfpConfirm);
   const cc=$('rfpConfirmCancel'); if(cc) cc.addEventListener('click', closeRfpConfirm);
@@ -3920,6 +3946,11 @@ lpInit();
 <!-- ===== Estilos de Enviar RFP ===== -->
 <style>
 .rfpcard{padding:18px}
+.rfphint{background:#f4f8fc;border:1px solid #d8e6f2;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#345;line-height:1.5;margin:2px 0 4px}
+.rfpresend{display:flex;align-items:flex-start;gap:8px;background:#fff8ef;border:1px solid #f0dcc0;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#5b4a2e;line-height:1.5;margin:0 0 10px;cursor:pointer}
+.rfpresend input{margin-top:2px;flex:none}
+.rfpven.resent{opacity:.85}
+.rfpven .resendbadge{font-size:11px;color:#b26a12;font-weight:700}
 .rfprow{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
 .rfplab{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--navy);flex:1;min-width:220px}
 .rfplab select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff}
