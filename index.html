@@ -754,7 +754,12 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
           <select id="rfpLang"><option value="en">Inglés</option><option value="es">Español</option></select>
         </label>
       </div>
-      <div class="rfphint">💡 ¿Reenviar este mismo RFP a <b>otra ciudad</b>? Solo cambia el <b>Evento</b> aquí arriba: se conservan los datos que ya escribiste (montaje, concesiones, notas, etc.) y se actualizan los vendors de la nueva zona.</div>
+      <div class="rfprow">
+        <label class="rfplab">↻ Reutilizar un RFP ya enviado (rellena todos los campos)
+          <select id="rfpReuse"><option value="">— Empezar en blanco / elegir evento arriba</option></select>
+        </label>
+      </div>
+      <div class="rfphint">💡 ¿Reenviar un RFP ya hecho? Elígelo arriba en <b>“Reutilizar un RFP ya enviado”</b> y se cargan todos los campos y concesiones tal como los enviaste. Luego puedes: reenviarlo igual (marca <b>“Permitir reenviar”</b> abajo) o mandarlo a <b>otra ciudad</b> cambiando el <b>Evento</b> (se conservan los datos).</div>
 
       <div class="rfpsec">Datos del evento (ajústalos antes de enviar)</div>
       <div class="rfpgrid">
@@ -3274,11 +3279,48 @@ function renderRfp(){
   sel.innerHTML = opts.length ? opts.map(o=>`<option value="${esc(o.id)}"${o.id===_rfpEvent?' selected':''}>${esc(o.label)}</option>`).join('') : '<option value="">(sin eventos)</option>';
   if(_rfpEvent && _rfpApplied!==_rfpEvent && !$('rfField_name').value){ rfpApplyEvent(_rfpEvent); }
   if(!_rfpConc.length && !_rfpConcEdited){ _rfpConc=rfpConcDefaults(($('rfpLang')||{}).value||'en'); }
+  renderRfpReuseOptions();
   renderRfpConc();
   renderRfpManual();
   renderRfpVendors();
   renderRfpHistory();
   rfpUpdatePreview();
+}
+// Lista de RFP ya enviados (campañas rfp_requests) para reutilizar
+function renderRfpReuseOptions(){
+  const sel=$('rfpReuse'); if(!sel) return;
+  const reqs=Object.values(state.rfpReq||{}).slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const cur=sel.value;
+  const opt0='<option value="">— Empezar en blanco / elegir evento arriba</option>';
+  sel.innerHTML = opt0 + reqs.map(req=>{
+    const r=req.requirements||{};
+    const city = req.city_slug ? cityName(req.city_slug).split(',')[0] : (req.date_id?cityName(citySlugOfDate(req.date_id)).split(',')[0]:'');
+    const evn = r.name || (req.date_id?(dateLabelById(req.date_id)||''):'') || 'RFP';
+    const when = req.created_at ? fmtDate(req.created_at) : '';
+    const lbl = [city, evn, when].filter(Boolean).join(' · ');
+    return `<option value="${esc(req.id)}">${esc(lbl)}</option>`;
+  }).join('');
+  if(cur && reqs.some(r=>r.id===cur)) sel.value=cur; else sel.value='';
+}
+// Carga un RFP enviado en el formulario (rellena campos + concesiones) para reenviarlo
+function rfpLoadPast(requestId){
+  const req=(state.rfpReq||{})[requestId]; if(!req) return;
+  const r=req.requirements||{};
+  RF_IDS.forEach(k=>{ const el=$('rfField_'+k); if(el) el.value=(r[k]!=null?r[k]:''); });
+  if($('rfpLang') && req.lang){ $('rfpLang').value=req.lang; }
+  const conc=Array.isArray(req.concessions)?req.concessions:[];
+  _rfpConc = conc.map(c=>({label:(c&&c.label)||''}));
+  _rfpConcEdited = true;   // no re-sembrar con los defaults
+  // evento / zona: si la fecha aún existe, apúntala
+  if(req.date_id && citySlugOfDate(req.date_id)){ _rfpEvent=req.date_id; _rfpApplied=req.date_id; const es=$('rfpEvent'); if(es) es.value=req.date_id; }
+  // fechas crudas (para reformatear al cambiar idioma)
+  let drec=null; if(req.date_id){ for(const k in state.dates){ const f=(state.dates[k]||[]).find(x=>x.id===req.date_id); if(f){drec=f;break;} } }
+  _rfpStart=drec?(drec.start_date||''):''; _rfpEnd=drec?(drec.end_date||''):''; _rfpDatesAuto=($('rfField_dates')||{}).value||'';
+  // selección por defecto de la zona (respeta “permitir reenviar”)
+  const slug=rfpEventSlug(); const sent=_rfpAllowResend?new Set():rfpSentEmails(_rfpEvent);
+  _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id));
+  renderRfpConc(); renderRfpManual(); renderRfpVendors(); rfpUpdatePreview();
+  const m=$('rfpMsg'); if(m){ m.style.color='#2e7d5b'; m.textContent='✅ RFP cargado. Ajusta lo que quieras y envíalo (marca “Permitir reenviar” para mandarlo a los mismos hoteles, o cambia el evento para otra ciudad).'; }
 }
 function rfpRecipients(){
   const slug=rfpEventSlug();
@@ -3356,7 +3398,8 @@ function openRfpConfirm(){
 function closeRfpConfirm(){ const c=$('rfpConfirm'); if(c) c.classList.add('hidden'); }
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  const sel=$('rfpEvent'); if(sel) sel.addEventListener('change', ()=>{ _rfpEvent=sel.value; rfpApplyEvent(_rfpEvent); renderRfpVendors(); rfpUpdatePreview(); });
+  const sel=$('rfpEvent'); if(sel) sel.addEventListener('change', ()=>{ _rfpEvent=sel.value; rfpApplyEvent(_rfpEvent); renderRfpVendors(); rfpUpdatePreview(); const ru=$('rfpReuse'); if(ru) ru.value=''; });
+  const reuse=$('rfpReuse'); if(reuse) reuse.addEventListener('change', ()=>{ if(reuse.value) rfpLoadPast(reuse.value); });
   const lang=$('rfpLang'); if(lang) lang.addEventListener('change', ()=>{
     if(!_rfpConcEdited){ _rfpConc=rfpConcDefaults(lang.value||'en'); renderRfpConc(); }
     // reformatea las fechas al idioma elegido si el usuario no las editó a mano
