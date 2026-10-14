@@ -1847,15 +1847,8 @@ function contactForVenue(venueName){
 function contactCitySlug(cityStr){
   const s=normName(cityStr);
   if(!s) return '';
-  if(/houston/.test(s)) return 'houston';
-  if(/irving|grapevine|dallas|fort worth|dfw|plano|arlington/.test(s)) return 'dallas';
-  if(/glendale|los angeles|\bl\.?a\.?\b|lax|burbank|pasadena|century city|santa monica/.test(s)) return 'la';
-  if(/phoenix|scottsdale|tempe|mesa|chandler/.test(s)) return 'phoenix';
-  if(/salt lake|sandy|\but\b|utah/.test(s)) return 'slc';
-  if(/orlando|lake buena vista|kissimmee|seaworld/.test(s)) return 'orlando';
-  if(/atlanta|\bga\b|georgia/.test(s)) return 'atlanta';
-  if(/miami|doral|coral gables|brickell/.test(s)) return 'miami';
-  return extraCitySlugOf(cityStr);
+  // misma lógica ampliada que metroOf (8 metros + suburbios) y, si no, ciudad personalizada
+  return metroOf(cityStr) || extraCitySlugOf(cityStr);
 }
 // Resuelve un texto (ciudad/venue/dirección) a una CIUDAD PERSONALIZADA (p.ej. Newark) por su nombre o slug.
 // Sin esto, las ciudades creadas a mano no hacían match y la lista de vendors del RFP salía vacía o mezclada.
@@ -3083,14 +3076,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // Mapea un texto (ciudad/venue/dirección) a una de las 8 zonas (slug)
 function metroOf(text){
   const s=(text||'').toLowerCase();
-  if(/houston/.test(s)) return 'houston';
-  if(/irving|grapevine|dallas|fort worth|dfw|plano|arlington/.test(s)) return 'dallas';
-  if(/glendale|los angeles|\blax\b|burbank|pasadena|santa monica|culver/.test(s)) return 'la';
-  if(/phoenix|scottsdale|tempe|mesa|chandler/.test(s)) return 'phoenix';
-  if(/salt lake|sandy|\but\b|utah/.test(s)) return 'slc';
-  if(/orlando|lake buena vista|kissimmee|seaworld/.test(s)) return 'orlando';
-  if(/atlanta|\bga\b|georgia/.test(s)) return 'atlanta';
-  if(/miami|doral|coral gables|brickell/.test(s)) return 'miami';
+  // pistas de estado para desempatar ciudades con el mismo nombre en distintos estados
+  const TX=/\b(tx|texas)\b/.test(s), AZ=/\b(az|arizona)\b/.test(s), FL=/\b(fl|florida)\b/.test(s);
+  if(/\bpasadena\b/.test(s)) return TX ? 'houston' : 'la';     // Pasadena TX vs CA
+  if(/\bglendale\b/.test(s)) return AZ ? 'phoenix' : 'la';     // Glendale AZ vs CA
+  if(/\bhollywood\b/.test(s)) return FL ? 'miami' : 'la';      // Hollywood FL vs CA
+  // ---- metros con suburbios del área metropolitana ----
+  if(/houston|sugar land|the woodlands|woodlands|\bkaty\b|pearland|cypress|humble|conroe|galveston|league city|baytown|stafford|tomball|kingwood|friendswood|webster|missouri city/.test(s)) return 'houston';
+  if(/dallas|fort worth|\bdfw\b|irving|grapevine|\bplano\b|arlington|southlake|frisco|mckinney|las colinas|richardson|garland|addison|carrollton|denton|lewisville|grand prairie|mesquite|coppell|euless|bedford|\bhurst\b|colleyville|flower mound|rockwall|mansfield|roanoke|westlake|farmers branch|\bkeller\b|north richland hills|\ballen,?\s*(tx|texas)\b/.test(s)) return 'dallas';
+  if(/los angeles|\blax\b|\bl\.a\.\b|burbank|santa monica|culver|long beach|anaheim|beverly hills|inglewood|torrance|pomona|\bontario\b|irvine|santa ana|costa mesa|universal city|el segundo|marina del rey|century city|hawthorne|\bcarson\b|cerritos|garden grove|westwood|downey/.test(s)) return 'la';
+  if(/phoenix|scottsdale|tempe|\bmesa\b|chandler|gilbert|peoria|\bsurprise\b|goodyear|avondale|fountain hills|paradise valley|litchfield|sky harbor/.test(s)) return 'phoenix';
+  if(/salt lake|\bsandy\b(?!\s*springs)|\but\b|utah|provo|\borem\b|ogden|west valley|west jordan|\bmurray\b|draper|\blehi\b|south jordan|midvale|layton|park city|taylorsville/.test(s)) return 'slc';
+  if(/orlando|lake buena vista|kissimmee|seaworld|winter park|altamonte|sanford|davenport|maitland|lake mary|winter garden|ocoee|apopka|championsgate/.test(s)) return 'orlando';
+  if(/atlanta|\bga\b|georgia|marietta|alpharetta|roswell|sandy springs|decatur|duluth|norcross|buckhead|kennesaw|smyrna|peachtree|lawrenceville|college park|dunwoody|gwinnett|johns creek|stone mountain/.test(s)) return 'atlanta';
+  if(/miami|doral|coral gables|brickell|miami beach|aventura|hialeah|fort lauderdale|sunny isles|kendall|coconut grove|bal harbour|hallandale|\bdania\b|pembroke pines|miramar|\bweston\b|\bdavie\b|boca raton|west palm/.test(s)) return 'miami';
   return '';
 }
 function contactMetro(c){
