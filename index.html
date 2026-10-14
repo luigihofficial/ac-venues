@@ -326,9 +326,9 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 .cbox .cgrid textarea{resize:vertical}
 @media(max-width:560px){.cbox .cgrid{grid-template-columns:1fr}}
 .cbox .cgrid .cfull{grid-column:1 / -1}
-.ncextra-hd{font-size:11.5px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 2px}
-.ncextra-row{display:grid;grid-template-columns:1.1fr 1fr 1.3fr;gap:8px;margin-bottom:6px}
-@media(max-width:560px){.ncextra-row{grid-template-columns:1fr}}
+.ncextra-hd{font-size:11.5px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 4px}
+.ncx{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:9px;border:1px solid var(--line);border-radius:10px;background:#fffdf8;margin-bottom:8px}
+@media(max-width:560px){.ncx{grid-template-columns:1fr}}
 
 /* ---------- Fases / pendientes por evento + evaluación de venue ---------- */
 .dsub{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:800;margin:14px 0 5px}
@@ -970,14 +970,16 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
         <label>Cargo<input id="ncRole" placeholder="Cargo / puesto"></label>
         <label>Email<input id="ncEmail" type="email" placeholder="correo@hotel.com"></label>
         <label>Teléfono<input id="ncPhone" placeholder="Teléfono"></label>
-        <div class="cfull ncextra-hd">Contactos adicionales (opcional)</div>
-        <div class="cfull ncextra-row">
+        <div class="cfull ncextra-hd">Contactos adicionales (se incluyen en los RFP; puedes quitarlos al enviar)</div>
+        <div class="cfull ncx">
           <input id="ncName2" placeholder="Nombre (contacto 2)">
+          <input id="ncRole2" placeholder="Cargo">
           <input id="ncPhone2" placeholder="Teléfono">
           <input id="ncEmail2" type="email" placeholder="Email">
         </div>
-        <div class="cfull ncextra-row">
+        <div class="cfull ncx">
           <input id="ncName3" placeholder="Nombre (contacto 3)">
+          <input id="ncRole3" placeholder="Cargo">
           <input id="ncPhone3" placeholder="Teléfono">
           <input id="ncEmail3" type="email" placeholder="Email">
         </div>
@@ -2618,7 +2620,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const fb=$('fBrand'); if(fb) fb.addEventListener('change', ()=>{ cFilter.brand=fb.value; renderContacts(); });
   const fv=$('fVenue'); if(fv) fv.addEventListener('change', ()=>{ cFilter.venue=fv.value; renderContacts(); });
   const cc=$('cClear'); if(cc) cc.addEventListener('click', ()=>{ cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if(cs)cs.value=''; renderContacts(); });
-  const NC_IDS=['ncCity','ncVenue','ncName','ncRole','ncEmail','ncPhone','ncAddress','ncNotes','ncName2','ncPhone2','ncEmail2','ncName3','ncPhone3','ncEmail3'];
+  const NC_IDS=['ncCity','ncVenue','ncName','ncRole','ncEmail','ncPhone','ncAddress','ncNotes','ncName2','ncRole2','ncPhone2','ncEmail2','ncName3','ncRole3','ncPhone3','ncEmail3'];
   let _ncEditId=null;
   function setContactEditUI(editing){ document.querySelectorAll('#contactModal .ncedit-only').forEach(el=>el.classList.toggle('hidden', !editing)); }
   function openContactModal(contact){
@@ -2632,8 +2634,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       $('ncAddress').value=contact.address||''; $('ncNotes').value=contact.notes||'';
       // contactos adicionales
       const ex=Array.isArray(contact.extra_contacts)?contact.extra_contacts:[];
-      $('ncName2').value=(ex[0]&&ex[0].name)||''; $('ncPhone2').value=(ex[0]&&ex[0].phone)||''; $('ncEmail2').value=(ex[0]&&ex[0].email)||'';
-      $('ncName3').value=(ex[1]&&ex[1].name)||''; $('ncPhone3').value=(ex[1]&&ex[1].phone)||''; $('ncEmail3').value=(ex[1]&&ex[1].email)||'';
+      $('ncName2').value=(ex[0]&&ex[0].name)||''; $('ncRole2').value=(ex[0]&&ex[0].role)||''; $('ncPhone2').value=(ex[0]&&ex[0].phone)||''; $('ncEmail2').value=(ex[0]&&ex[0].email)||'';
+      $('ncName3').value=(ex[1]&&ex[1].name)||''; $('ncRole3').value=(ex[1]&&ex[1].role)||''; $('ncPhone3').value=(ex[1]&&ex[1].phone)||''; $('ncEmail3').value=(ex[1]&&ex[1].email)||'';
       if($('ncLastCall')) $('ncLastCall').value=contact.last_call||'';
       $('ncSave').textContent='Guardar cambios';
       setContactEditUI(true);
@@ -2684,9 +2686,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     if($('ncLastCall')) row.last_call = ($('ncLastCall').value || null);
     // contactos adicionales (solo los que tengan algo)
     row.extra_contacts=[
-      {name:$('ncName2').value.trim(), phone:$('ncPhone2').value.trim(), email:$('ncEmail2').value.trim()},
-      {name:$('ncName3').value.trim(), phone:$('ncPhone3').value.trim(), email:$('ncEmail3').value.trim()}
-    ].filter(x=>x.name||x.phone||x.email);
+      {name:$('ncName2').value.trim(), role:$('ncRole2').value.trim(), phone:$('ncPhone2').value.trim(), email:$('ncEmail2').value.trim()},
+      {name:$('ncName3').value.trim(), role:$('ncRole3').value.trim(), phone:$('ncPhone3').value.trim(), email:$('ncEmail3').value.trim()}
+    ].filter(x=>x.name||x.role||x.phone||x.email);
     if(!row.city&&!row.venue&&!row.name){ const m=$('ncMsg'); m.style.color='#b23b3b'; m.textContent='Agrega al menos ciudad, hotel o contacto.'; return; }
     // Aviso anti-duplicados (nombre / teléfono / dirección) — al editar, se ignora el propio contacto
     const dup=findDuplicateContact(row, _ncEditId);
@@ -3100,7 +3102,13 @@ const RF_IDS=['name','city','dates','alt','attendees','setup','ulayout','schedul
 const EN_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let _rfpEvent='';            // date_id seleccionado
 let _rfpApplied='';          // date_id cuyos datos ya se autollenaron
-let _rfpSel=new Set();       // ids de contactos seleccionados
+let _rfpSel=new Set();       // ids de contactos (principal) seleccionados
+let _rfpSelExtra=new Set();  // claves "contactId:idx" de contactos adicionales seleccionados
+// Contactos adicionales CON email de un contacto (para incluirlos en el RFP)
+function rfpExtrasOf(c){
+  const arr=Array.isArray(c&&c.extra_contacts)?c.extra_contacts:[];
+  return arr.map((e,i)=>({idx:i, name:(e&&e.name)||'', role:(e&&e.role)||'', email:((e&&e.email)||'').trim()})).filter(e=>e.email);
+}
 let _rfpConc=[];             // [{label}] concesiones que pedimos (editable)
 let _rfpConcEdited=false;
 let _rfpManual=[];           // [{email,name,venue}] recipientes manuales
@@ -3257,6 +3265,8 @@ function rfpApplyEvent(dateId){
   // selección por defecto: vendors de la nueva zona con email (si NO se permite reenviar, excluye a los ya enviados)
   const sent=_rfpAllowResend?new Set():rfpSentEmails(dateId);
   _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id));
+  _rfpSelExtra=new Set();
+  (state.contacts||[]).forEach(c=>{ if(slug && contactMetro(c)===slug){ rfpExtrasOf(c).forEach(e=>{ if(!sent.has(e.email.toLowerCase())) _rfpSelExtra.add(c.id+':'+e.idx); }); } });
 }
 // Correos que YA recibieron el RFP de ESTE evento (no se les reenvía en un nuevo batch).
 // Fuente: invitaciones creadas (rfp_invites) + historial de envíos (rfp_log), por date_id.
@@ -3272,7 +3282,8 @@ function rfpVenCountText(){
   const sent=rfpSentEmails(_rfpEvent);
   const withEmail=list.filter(c=>c.email&&c.email.trim()).length;
   const sentCount=list.filter(c=>c.email&&c.email.trim()&&sent.has(c.email.trim().toLowerCase())).length;
-  return `· ${list.length} en la zona (${withEmail} con email${sentCount?(' · '+sentCount+' ya enviados'):''} · ${_rfpSel.size} seleccionados)`;
+  const selTotal=_rfpSel.size + _rfpSelExtra.size;   // principales + contactos adicionales
+  return `· ${list.length} en la zona (${withEmail} con email${sentCount?(' · '+sentCount+' ya enviados'):''} · ${selTotal} destinatario(s) seleccionado(s))`;
 }
 function renderRfpVendors(){
   const box=$('rfpVendors'); if(!box) return;
@@ -3281,7 +3292,12 @@ function renderRfpVendors(){
   const sentEmails=rfpSentEmails(_rfpEvent);
   const allowResend=_rfpAllowResend;
   // si NO se permite reenviar, nunca dejar seleccionado a quien ya recibió el RFP de este evento
-  if(!allowResend){ (state.contacts||[]).forEach(c=>{ if(c.email && _rfpSel.has(c.id) && sentEmails.has(c.email.trim().toLowerCase())) _rfpSel.delete(c.id); }); }
+  if(!allowResend){
+    (state.contacts||[]).forEach(c=>{
+      if(c.email && _rfpSel.has(c.id) && sentEmails.has(c.email.trim().toLowerCase())) _rfpSel.delete(c.id);
+      rfpExtrasOf(c).forEach(e=>{ if(_rfpSelExtra.has(c.id+':'+e.idx) && sentEmails.has(e.email.toLowerCase())) _rfpSelExtra.delete(c.id+':'+e.idx); });
+    });
+  }
   const cnt=$('rfpVenCount');
   if(cnt) cnt.textContent = rfpVenCountText();
   box.innerHTML = list.length ? list.map(c=>{
@@ -3291,11 +3307,24 @@ function renderRfpVendors(){
     const checked = has && !blocked && _rfpSel.has(c.id) ? 'checked' : '';
     const disabled = (!has || blocked) ? 'disabled' : '';
     const badge = sent ? (allowResend ? ' · <span class="resendbadge">↻ reenviar</span>' : ' · <span class="sentbadge">✓ ya enviado</span>') : '';
-    return `<label class="rfpven ${(!has||blocked)?'noemail':''} ${sent&&allowResend?'resent':''}" title="${sent?(allowResend?'Ya recibió este RFP — se reenviará su mismo enlace':'Ya recibió el RFP de este evento'):''}">
+    const prim = `<label class="rfpven ${(!has||blocked)?'noemail':''} ${sent&&allowResend?'resent':''}" title="${sent?(allowResend?'Ya recibió este RFP — se reenviará su mismo enlace':'Ya recibió el RFP de este evento'):''}">
       <input type="checkbox" data-rfpven="${c.id}" ${checked} ${disabled}>
       <span><span class="vn">${esc(c.venue||c.name||'—')}</span>
       <span class="vm">${has?esc(c.email):'<span class="noem">sin email</span>'}${c.name&&c.venue?(' · '+esc(c.name)):''}${badge}</span></span>
     </label>`;
+    const extras = rfpExtrasOf(c).map(e=>{
+      const es = sentEmails.has(e.email.toLowerCase());
+      const eb = es && !allowResend;
+      const ech = !eb && _rfpSelExtra.has(c.id+':'+e.idx) ? 'checked' : '';
+      const ed = eb ? 'disabled' : '';
+      const ebadge = es ? (allowResend?' · <span class="resendbadge">↻ reenviar</span>':' · <span class="sentbadge">✓ ya enviado</span>') : '';
+      return `<label class="rfpvenx ${eb?'noemail':''}">
+        <input type="checkbox" data-rfpvenx="${c.id}:${e.idx}" ${ech} ${ed}>
+        <span><span class="vn2">↳ ${esc(e.name||e.email)}${e.role?(' · '+esc(e.role)):''}</span>
+        <span class="vm">${esc(e.email)}${ebadge}</span></span>
+      </label>`;
+    }).join('');
+    return `<div class="rfpvenwrap">${prim}${extras}</div>`;
   }).join('') : `<div class="muted" style="padding:10px">${slug?'No hay contactos en esta zona. Agrégalos en Contactos.':'Elige un evento para ver sus vendors.'}</div>`;
 }
 function renderRfpHistory(){
@@ -3353,6 +3382,8 @@ function rfpLoadPast(requestId){
   // selección por defecto de la zona (respeta “permitir reenviar”)
   const slug=rfpEventSlug(); const sent=_rfpAllowResend?new Set():rfpSentEmails(_rfpEvent);
   _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id));
+  _rfpSelExtra=new Set();
+  (state.contacts||[]).forEach(c=>{ if(slug && contactMetro(c)===slug){ rfpExtrasOf(c).forEach(e=>{ if(!sent.has(e.email.toLowerCase())) _rfpSelExtra.add(c.id+':'+e.idx); }); } });
   renderRfpConc(); renderRfpManual(); renderRfpVendors(); rfpUpdatePreview();
   const m=$('rfpMsg'); if(m){ m.style.color='#2e7d5b'; m.textContent='✅ RFP cargado. Ajusta lo que quieras y envíalo (marca “Permitir reenviar” para mandarlo a los mismos hoteles, o cambia el evento para otra ciudad).'; }
 }
@@ -3360,7 +3391,9 @@ function rfpRecipients(){
   const slug=rfpEventSlug();
   const fromList=(state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && _rfpSel.has(c.id))
     .map(c=>({email:c.email.trim(), name:c.name||'', venue:c.venue||''}));
-  const all=fromList.concat(_rfpManual.map(m=>({email:(m.email||'').trim(), name:m.name||'', venue:m.venue||''})));
+  const fromExtras=[];
+  (state.contacts||[]).forEach(c=>{ if(slug && contactMetro(c)===slug){ rfpExtrasOf(c).forEach(e=>{ if(_rfpSelExtra.has(c.id+':'+e.idx)) fromExtras.push({email:e.email, name:e.name||'', venue:c.venue||''}); }); } });
+  const all=fromList.concat(fromExtras).concat(_rfpManual.map(m=>({email:(m.email||'').trim(), name:m.name||'', venue:m.venue||''})));
   const sent=_rfpAllowResend?new Set():rfpSentEmails(_rfpEvent);   // si NO se permite reenviar, excluye a los ya enviados
   const seen={}; const out=[];
   all.forEach(r=>{ const k=(r.email||'').toLowerCase(); if(!r.email||seen[k]||sent.has(k)) return; seen[k]=1; out.push(r); });
@@ -3467,10 +3500,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const mEmail=$('rfpManEmail'); if(mEmail) mEmail.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
   const mName=$('rfpManName'); if(mName) mName.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addManual(); } });
   const mBox=$('rfpManList'); if(mBox) mBox.addEventListener('click', (e)=>{ const b=e.target.closest&&e.target.closest('[data-rfpmandel]'); if(!b) return; _rfpManual.splice(+b.dataset.rfpmandel,1); renderRfpManual(); });
-  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); const sent=_rfpAllowResend?new Set():rfpSentEmails(_rfpEvent); _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id)); renderRfpVendors(); });
-  const none=$('rfpSelNone'); if(none) none.addEventListener('click', ()=>{ _rfpSel=new Set(); renderRfpVendors(); });
+  const all=$('rfpSelAll'); if(all) all.addEventListener('click', ()=>{ const slug=rfpEventSlug(); const sent=_rfpAllowResend?new Set():rfpSentEmails(_rfpEvent); _rfpSel=new Set((state.contacts||[]).filter(c=>slug && contactMetro(c)===slug && c.email && c.email.trim() && !sent.has(c.email.trim().toLowerCase())).map(c=>c.id)); _rfpSelExtra=new Set(); (state.contacts||[]).forEach(c=>{ if(slug && contactMetro(c)===slug){ rfpExtrasOf(c).forEach(e=>{ if(!sent.has(e.email.toLowerCase())) _rfpSelExtra.add(c.id+':'+e.idx); }); } }); renderRfpVendors(); });
+  const none=$('rfpSelNone'); if(none) none.addEventListener('click', ()=>{ _rfpSel=new Set(); _rfpSelExtra=new Set(); renderRfpVendors(); });
   const ar=$('rfpAllowResend'); if(ar) ar.addEventListener('change', ()=>{ _rfpAllowResend=ar.checked; renderRfpVendors(); });
-  const vbox=$('rfpVendors'); if(vbox) vbox.addEventListener('change', (e)=>{ const t=e.target; if(t && t.dataset && t.dataset.rfpven){ if(t.checked) _rfpSel.add(t.dataset.rfpven); else _rfpSel.delete(t.dataset.rfpven); const cnt=$('rfpVenCount'); if(cnt) cnt.textContent=rfpVenCountText(); } });
+  const vbox=$('rfpVendors'); if(vbox) vbox.addEventListener('change', (e)=>{ const t=e.target; if(!t||!t.dataset) return;
+    if(t.dataset.rfpven){ if(t.checked) _rfpSel.add(t.dataset.rfpven); else _rfpSel.delete(t.dataset.rfpven); }
+    else if(t.dataset.rfpvenx){ if(t.checked) _rfpSelExtra.add(t.dataset.rfpvenx); else _rfpSelExtra.delete(t.dataset.rfpvenx); }
+    else return;
+    const cnt=$('rfpVenCount'); if(cnt) cnt.textContent=rfpVenCountText();
+  });
   const send=$('rfpSend'); if(send) send.addEventListener('click', openRfpConfirm);
   const cc=$('rfpConfirmCancel'); if(cc) cc.addEventListener('click', closeRfpConfirm);
   const cg=$('rfpConfirmGo'); if(cg) cg.addEventListener('click', rfpDoSend);
@@ -4045,6 +4083,13 @@ lpInit();
 .rfpven.noemail{opacity:.6}
 .rfpven .noem{font-size:11.5px;color:var(--danger);font-weight:600}
 .rfpven .sentbadge{font-size:11px;color:var(--ok);font-weight:700}
+.rfpvenwrap{display:flex;flex-direction:column;gap:6px}
+.rfpvenx{display:flex;gap:9px;align-items:flex-start;border:1px dashed var(--line);border-radius:10px;padding:7px 11px 7px 20px;background:#fbfaf6}
+.rfpvenx input{margin-top:3px}
+.rfpvenx .vn2{font-weight:600;color:var(--ink);font-size:12.5px}
+.rfpvenx .vm{font-size:11.5px;color:var(--muted);word-break:break-all}
+.rfpvenx.noemail{opacity:.6}
+.rfpvenx .resendbadge,.rfpvenx .sentbadge{font-size:10.5px}
 .rfpprev-subj{font-size:13.5px;margin-bottom:8px;color:var(--ink)}
 .rfpconfirm-list{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--cream)}
 .rfpconfirm-list .rc{font-size:13px;padding:4px 0;border-bottom:1px solid var(--line)}
