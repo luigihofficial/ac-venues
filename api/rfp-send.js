@@ -14,12 +14,12 @@ const SUPA_URL  = "https://dwhwbcplgcqvuvnzqmne.supabase.co";
 const SUPA_ANON = "sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa";
 const ALLOWED   = ["global@amorconsciente.com", "noris@amorconsciente.com"];
 
-// "Máscara" de remitente: se ENVÍA por el dominio verificado en Resend (luigihernandez.com)
-// para no afectar la entrega, pero el NOMBRE visible muestra global@amorconsciente.com.
-// Las respuestas van a global@amorconsciente.com (reply-to). Cuando amorconsciente.com
-// quede verificado en Resend, cambia SENDER_ADDR a global@amorconsciente.com.
+// Remitente: nombre visible LIMPIO (sin exponer ninguna dirección). Se ENVÍA por el
+// dominio verificado en Resend (luigihernandez.com) para no afectar la entrega; esa
+// dirección solo se ve si el vendor expande el remitente. Las respuestas van a
+// global@amorconsciente.com (reply-to, invisible hasta que responden).
 const SENDER_ADDR = process.env.RFP_SENDER_ADDR || "venues@luigihernandez.com"; // dominio verificado
-const FROM    = `"Amor Consciente — global@amorconsciente.com" <${SENDER_ADDR}>`;
+const FROM    = process.env.RFP_FROM_NAME ? `${process.env.RFP_FROM_NAME} <${SENDER_ADDR}>` : `Amor Consciente — Venues <${SENDER_ADDR}>`;
 const REPLYTO = process.env.RFP_REPLYTO || "global@amorconsciente.com";
 const TEAM_BCC = (process.env.RFP_BCC || "global@amorconsciente.com,noris@amorconsciente.com")
   .split(",").map(s => s.trim()).filter(Boolean);
