@@ -84,6 +84,7 @@
         <div class="fld"><label class="f" id="lFb">F&amp;B minimum (USD)</label><input id="fFb" type="number" min="0" step="0.01"></div>
         <div class="fld"><label class="f" id="lDeposit">Deposit / payment terms</label><input id="fDeposit"></div>
         <div class="fld"><label class="f" id="lTotal">Estimated total (USD)</label><input id="fTotal" type="number" min="0" step="0.01"></div>
+        <div class="fld full"><label class="f" id="lValid">Proposal valid until</label><input id="fValid" placeholder=""><div class="hint" id="validHint">Until when is this proposal / pricing valid?</div></div>
       </div>
     </div>
 
@@ -104,6 +105,17 @@
     <button class="btn block" id="sendBtn">Submit proposal</button>
     <div id="doneBox" class="donebox hidden"></div>
 
+    <div id="declineWrap" style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px">
+      <h2 class="sec" id="lblDecline" style="margin-top:0">Can't participate?</h2>
+      <div class="card">
+        <p id="declineIntro" style="margin:0 0 10px;font-size:14px;color:var(--mut)">If you're unable to submit a proposal for this event, you can let us know below. This is optional.</p>
+        <div class="fld"><label class="f" id="lDeclineNotes">Notes (optional)</label><textarea id="fDeclineNotes" rows="3" placeholder=""></textarea></div>
+        <div id="declineMsg" class="msg"></div>
+        <button class="ghost" id="declineBtn">Decline invitation</button>
+        <div id="declineDone" class="donebox hidden" style="background:#f4ece0;border-color:#e6d6bb;color:#8a6a20"></div>
+      </div>
+    </div>
+
     <div class="foot" id="foot">Thank you — Amor Consciente · Venues</div>
   </div>
 </div>
@@ -121,6 +133,8 @@ let LANG='en', CONC=[], UPLOADS=[];
 const DICT={
   en:{title:'Venue Proposal',need:"What we're looking for",concReq:'Concessions requested (please confirm)',your:'Your proposal',concOffer:'Concessions — what you can offer',files:'Attachments (proposal, photos, floor plans…)',notes:'Anything else?',
     venue:'Hotel / venue',cname:'Contact name',cemail:'Contact email',cphone:'Contact phone',avail:'Dates available',room:'Room / hall offered',cap:'Capacity',rental:'Room rental (USD)',fb:'F&B minimum (USD)',deposit:'Deposit / payment terms',total:'Estimated total (USD)',
+    valid:'Proposal valid until',validHint:'Until when is this proposal / pricing valid?',
+    declineTitle:"Can't participate?",declineIntro:"If you're unable to submit a proposal for this event, you can let us know below. This is optional.",declineNotes:'Notes (optional)',declineBtn:'Decline invitation',declining:'Sending…',declineDone:'Thank you for letting us know — we’ve marked this invitation as declined. You can still submit a proposal above if that changes.',declinedBanner:'You declined this invitation. You can still submit a proposal above if that changes.',
     submit:'Submit proposal',sending:'Sending…',filesHint:'PDF, images, Word, etc. Up to 15 MB each.',
     intro:v=>`Hello${v?(' '+v):''}, thank you for considering our event. Please review what we need and share your best proposal below.`,
     done:'✅ Thank you! Your proposal was received. You can return to this link anytime to update it.',
@@ -130,6 +144,8 @@ const DICT={
     needEmail:'Please add your contact email.'},
   es:{title:'Propuesta de venue',need:'Lo que estamos buscando',concReq:'Concesiones solicitadas (por favor confirme)',your:'Su propuesta',concOffer:'Concesiones — lo que puede ofrecer',files:'Adjuntos (propuesta, fotos, planos…)',notes:'¿Algo más?',
     venue:'Hotel / venue',cname:'Nombre de contacto',cemail:'Email de contacto',cphone:'Teléfono de contacto',avail:'Fechas disponibles',room:'Salón ofrecido',cap:'Capacidad',rental:'Renta de salón (USD)',fb:'Mínimo de A&B (USD)',deposit:'Depósito / términos de pago',total:'Total estimado (USD)',
+    valid:'Propuesta válida hasta',validHint:'¿Hasta cuándo es válida esta propuesta / tarifa?',
+    declineTitle:'¿No puede participar?',declineIntro:'Si no puede enviar una propuesta para este evento, puede avisarnos aquí. Es opcional.',declineNotes:'Notas (opcional)',declineBtn:'Rechazar invitación',declining:'Enviando…',declineDone:'Gracias por avisarnos — marcamos esta invitación como rechazada. Si cambia, aún puede enviar una propuesta arriba.',declinedBanner:'Usted rechazó esta invitación. Si cambia, aún puede enviar una propuesta arriba.',
     submit:'Enviar propuesta',sending:'Enviando…',filesHint:'PDF, imágenes, Word, etc. Hasta 15 MB cada uno.',
     intro:v=>`Hola${v?(' '+v):''}, gracias por considerar nuestro evento. Revise lo que necesitamos y comparta su mejor propuesta abajo.`,
     done:'✅ ¡Gracias! Recibimos su propuesta. Puede volver a este enlace cuando quiera para actualizarla.',
@@ -148,6 +164,9 @@ function applyLabels(){
   $('lVenue').textContent=t.venue; $('lCname').textContent=t.cname; $('lCemail').textContent=t.cemail; $('lCphone').textContent=t.cphone;
   $('lAvail').textContent=t.avail; $('lRoom').textContent=t.room; $('lCap').textContent=t.cap; $('lRental').textContent=t.rental;
   $('lFb').textContent=t.fb; $('lDeposit').textContent=t.deposit; $('lTotal').textContent=t.total;
+  $('lValid').textContent=t.valid; $('validHint').textContent=t.validHint;
+  $('lblDecline').textContent=t.declineTitle; $('declineIntro').textContent=t.declineIntro;
+  $('lDeclineNotes').textContent=t.declineNotes; $('declineBtn').textContent=t.declineBtn;
   $('sendBtn').textContent=t.submit; $('filesHint').textContent=t.filesHint; $('foot').textContent=t.foot;
   $('invTitle').textContent=t.invalid; $('invText').textContent=t.invalidText;
 }
@@ -191,6 +210,7 @@ function collect(){
     contact_phone:$('fCphone').value.trim(), available:$('fAvail').value.trim(), room_name:$('fRoom').value.trim(),
     capacity:$('fCap').value.trim(), room_rental:$('fRental').value.trim(), fb_minimum:$('fFb').value.trim(),
     deposit:$('fDeposit').value.trim(), total_estimate:$('fTotal').value.trim(),
+    valid_until:$('fValid').value.trim(),
     concessions, files:UPLOADS, notes:$('fNotes').value.trim()
   };
 }
@@ -216,7 +236,13 @@ async function load(){
       $('fAvail').value=resp.available||''; $('fRoom').value=resp.room_name||''; $('fCap').value=resp.capacity||'';
       $('fRental').value=resp.room_rental!=null?resp.room_rental:''; $('fFb').value=resp.fb_minimum!=null?resp.fb_minimum:'';
       $('fDeposit').value=resp.deposit||''; $('fTotal').value=resp.total_estimate!=null?resp.total_estimate:''; $('fNotes').value=resp.notes||'';
+      $('fValid').value=resp.valid_until||'';
       UPLOADS=(resp.files||[]).slice(); renderFiles();
+    }
+    // si ya rechazó antes: prellenar notas y mostrar aviso (sigue pudiendo enviar propuesta)
+    if(data.status==='declined'){
+      $('fDeclineNotes').value=data.decline_notes||'';
+      $('declineDone').textContent=L().declinedBanner; $('declineDone').classList.remove('hidden');
     }
     show('content');
   }catch(e){ show('invalid'); }
@@ -248,6 +274,18 @@ $('sendBtn').addEventListener('click', async ()=>{
     $('doneBox').textContent=t.done; $('doneBox').classList.remove('hidden');
     btn.disabled=false; btn.textContent=old;
     window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+  }catch(e){ msg.style.color='var(--danger)'; msg.textContent='Error: '+(e.message||e); btn.disabled=false; btn.textContent=old; }
+});
+
+$('declineBtn').addEventListener('click', async ()=>{
+  const t=L(); const btn=$('declineBtn'); const old=btn.textContent; const msg=$('declineMsg');
+  btn.disabled=true; btn.textContent=t.declining; msg.textContent='';
+  try{
+    const { data, error }=await sb.rpc('decline_rfp',{p_token:token, p_notes:$('fDeclineNotes').value.trim()});
+    if(error || !data || !data.ok){ msg.style.color='var(--danger)'; msg.textContent='Error: '+((error&&error.message)||(data&&data.error)||'try again'); btn.disabled=false; btn.textContent=old; return; }
+    $('declineDone').textContent=t.declineDone; $('declineDone').classList.remove('hidden');
+    btn.disabled=false; btn.textContent=old;
+    $('declineDone').scrollIntoView({behavior:'smooth',block:'center'});
   }catch(e){ msg.style.color='var(--danger)'; msg.textContent='Error: '+(e.message||e); btn.disabled=false; btn.textContent=old; }
 });
 

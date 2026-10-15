@@ -3539,8 +3539,18 @@ function rcConcLabels(dateId){
 function rfpSeenKey(){ return 'ac_rfp_seen_'+((USER&&USER.email)||'anon'); }
 function rfpSeenMap(){ try{ return JSON.parse(localStorage.getItem(rfpSeenKey())||'{}')||{}; }catch(e){ return {}; } }
 function rfpSaveSeen(m){ try{ localStorage.setItem(rfpSeenKey(), JSON.stringify(m)); }catch(e){} }
-function rfpUnseenCount(){ const seen=rfpSeenMap(); return (state.rfpOffers||[]).filter(o=>o&&o.id&&seen[o.id]!==o.updated_at).length; }
-function rfpMarkAllSeen(){ const m={}; (state.rfpOffers||[]).forEach(o=>{ if(o&&o.id) m[o.id]=o.updated_at; }); rfpSaveSeen(m); updateRfpBadges(); }
+function rfpUnseenCount(){
+  const seen=rfpSeenMap();
+  let n=(state.rfpOffers||[]).filter(o=>o&&o.id&&seen[o.id]!==o.updated_at).length;
+  n+=(state.rfpInvites||[]).filter(i=>i&&i.id&&i.status==='declined'&&seen[i.id]!==('declined:'+(i.decline_notes||''))).length;
+  return n;
+}
+function rfpMarkAllSeen(){
+  const m={};
+  (state.rfpOffers||[]).forEach(o=>{ if(o&&o.id) m[o.id]=o.updated_at; });
+  (state.rfpInvites||[]).forEach(i=>{ if(i&&i.id&&i.status==='declined') m[i.id]='declined:'+(i.decline_notes||''); });
+  rfpSaveSeen(m); updateRfpBadges();
+}
 function updateRfpBadges(){
   const n=rfpUnseenCount();
   document.querySelectorAll('[data-rfpcount]').forEach(el=>{ el.textContent=n; el.classList.toggle('on', n>0); });
@@ -3565,10 +3575,12 @@ function rcRenderMatrix(){
   const invites=(state.rfpInvites||[]).filter(i=>i.date_id===_rcEvent);
   const offers=(state.rfpOffers||[]).filter(o=>o.date_id===_rcEvent);
   const offerByInvite={}; offers.forEach(o=>{ offerByInvite[o.invite_id]=o; });
-  const cols=invites.filter(i=>offerByInvite[i.id]).map(i=>({inv:i, off:offerByInvite[i.id]}));
-  const pending=invites.filter(i=>!offerByInvite[i.id]);
-  if(sum) sum.textContent = `${invites.length} invitado(s) · ${cols.length} respondieron · ${pending.length} pendiente(s)`;
-  if(!cols.length){ wrap.innerHTML=`<div class="muted" style="padding:16px">Aún no hay respuestas. ${invites.length?('Invitados que faltan por responder: '+invites.map(i=>esc(i.venue||i.to_email)).join(', ')):'No hay invitaciones para este evento.'}</div>`; return; }
+  const declined=invites.filter(i=> i.status==='declined');
+  const cols=invites.filter(i=> i.status!=='declined' && offerByInvite[i.id]).map(i=>({inv:i, off:offerByInvite[i.id]}));
+  const pending=invites.filter(i=> i.status!=='declined' && !offerByInvite[i.id]);
+  if(sum) sum.textContent = `${invites.length} invitado(s) · ${cols.length} respondieron${declined.length?(' · '+declined.length+' rechazaron'):''} · ${pending.length} pendiente(s)`;
+  const declinedHtml = declined.length ? `<div class="muted" style="font-size:12.5px;margin-top:10px">🚫 Rechazaron la invitación: ${declined.map(i=>esc(i.venue||i.to_email)+(i.decline_notes?(' — “'+esc(i.decline_notes)+'”'):'')).join('; ')}</div>` : '';
+  if(!cols.length){ wrap.innerHTML=`<div class="muted" style="padding:16px">Aún no hay respuestas. ${invites.length?('Invitados que faltan por responder: '+(pending.length?pending.map(i=>esc(i.venue||i.to_email)).join(', '):'—')):'No hay invitaciones para este evento.'}</div>`+declinedHtml; return; }
   const conc=rcConcLabels(_rcEvent);
   const n=v=> (v==null||v==='')?null:Number(v);
   const bestOf=(key)=>{ const vals=cols.map(c=>n(c.off[key])).filter(v=>v!=null&&!isNaN(v)); return vals.length?Math.min(...vals):null; };
@@ -3584,6 +3596,7 @@ function rcRenderMatrix(){
   rowsHtml.push(mkrow('Mínimo de A&B', c=> money(c.off.fb_minimum), c=> (bFb!=null && n(c.off.fb_minimum)===bFb)?'best':''));
   rowsHtml.push(mkrow('Depósito', c=> esc(c.off.deposit||'—')));
   rowsHtml.push(mkrow('Estimado total', c=> money(c.off.total_estimate), c=> (bTot!=null && n(c.off.total_estimate)===bTot)?'best':''));
+  rowsHtml.push(mkrow('Propuesta válida hasta', c=> esc(c.off.valid_until||'—')));
   conc.forEach(cc=>{
     rowsHtml.push(mkrow(cc.label, c=>{
       const arr=Array.isArray(c.off.concessions)?c.off.concessions:[];
@@ -3598,7 +3611,8 @@ function rcRenderMatrix(){
   rowsHtml.push(mkrow('Notas', c=> c.off.notes?esc(c.off.notes).replace(/\n/g,'<br>'):'—'));
   rowsHtml.push(`<tr><td class="rk">Decisión</td>${cols.map(c=>`<td class="${c.inv.status==='won'?'wincol':''}">${c.inv.status==='won'?'<span class="rcwon">Elegido ✓</span><div class="winbtn"><button class="btn sm ghost" data-rcwin="${esc(c.inv.id)}">Reenviar aprobación</button></div>':`<button class="btn sm gold winbtn" data-rcwin="${esc(c.inv.id)}">Elegir y aprobar</button>`}</td>`).join('')}</tr>`);
   wrap.innerHTML = `<table><thead><tr><th>Criterio</th>${headcells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table>`
-    + (pending.length?`<div class="muted" style="font-size:12.5px;margin-top:10px">⏳ Pendientes por responder: ${pending.map(i=>esc(i.venue||i.to_email)).join(', ')}</div>`:'');
+    + (pending.length?`<div class="muted" style="font-size:12.5px;margin-top:10px">⏳ Pendientes por responder: ${pending.map(i=>esc(i.venue||i.to_email)).join(', ')}</div>`:'')
+    + declinedHtml;
 }
 
 /* ---- Correo de aprobación del ganador ---- */
