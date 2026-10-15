@@ -513,6 +513,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <a href="#ofertas">Ofertas</a>
       <a href="#rfp">Enviar RFP</a>
       <a href="#rfpcompare">Comparar RFP <span class="rcount" data-rfpcount></span></a>
+      <a href="#layout">Montaje de sala</a>
       <a href="#pendientes">Pendientes</a>
     </div>
   </div>
@@ -910,6 +911,8 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   </section>
 
   <!-- REGISTRO DE CAMBIOS (audit log) -->
+  <section id="layout" style="display:none"></section>
+
   <section id="registro">
     <div class="sec-head"><div class="num">🧾</div><div><h2>Registro de cambios</h2><p>Quién hizo qué y cuándo. Cada acción del equipo queda registrada (no editable).</p></div></div>
     <div class="card" id="auditLog" style="padding:6px 4px"></div>
@@ -1157,6 +1160,9 @@ window.AC_CONFIG = {
   ALLOWED_EMAILS: []
 };
 </script>
+<!-- Meeting Room Layout & Capacity Engine (vanilla + SVG, no build) -->
+<script src="layout-engine.js"></script>
+<script src="layout-ui.js"></script>
 <script>
 /* ============================================================
    AC-Venues · Amor Consciente — App (Vercel + Supabase)
@@ -1362,6 +1368,7 @@ function routeView(){
   if(hash==='agenda' && typeof renderAgenda==='function') renderAgenda();
   if(hash==='rfp' && typeof renderRfp==='function') renderRfp();
   if(hash==='rfpcompare' && typeof renderRfpCompare==='function') renderRfpCompare();
+  if(hash==='layout' && window.LayoutUI) LayoutUI.render(document.getElementById('layout'));
   window.scrollTo({top:0});
 }
 window.addEventListener('hashchange', routeView);
@@ -4019,6 +4026,41 @@ function lpInit(){
   else { const vb=document.querySelector('.lp-voicebar'); if(vb) vb.style.display='none'; }
 }
 lpInit();
+
+/* ---- Layout engine: persistencia (Supabase room_layouts) ---- */
+if(window.LayoutUI){
+  LayoutUI.onSave = async function(payload){
+    try{
+      if(!sb) return {ok:false, error:'Sin sesión'};
+      if(USER && !['global@amorconsciente.com','noris@amorconsciente.com'].includes((USER.email||'').toLowerCase()))
+        return {ok:false, error:'Correo no autorizado'};
+      const r=payload.room||{}, p=payload.params||{};
+      const row={ venue:(r.venue||'').trim(), room_name:(r.name||'').trim(),
+        event_name:(p.eventName||''), layout_id:p.layout||'',
+        unit:r.unit||'ft', width:r.width, length:r.length, published:payload.published,
+        data:payload, capacities:payload.capacities||{},
+        created_by:(USER&&USER.email)||'', updated_at:new Date().toISOString() };
+      if(!row.venue && !row.room_name) return {ok:false, error:'Indica venue y/o nombre de sala para guardar'};
+      const { error } = await sb.from('room_layouts').upsert(row, { onConflict:'venue,room_name,layout_id' });
+      if(error) return {ok:false, error:error.message};
+      logChange('layout', row.room_name||row.venue||'sala', 'guardó un montaje '+(row.layout_id||''));
+      return {ok:true};
+    }catch(e){ return {ok:false, error:e.message||String(e)}; }
+  };
+  LayoutUI.onLoad = async function(){
+    try{
+      if(!sb) return null;
+      const venue=(document.getElementById('layVenue')||{}).value||'';
+      const room=(document.getElementById('layRoom')||{}).value||'';
+      let q = sb.from('room_layouts').select('*').order('updated_at',{ascending:false}).limit(1);
+      if(venue.trim()) q = q.eq('venue', venue.trim());
+      if(room.trim()) q = q.eq('room_name', room.trim());
+      const { data, error } = await q;
+      if(error || !data || !data.length) return null;
+      return data[0].data || null;
+    }catch(e){ return null; }
+  };
+}
 
 </script>
 
