@@ -3174,7 +3174,7 @@ function buildRfpEmail(lang, d, conc, portalUrl){
        contact:'Contacto'};
   const row=(k,v)=> v ? `<tr><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600">${esc(k)}</td><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#22303f;font-size:14px"><b>${esc(v)}</b></td></tr>` : '';
   const rows=[row(T.dates,d.dates),row(T.alt,d.alt),row(T.att,d.attendees),row(T.setup,d.setup),row(T.sch,d.schedule),row(T.cat,d.catering),row(T.av,d.av),row(T.bud,d.budget)].join('');
-  const contact=[esc(d.cname||''),esc(d.cemail||''),esc(d.cphone||'')].filter(Boolean).join(' · ');
+  const contact=[esc(d.cname||''),esc(d.cphone||'')].filter(Boolean).join(' · ');   // sin email: las respuestas van por reply-to (no se expone la dirección)
   const notesHtml = d.notes ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6"><b>${esc(T.notes)}:</b> ${esc(d.notes).replace(/\n/g,'<br>')}</p>` : '';
   const concHtml = conc.length ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(T.concTitle)}</div><ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7">${conc.map(c=>`<li>${esc(c.label)}</li>`).join('')}</ul>` : '';
   // Diagrama del montaje solicitado (U-shape single/double/triple/quadruple = U's concéntricas).
@@ -3634,7 +3634,7 @@ function buildApprovalEmail(lang, ctx){
   const recap=rapRecap(lang, ctx.offer||{});
   const recapHtml = recap ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px">${esc(T.recapT)}</div><table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #efe8da;border-radius:10px;overflow:hidden">${recap}</table>` : '';
   const note = ctx.note ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6">${esc(ctx.note).replace(/\n/g,'<br>')}</p>` : '';
-  const contact=[esc(ctx.cname||''),esc(ctx.cemail||''),esc(ctx.cphone||'')].filter(Boolean).join(' · ');
+  const contact=[esc(ctx.cname||''),esc(ctx.cphone||'')].filter(Boolean).join(' · ');   // sin email: respuestas por reply-to
   const html = `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
   <div style="max-width:640px;margin:0 auto;padding:0 14px 40px">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%"><tr>
