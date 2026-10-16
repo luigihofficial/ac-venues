@@ -167,6 +167,10 @@ nav.tabs a.active{color:var(--navy);border-bottom-color:var(--gold)}
 
 section{padding:32px 0 8px}
 .sec-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.city-index{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px;margin:2px auto 14px;max-width:760px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.city-index a{font-size:13px;font-weight:700;color:var(--navy);text-decoration:none;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;white-space:nowrap;transition:background .12s,color .12s}
+.city-index a:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.city-index:empty{display:none}
 .sec-head .num{width:30px;height:30px;border-radius:8px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
 .sec-head h2{font-size:20px;color:var(--navy)}
 .sec-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
@@ -665,6 +669,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <!-- CIUDADES (dinámico) -->
   <section id="ciudades">
     <div class="sec-head"><div class="num">◧</div><div><h2>Ciudades</h2><p>Pipeline por ciudad, candidatos y notas. Cambios en vivo.</p></div></div>
+    <nav id="cityIndex" class="city-index" aria-label="Ir a una ciudad"></nav>
     <div style="display:flex;justify-content:flex-end;margin:-4px 0 12px"><button id="cityNew" class="btn sm gold">+ Nueva ciudad</button></div>
     <div class="grid g2" id="cityGrid"></div>
   </section>
@@ -798,7 +803,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
 
       <div class="rfpsec">Datos del evento (ajústalos antes de enviar)</div>
       <div class="rfpgrid">
-        <label>Nombre del evento<input id="rfField_name" placeholder="Ej. Despertar"></label>
+        <label>Nombre del evento<input id="rfField_name" placeholder="Ej. Amor Consciente - Básico"></label>
         <label>Zona / ciudad<input id="rfField_city" placeholder="Ciudad, Estado"></label>
         <label>Fechas preferidas<input id="rfField_dates" placeholder="Ej. 23–27 sep 2026"></label>
         <label>Fechas alternas<input id="rfField_alt" placeholder="Opcional"></label>
@@ -2172,7 +2177,7 @@ async function saveRecipientToDirectory(rcid){
 }
 function cityVenues(slug){ return (state.venues[slug]||[]).slice().sort((a,b)=>(a.sort||0)-(b.sort||0)); }
 function cityCard(c, disabled){
-  const card=document.createElement('div'); card.className='card city';
+  const card=document.createElement('div'); card.className='card city'; card.id='city-'+c.slug;
   const dates = disabled?[]:citiesDates(c.slug);
   const vlist = disabled?[]:cityVenues(c.slug);
   const venuesHtml = vlist.length ? vlist.map(v=>`
@@ -2206,8 +2211,14 @@ function cityCard(c, disabled){
    </div>`;
   return card;
 }
-function renderStaticCities(){ const grid=$('cityGrid'); grid.innerHTML=''; allCities().forEach(c=>grid.appendChild(cityCard(c,true))); }
+function renderCityIndex(){
+  const host=$('cityIndex'); if(!host) return;
+  const cities=allCities().slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  host.innerHTML = cities.map(c=>`<a href="#" data-cityjump="${esc(c.slug)}">${esc(c.name)}</a>`).join('');
+}
+function renderStaticCities(){ const grid=$('cityGrid'); grid.innerHTML=''; allCities().forEach(c=>grid.appendChild(cityCard(c,true))); renderCityIndex(); }
 function renderCities(){
+  renderCityIndex();
   const grid=$('cityGrid');
   const open=new Set([...grid.querySelectorAll('.dateblk.open [data-dlabel]')].map(el=>el.dataset.dlabel));
   grid.innerHTML=''; allCities().forEach(c=>grid.appendChild(cityCard(c,false)));
@@ -2632,6 +2643,9 @@ async function deleteEventFile(id){
 
 document.addEventListener('click', async (e)=>{
   const t=e.target;
+  // Índice de ciudades: scroll suave a la tarjeta (sin tocar el hash para no romper el router)
+  const cj=t.closest ? t.closest('[data-cityjump]') : null;
+  if(cj){ e.preventDefault(); const el=document.getElementById('city-'+cj.dataset.cityjump); if(el){ const y=el.getBoundingClientRect().top+window.pageYOffset-70; window.scrollTo({top:y,behavior:'smooth'}); } return; }
   // expandir/colapsar fecha (UI, sin DB)
   const head=t.closest ? t.closest('.datehead') : null;
   if(head && !t.dataset.deldate && !t.dataset.dlabel){ const blk=head.closest('.dateblk'); if(blk) blk.classList.toggle('open'); return; }
@@ -3301,20 +3315,20 @@ function rfpFmtDeadline(iso,lang){
 function buildRfpEmail(lang, d, conc, portalUrl){
   conc=conc||[]; portalUrl=portalUrl||'#';
   const T = lang==='en'
-    ? {rfp:'Request for Proposal',dates:'Preferred dates',alt:'Alternate dates',att:'Expected attendees',setup:'Room setup',bk:'Breakout rooms',sch:'Schedule',cat:'Catering',av:'Audio / Visual',park:'Parking',wifi:'WiFi',bud:'Budget range',notes:'Special requests',
-       subject:`Request for Proposal — ${d.org} event in ${d.city||''}${d.dates?(' · '+d.dates):''}`,
+    ? {rfp:'Request for Proposal',ev:'Event',dates:'Preferred dates',alt:'Alternate dates',att:'Expected attendees',setup:'Room setup',bk:'Breakout rooms',sch:'Schedule',cat:'Catering',av:'Audio / Visual',park:'Parking',wifi:'WiFi',bud:'Budget range',notes:'Special requests',
+       subject:`Request for Proposal — ${d.name?d.name:(d.org+' event')}${d.city?(' · '+d.city):''}${d.dates?(' · '+d.dates):''}`,
        hi:'Hello,',
-       intro:`We're ${d.org}, and we're planning a corporate event${d.city?(' in <b>'+esc(d.city)+'</b>'):''}${d.dates?(' around <b>'+esc(d.dates)+'</b>'):''}. We'd love to consider your venue and invite you to submit a proposal.`,
+       intro:`We're ${d.org}, and we're planning ${d.name?('our <b>'+esc(d.name)+'</b> event'):'a corporate event'}${d.city?(' in <b>'+esc(d.city)+'</b>'):''}${d.dates?(' around <b>'+esc(d.dates)+'</b>'):''}. We'd love to consider your venue and invite you to submit a proposal.`,
        reqs:'What we need', concTitle:'Concessions we’re requesting (complimentary)',
        cta:'To make it easy, please submit your proposal through our quick online portal — it takes a few minutes and lets you confirm pricing, concessions, and attach your materials:',
        btn:'Submit your proposal',
        by: d.deadline?(`Kindly submit by <b>${rfpFmtDeadline(d.deadline,'en')}</b>.`):'',
        close:'If you have any questions, just reply to this email — we’re happy to help. Thank you, and we look forward to your proposal.',
        contact:'Contact'}
-    : {rfp:'Solicitud de cotización',dates:'Fechas preferidas',alt:'Fechas alternas',att:'Asistentes (aprox.)',setup:'Montaje del salón',bk:'Salas adicionales',sch:'Días y horario',cat:'Catering',av:'Audio / Video',park:'Parqueo',wifi:'WiFi',bud:'Presupuesto',notes:'Requisitos especiales',
-       subject:`Solicitud de cotización — Evento de ${d.org} en ${d.city||''}${d.dates?(' · '+d.dates):''}`,
+    : {rfp:'Solicitud de cotización',ev:'Evento',dates:'Fechas preferidas',alt:'Fechas alternas',att:'Asistentes (aprox.)',setup:'Montaje del salón',bk:'Salas adicionales',sch:'Días y horario',cat:'Catering',av:'Audio / Video',park:'Parqueo',wifi:'WiFi',bud:'Presupuesto',notes:'Requisitos especiales',
+       subject:`Solicitud de cotización — ${d.name?d.name:('Evento de '+d.org)}${d.city?(' · '+d.city):''}${d.dates?(' · '+d.dates):''}`,
        hi:'Hola,',
-       intro:`Somos ${d.org} y estamos organizando un evento corporativo${d.city?(' en <b>'+esc(d.city)+'</b>'):''}${d.dates?(' alrededor del <b>'+esc(d.dates)+'</b>'):''}. Nos encantaría considerar su venue y los invitamos a enviarnos una propuesta.`,
+       intro:`Somos ${d.org} y estamos organizando ${d.name?('nuestro evento <b>'+esc(d.name)+'</b>'):'un evento corporativo'}${d.city?(' en <b>'+esc(d.city)+'</b>'):''}${d.dates?(' alrededor del <b>'+esc(d.dates)+'</b>'):''}. Nos encantaría considerar su venue y los invitamos a enviarnos una propuesta.`,
        reqs:'Lo que necesitamos', concTitle:'Concesiones que pedimos (cortesía)',
        cta:'Para hacerlo fácil, por favor envíe su propuesta por nuestro portal en línea — toma unos minutos y le permite confirmar precios, concesiones y adjuntar sus materiales:',
        btn:'Enviar su propuesta',
@@ -3322,7 +3336,7 @@ function buildRfpEmail(lang, d, conc, portalUrl){
        close:'Si tiene cualquier duda, responda a este correo — con gusto le ayudamos. ¡Gracias! Quedamos atentos a su propuesta.',
        contact:'Contacto'};
   const row=(k,v)=> v ? `<tr><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#8a9199;font-size:12px;white-space:nowrap;vertical-align:top;font-weight:600">${esc(k)}</td><td style="padding:9px 12px;border-bottom:1px solid #efe8da;color:#22303f;font-size:14px"><b>${esc(v)}</b></td></tr>` : '';
-  const rows=[row(T.dates,d.dates),row(T.alt,d.alt),row(T.att,d.attendees),row(T.setup,d.setup),row(T.sch,d.schedule),row(T.cat,d.catering),row(T.av,d.av),row(T.bud,d.budget)].join('');
+  const rows=[row(T.ev,d.name),row(T.dates,d.dates),row(T.alt,d.alt),row(T.att,d.attendees),row(T.setup,d.setup),row(T.sch,d.schedule),row(T.cat,d.catering),row(T.av,d.av),row(T.bud,d.budget)].join('');
   const contact=[esc(d.cname||''),esc(d.cphone||'')].filter(Boolean).join(' · ');   // sin email: las respuestas van por reply-to (no se expone la dirección)
   const notesHtml = d.notes ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.6"><b>${esc(T.notes)}:</b> ${esc(d.notes).replace(/\n/g,'<br>')}</p>` : '';
   const concHtml = conc.length ? `<div style="font-size:12px;color:#8a9199;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px">${esc(T.concTitle)}</div><ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7">${conc.map(c=>`<li>${esc(c.label)}</li>`).join('')}</ul>` : '';
