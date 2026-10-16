@@ -2574,9 +2574,13 @@ async function copySheetLink(id, btn){
   const tok=await ensureSheetToken(id);
   if(!tok){ alert('No pude generar el enlace de la ficha. Intenta de nuevo en un momento.'); return; }
   const url=location.origin+'/ficha.html?t='+tok;
-  try{ await navigator.clipboard.writeText(url); const o=btn.textContent; btn.textContent='✓ Copiado'; setTimeout(()=>btn.textContent=o,1600); }
-  catch(e){ prompt('Copia el enlace de la ficha (siempre actualizado):', url); }
-  logChange('evento', dateLabelById(id), 'copió el enlace vivo de la ficha');
+  const nm=dateLabelById(id);
+  // Se copia con el nombre del evento/ciudad para que, al compartir (WhatsApp, etc.),
+  // el mensaje diga de cuál evento es la ficha — no solo el enlace.
+  const text='📋 Ficha del evento — '+nm+'\n'+url;
+  try{ await navigator.clipboard.writeText(text); const o=btn.textContent; btn.textContent='✓ Copiado'; setTimeout(()=>btn.textContent=o,1600); }
+  catch(e){ prompt('Copia y comparte la ficha (enlace siempre actualizado):', text); }
+  logChange('evento', nm, 'copió el enlace vivo de la ficha');
 }
 async function notifySheet(id, btn){
   const recs=recipientsFor(id).filter(r=>(r.email||'').includes('@'));

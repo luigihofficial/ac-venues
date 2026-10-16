@@ -178,6 +178,8 @@ async function load(){
     const files=(d.files||[]).filter(f=>f.url);
     if(files.length){ $('fFiles').innerHTML = files.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name||'archivo')}</a>`).join(''); $('filesWrap').classList.remove('hidden'); }
     if(d.updated_at) $('fUpd').textContent = 'Actualizada: '+fmtDT(d.updated_at);
+    // Título dinámico (pestaña + re-scrapes): incluye ciudad/hotel del evento
+    try{ document.title = 'Ficha — ' + (city || d.hotel_name || 'evento') + ' · Amor Consciente'; }catch(e){}
     show('content');
   }catch(e){ show('invalid'); }
 }
