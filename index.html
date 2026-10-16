@@ -518,6 +518,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
     </div>
   </div>
   <a href="#contactos">Contactos</a>
+  <a href="#speakers">Speakers</a>
   <a href="#agenda">Agenda</a>
   <div class="navgroup">
     <button type="button" class="navbtn" data-navbtn>Referencia <span class="car">▾</span></button>
@@ -720,6 +721,35 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <tbody id="contactBody"></tbody>
     </table></div>
   </section>
+
+  <section id="speakers">
+    <div class="sec-head"><div class="num">🎤</div><div><h2>Speakers / Líderes</h2><p>Directorio de personas de Amor Consciente (líderes, speakers, coaches, músicos…). Compartido con el equipo. Desde cada evento puedes jalar personas de aquí con el botón <b>“Desde directorio”</b> sin re-escribirlas.</p></div></div>
+    <div class="cfilters">
+      <div class="csearch"><span class="cs-ic">🔍</span><input id="spSearch" type="search" placeholder="Buscar: nombre, email, rol, teléfono…"></div>
+      <span id="spCount" class="muted cfcount"></span>
+      <button id="spNew" class="btn sm gold cfnew">+ persona</button>
+    </div>
+    <div class="card" style="overflow-x:auto"><table>
+      <thead><tr><th>Nombre</th><th>Rol</th><th>Email</th><th>Teléfono</th><th>Notas</th><th></th></tr></thead>
+      <tbody id="speakerBody"></tbody>
+    </table></div>
+  </section>
+
+  <datalist id="roleOpts"><option value="Líder"></option><option value="Speaker"></option><option value="Coach"></option><option value="Músico"></option><option value="Facilitador"></option><option value="Staff"></option></datalist>
+
+  <div id="peoplePickModal" class="hidden pw-overlay">
+    <div class="pw-box" style="max-width:540px">
+      <h3 style="margin:0 0 4px">Agregar desde el directorio</h3>
+      <p class="muted" style="font-size:12.5px;margin:0 0 10px">Elige personas del directorio de Speakers / Líderes. Se agregan al evento con su nombre, email y rol. Las que ya están en el evento quedan deshabilitadas.</p>
+      <div class="csearch" style="margin-bottom:8px"><span class="cs-ic">🔍</span><input id="ppSearch" type="search" placeholder="Buscar en el directorio…"></div>
+      <div id="ppBody" style="max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px"></div>
+      <div id="ppMsg" style="min-height:18px;font-size:13px;margin-top:6px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+        <button class="btn sm ghost" data-ppcancel>Cancelar</button>
+        <button class="btn sm gold" data-ppadd>Agregar seleccionados</button>
+      </div>
+    </div>
+  </div>
 
   <!-- AGENDA / CALENDARIO (dinámico) -->
   <section id="agenda">
@@ -1369,6 +1399,7 @@ function routeView(){
   if(hash==='rfp' && typeof renderRfp==='function') renderRfp();
   if(hash==='rfpcompare' && typeof renderRfpCompare==='function') renderRfpCompare();
   if(hash==='layout' && window.LayoutUI) LayoutUI.render(document.getElementById('layout'));
+  if(hash==='speakers' && typeof renderSpeakers==='function') renderSpeakers();
   window.scrollTo({top:0});
 }
 window.addEventListener('hashchange', routeView);
@@ -1741,6 +1772,7 @@ async function loadAll(){
   try{ const rq=await sb.from('rfp_requests').select('*'); state.rfpReq={}; (rq.data||[]).forEach(r=>{ state.rfpReq[r.id]=r; }); }catch(e){ state.rfpReq={}; }
   try{ const ri=await sb.from('rfp_invites').select('*'); state.rfpInvites=ri.data||[]; }catch(e){ state.rfpInvites=[]; }
   try{ const ro=await sb.from('rfp_offers').select('*').order('updated_at',{ascending:false}); state.rfpOffers=ro.data||[]; }catch(e){ state.rfpOffers=[]; }
+  try{ const pe=await sb.from('ac_people').select('*').order('name',{ascending:true}); state.people=pe.data||[]; }catch(e){ state.people=[]; }
   renderAll();
 }
 // ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
@@ -1767,7 +1799,7 @@ function subscribeRealtime(){
 }
 
 // ---------- Render ----------
-function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); if(typeof renderRfp==='function') renderRfp(); if(typeof renderRfpCompare==='function') renderRfpCompare(); }
+function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); if(typeof renderSpeakers==='function') renderSpeakers(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); if(typeof renderRfp==='function') renderRfp(); if(typeof renderRfpCompare==='function') renderRfpCompare(); }
 
 const AUDIT_ICONS={fase:'📌',pendiente:'☑️',evaluación:'⭐',evento:'📅',fecha:'📅',hotel:'🏨',empresa:'🏢',contacto:'👤',nota:'📝',seguridad:'🔒'};
 function renderAudit(){
@@ -1972,8 +2004,9 @@ function dateBlock(d, citySlug){
     return `<div class="rcrow">
       <input class="cell" data-rcfield="name" data-rcid="${r.id}" value="${esc(r.name||'')}" placeholder="Nombre">
       <input class="cell" data-rcfield="email" data-rcid="${r.id}" value="${esc(r.email||'')}" placeholder="Email">
-      <input class="cell" data-rcfield="role" data-rcid="${r.id}" value="${esc(r.role||'')}" placeholder="Rol (líder/speaker)">
+      <input class="cell" list="roleOpts" data-rcfield="role" data-rcid="${r.id}" value="${esc(r.role||'')}" placeholder="Rol (líder/speaker)">
       ${stx}
+      <button class="btn sm ghost cox" data-savedir="${r.id}" title="Guardar en el directorio de Speakers/Líderes">☆</button>
       <button class="btn sm ghost cox" data-delrc="${r.id}" title="Eliminar">✕</button>
     </div>`;
   }).join('') || `<div class="muted" style="font-size:12.5px;padding:2px 0 4px">Sin líderes/speakers aún. Agrega el primero 👇</div>`;
@@ -2036,6 +2069,7 @@ function dateBlock(d, citySlug){
         <div class="recips">${recRows}</div>
         <div class="survbtns">
           <button class="btn sm gold" data-addrc="${d.id}">+ persona</button>
+          <button class="btn sm ghost" data-pickpeople="${d.id}">➕ Desde directorio</button>
           <button class="btn sm navy" data-sendsurvey="${d.id}">✉ Enviar encuesta ahora</button>
         </div>
         <div class="muted survnote">Se envía automáticamente el día después del último día del evento${d.end_date?` (fin: ${fmtDay(d.end_date)})`:''}. También puedes enviarla manualmente aquí.</div>
@@ -2063,6 +2097,78 @@ function dateBlock(d, citySlug){
       </div>
     </div>
   </div>`;
+}
+/* ---------- Directorio de Speakers / Líderes (ac_people) ---------- */
+let spFilter={q:''};
+function renderSpeakers(){
+  const body=$('speakerBody'); if(!body) return;
+  const q=(spFilter.q||'').trim().toLowerCase();
+  let list=(state.people||[]).slice();
+  if(q) list=list.filter(p=>[p.name,p.email,p.role,p.phone,p.notes].some(v=>(v||'').toLowerCase().includes(q)));
+  list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const cnt=$('spCount'); if(cnt) cnt.textContent=list.length+' persona'+(list.length===1?'':'s');
+  body.innerHTML = list.map(p=>`<tr data-pid="${p.id}">
+    <td><input class="cell" data-pfield="name" data-pid="${p.id}" value="${esc(p.name||'')}" placeholder="Nombre"></td>
+    <td><input class="cell" list="roleOpts" data-pfield="role" data-pid="${p.id}" value="${esc(p.role||'')}" placeholder="Rol"></td>
+    <td><input class="cell" data-pfield="email" data-pid="${p.id}" value="${esc(p.email||'')}" placeholder="Email"></td>
+    <td><input class="cell" data-pfield="phone" data-pid="${p.id}" value="${esc(p.phone||'')}" placeholder="Teléfono"></td>
+    <td><input class="cell" data-pfield="notes" data-pid="${p.id}" value="${esc(p.notes||'')}" placeholder="Notas"></td>
+    <td><button class="btn sm ghost cox" data-delperson="${p.id}" title="Eliminar">✕</button></td>
+  </tr>`).join('') || `<tr><td colspan="6" class="muted" style="padding:10px">Sin personas aún. Agrega la primera con “+ persona”. También puedes guardar aquí a cualquier líder/speaker desde un evento (botón ☆ en la encuesta).</td></tr>`;
+}
+/* Selector "Desde directorio" en cada evento */
+let _pickDateId=null;
+function openPeoplePicker(dateId){
+  _pickDateId=dateId;
+  const existing=new Set(recipientsFor(dateId).map(r=>(r.email||'').trim().toLowerCase()).filter(Boolean));
+  const list=(state.people||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const body=$('ppBody');
+  if(body){
+    body.innerHTML = list.length ? list.map(p=>{
+      const already=p.email && existing.has((p.email||'').trim().toLowerCase());
+      return `<label data-pprow style="display:grid;grid-template-columns:22px 1.3fr .8fr 1.6fr;gap:8px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--line);font-size:13px;${already?'opacity:.5':''}">
+        <input type="checkbox" data-ppchk value="${esc(p.id)}" ${already?'disabled':''}>
+        <span><b>${esc(p.name||'(sin nombre)')}</b></span>
+        <span class="muted">${esc(p.role||'')}</span>
+        <span class="muted">${esc(p.email||'—')}${already?' · ya en el evento':''}</span>
+      </label>`;
+    }).join('') : `<div class="muted" style="padding:10px">El directorio está vacío. Agrega personas en la sección <b>Speakers</b> primero.</div>`;
+  }
+  if($('ppSearch')) $('ppSearch').value='';
+  if($('ppMsg')) $('ppMsg').textContent='';
+  const m=$('peoplePickModal'); if(m) m.classList.remove('hidden');
+}
+function closePeoplePicker(){ const m=$('peoplePickModal'); if(m) m.classList.add('hidden'); _pickDateId=null; }
+async function addPickedPeople(){
+  if(!sb||!USER||!_pickDateId) return;
+  const ids=[...document.querySelectorAll('#ppBody [data-ppchk]:checked')].map(c=>c.value);
+  const msg=$('ppMsg');
+  if(!ids.length){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='Selecciona al menos una persona.'; } return; }
+  const existing=new Set(recipientsFor(_pickDateId).map(r=>(r.email||'').trim().toLowerCase()).filter(Boolean));
+  const rows=[];
+  ids.forEach(id=>{ const p=(state.people||[]).find(x=>x.id===id); if(!p) return;
+    const em=(p.email||'').trim().toLowerCase(); if(em && existing.has(em)) return;
+    rows.push({date_id:_pickDateId, name:p.name||'', email:p.email||'', role:p.role||''}); if(em) existing.add(em);
+  });
+  if(!rows.length){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='Esas personas ya están en el evento.'; } return; }
+  const dateId=_pickDateId;
+  await sb.from('event_recipients').insert(rows);
+  logChange('evento', dateLabelById(dateId), 'agregó '+rows.length+' persona(s) desde el directorio');
+  closePeoplePicker();
+  await loadAll();
+  const el=document.querySelector(`[data-dlabel="${dateId}"]`); if(el){const b=el.closest('.dateblk'); if(b)b.classList.add('open');}
+}
+async function saveRecipientToDirectory(rcid){
+  if(!sb||!USER) return;
+  let rec=null; for(const k in state.recipients){ const r=(state.recipients[k]||[]).find(x=>x.id===rcid); if(r){rec=r;break;} }
+  if(!rec) return;
+  if(!(rec.name||'').trim() && !(rec.email||'').trim()){ alert('Completa al menos nombre o email antes de guardarlo al directorio.'); return; }
+  const em=(rec.email||'').trim().toLowerCase();
+  if(em && (state.people||[]).some(p=>(p.email||'').trim().toLowerCase()===em)){ alert('Esa persona ya está en el directorio (mismo email).'); return; }
+  await sb.from('ac_people').insert({name:rec.name||'', email:rec.email||'', role:rec.role||'', phone:'', notes:'', created_by:(USER&&USER.email)||''});
+  logChange('speakers', rec.name||rec.email||'persona', 'guardó una persona en el directorio');
+  await loadAll();
+  alert('Guardado en el directorio de Speakers / Líderes ✓');
 }
 function cityVenues(slug){ return (state.venues[slug]||[]).slice().sort((a,b)=>(a.sort||0)-(b.sort||0)); }
 function cityCard(c, disabled){
@@ -2336,6 +2442,12 @@ async function handleInput(t){
     await sb.from('event_recipients').update({[field]:t.value}).eq('id',id);
     logChange('evento', 'encuesta', 'editó un líder/speaker ('+field+')');
   }
+  else if(t.dataset.pfield){
+    const id=t.dataset.pid, field=t.dataset.pfield;
+    const p=(state.people||[]).find(x=>x.id===id); if(p) p[field]=t.value;
+    await sb.from('ac_people').update({[field]:t.value, updated_at:new Date().toISOString()}).eq('id',id);
+    logChange('speakers', (p&&p.name)||'persona', 'editó el directorio ('+field+')');
+  }
   else if(t.dataset.shfield){
     await saveSheet(t.dataset.shid, t.dataset.shfield, t.value);
   }
@@ -2577,6 +2689,16 @@ document.addEventListener('click', async (e)=>{
     await sb.from('event_recipients').delete().eq('id',t.dataset.delrc);
     await loadAll(); logChange('evento','encuesta','eliminó un líder/speaker'); return;
   }
+  if(t.dataset.pickpeople){ openPeoplePicker(t.dataset.pickpeople); return; }
+  if(t.dataset.savedir){ await saveRecipientToDirectory(t.dataset.savedir); return; }
+  if(t.dataset.ppcancel!==undefined){ closePeoplePicker(); return; }
+  if(t.dataset.ppadd!==undefined){ await addPickedPeople(); return; }
+  if(t.dataset.delperson){
+    const p=(state.people||[]).find(x=>x.id===t.dataset.delperson);
+    if(!confirm('¿Eliminar del directorio?'+(p&&p.name?(' ('+p.name+')'):''))) return;
+    await sb.from('ac_people').delete().eq('id',t.dataset.delperson);
+    await loadAll(); logChange('speakers',(p&&p.name)||'persona','eliminó una persona del directorio'); return;
+  }
   if(t.dataset.addeval){
     const dateId=t.dataset.addeval; const nm=dateLabelById(dateId);
     let slug=''; for(const k in state.dates){ if(state.dates[k].some(d=>d.id===dateId)){ slug=k; break; } }
@@ -2620,6 +2742,22 @@ document.addEventListener('DOMContentLoaded',()=>{
   const fb=$('fBrand'); if(fb) fb.addEventListener('change', ()=>{ cFilter.brand=fb.value; renderContacts(); });
   const fv=$('fVenue'); if(fv) fv.addEventListener('change', ()=>{ cFilter.venue=fv.value; renderContacts(); });
   const cc=$('cClear'); if(cc) cc.addEventListener('click', ()=>{ cFilter.q=cFilter.city=cFilter.brand=cFilter.venue=''; if(cs)cs.value=''; renderContacts(); });
+  // Directorio Speakers / Líderes
+  const sps=$('spSearch'); if(sps) sps.addEventListener('input', ()=>{ spFilter.q=sps.value; renderSpeakers(); });
+  const spn=$('spNew'); if(spn) spn.addEventListener('click', async ()=>{
+    if(!sb||!USER) return;
+    const { data, error } = await sb.from('ac_people').insert({name:'', email:'', role:'', phone:'', notes:'', created_by:(USER&&USER.email)||''}).select();
+    if(error){ alert('No se pudo agregar: '+error.message); return; }
+    spFilter.q=''; if(sps) sps.value='';
+    await loadAll();
+    const nid=data&&data[0]&&data[0].id;
+    const f=nid&&document.querySelector('[data-pfield="name"][data-pid="'+nid+'"]'); if(f) f.focus();
+    logChange('speakers','directorio','agregó una persona al directorio');
+  });
+  // Selector "Desde directorio": búsqueda y cierre por fondo
+  const pps=$('ppSearch'); if(pps) pps.addEventListener('input', ()=>{ const q=pps.value.trim().toLowerCase();
+    document.querySelectorAll('#ppBody [data-pprow]').forEach(r=>{ r.style.display = (!q || r.textContent.toLowerCase().includes(q)) ? '' : 'none'; }); });
+  const ppm=$('peoplePickModal'); if(ppm) ppm.addEventListener('click',(ev)=>{ if(ev.target===ppm) closePeoplePicker(); });
   const NC_IDS=['ncCity','ncVenue','ncName','ncRole','ncEmail','ncPhone','ncAddress','ncNotes','ncName2','ncRole2','ncPhone2','ncEmail2','ncName3','ncRole3','ncPhone3','ncEmail3'];
   let _ncEditId=null;
   function setContactEditUI(editing){ document.querySelectorAll('#contactModal .ncedit-only').forEach(el=>el.classList.toggle('hidden', !editing)); }
