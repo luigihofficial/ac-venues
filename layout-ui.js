@@ -25,7 +25,8 @@
     sel: null,
     view: { scale: 10, ox: 20, oy: 20 },
     hist: [], redo: [],
-    drag: null
+    drag: null,
+    showEnv: false
   };
 
   /* ---------- CSS ---------- */
@@ -70,7 +71,22 @@
       ".fit-DOES_NOT_FIT{background:#fbe6e4;color:#a52a22;border:1px solid #e9c4c0}",
       ".fit-UNKNOWN{background:#eef0f3;color:#5b6472;border:1px solid #dde1e7}",
       ".lay-warn{font-size:12px;color:#a52a22;margin-top:6px}",
-      ".lay-note{font-size:11.5px;color:#6b7480;margin-top:8px;line-height:1.5}"
+      ".lay-cond{font-size:12px;color:#8a6a20;margin-top:4px}",
+      ".lay-note{font-size:11.5px;color:#6b7480;margin-top:8px;line-height:1.5}",
+      ".lay-env{fill:none;stroke:#b8860b;stroke-dasharray:3 3;stroke-width:1;vector-effect:non-scaling-stroke;opacity:.65}",
+      ".lay-locked{stroke:#14263f !important;stroke-dasharray:4 2}",
+      ".lay-cat{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}",
+      ".lay-cat button{font-size:11px;padding:4px 8px;border:1px solid var(--line,#e6ddca);border-radius:7px;background:#fff;cursor:pointer;color:#22303f}",
+      ".lay-cat button:hover{background:var(--navy,#1e3a5f);color:#fff}",
+      ".lay-catg{font-size:10px;font-weight:800;color:#8a9199;text-transform:uppercase;letter-spacing:.04em;margin:9px 0 1px}",
+      ".lay-insp label{display:block;font-size:11px;font-weight:700;color:var(--navy,#1e3a5f);margin:7px 0 2px}",
+      ".lay-act button{width:100%;margin-top:6px;font-size:12.5px;padding:8px;border:1px solid var(--line,#e6ddca);border-radius:8px;background:#fff;cursor:pointer;color:var(--navy,#1e3a5f);font-weight:700}",
+      ".lay-act button:hover{background:#f3eee2}",
+      ".lay-src{font-size:10px;padding:1px 6px;border-radius:999px;background:#eef0f3;color:#5b6472;font-weight:700}",
+      ".lay-results{margin-top:8px;font-size:12px;color:#22303f;max-height:240px;overflow:auto;border-top:1px solid var(--line,#e6ddca);padding-top:6px}",
+      ".lay-results table{width:100%;border-collapse:collapse;font-size:11.5px}",
+      ".lay-results td,.lay-results th{padding:3px 5px;border-bottom:1px solid var(--line,#e6ddca);text-align:left}",
+      ".lay-results .s-FIT{color:#1f6b4a;font-weight:800}.lay-results .s-CONDITIONAL{color:#8a6a20;font-weight:800}.lay-results .s-DOES_NOT_FIT{color:#a52a22;font-weight:800}.lay-results .s-UNKNOWN{color:#5b6472;font-weight:800}"
     ].join("\n");
     document.head.appendChild(s);
   }
@@ -97,7 +113,10 @@
               '<div><label class="lay-f">Ceiling</label><input id="layCeil" type="number" step="0.1"></div></div>' +
             '<div class="lay-row"><div><label class="lay-f">Perimeter clearance</label><input id="layWall" type="number" step="0.1"></div>' +
               '<div><label class="lay-f">Published cap.</label><input id="layPub" type="number" step="1" placeholder="optional"></div></div>' +
-            '<label class="lay-f">Columns / obstacles (x,y,w,l ; one per line, in unit)</label><input id="layObst" placeholder="e.g. 22,25,2,2">' +
+            '<label class="lay-f">Columns / obstacles (x,y,w,l ; ";"-separated)</label><input id="layObst" placeholder="e.g. 22,25,2,2">' +
+            '<label class="lay-f">Doors (x,y,w ; ";"-separated)</label><input id="layDoors" placeholder="e.g. 2,0,3">' +
+            '<label class="lay-f">Unavailable zones (x,y,w,l ; ";"-separated)</label><input id="layZones" placeholder="e.g. 0,0,6,6">' +
+            '<div class="lay-note" style="margin-top:6px">Tip: enter the <b>actual dimensions the hotel supplies</b>. Extracted/auto measurements are unverified until confirmed.</div>' +
           "</div>" +
           '<div class="lay-panel" style="margin-top:12px">' +
             "<h3>Event &amp; layout</h3>" +
@@ -119,17 +138,45 @@
             '<div class="lay-row" style="margin-top:8px"><button class="lay-btn ghost" id="layLoad" style="margin-top:0">Load saved</button>' +
               '<button class="lay-btn ghost" id="layJson" style="margin-top:0">Export JSON</button></div>' +
             '<button class="lay-btn ghost" id="layPng">Export PNG</button>' +
+            '<button class="lay-btn ghost" id="layPdf">Export PDF report</button>' +
+          "</div>" +
+          '<div class="lay-panel lay-act" style="margin-top:12px">' +
+            "<h3>Smart actions</h3>" +
+            '<button id="layAutoFit">Auto-Fit (reflow to room)</button>' +
+            '<button id="layMaxCap">Max capacity</button>' +
+            '<button id="layCompare">Compare layouts</button>' +
+            '<button id="layFindSize">Find required room size</button>' +
+            '<div class="lay-results" id="layActOut"></div>' +
+          "</div>" +
+          '<div class="lay-panel" style="margin-top:12px">' +
+            "<h3>Add from catalog</h3>" + catalogPanelHtml() +
+          "</div>" +
+          '<div class="lay-panel lay-insp" id="layInsp" style="margin-top:12px;display:none">' +
+            '<h3>Selected object</h3>' +
+            '<div id="layInspName" style="font-weight:800;color:var(--navy,#1e3a5f);font-size:13px"></div>' +
+            '<div class="lay-row"><div><label>Width/Ø (ft)</label><input id="inspW" type="number" step="0.1"></div>' +
+              '<div id="inspLwrap"><label>Depth (ft)</label><input id="inspL" type="number" step="0.1"></div></div>' +
+            '<div class="lay-row"><div><label>Height (ft)</label><input id="inspH" type="number" step="0.1"></div>' +
+              '<div><label>Rotation (°)</label><input id="inspR" type="number" step="5"></div></div>' +
+            '<label>Dimension source</label><select id="inspSrc"></select>' +
+            '<label class="lay-chk" style="margin-top:8px"><input type="checkbox" id="inspLock"> Lock (reflow won’t move it)</label>' +
+            '<div class="lay-row" style="margin-top:4px"><button class="lay-btn ghost" id="inspDup" style="margin-top:0">Duplicate</button>' +
+              '<button class="lay-btn ghost" id="inspDel" style="margin-top:0">Delete</button></div>' +
+            '<button class="lay-btn" id="inspSeat" style="display:none">👁 View from this seat (3D)</button>' +
           "</div>" +
         "</div>" +
         '<div class="lay-stage">' +
           '<div class="lay-tools">' +
             '<button data-z="in">+ Zoom</button><button data-z="out">− Zoom</button><button data-z="fit">Fit</button>' +
-            '<button id="layRot">Rotate 15°</button><button id="layDup">Duplicate</button><button id="layDel">Delete</button>' +
+            '<button id="layRot">Rotate 15°</button><button id="layDup">Duplicate</button><button id="layLock">Lock</button><button id="layDel">Delete</button>' +
             '<button id="layUndo">Undo</button><button id="layRedo">Redo</button>' +
+            '<button id="layEnv">Envelopes: off</button>' +
+            '<button id="lay3dOrbit">3D Orbit</button><button id="lay3dWalk">3D Walkthrough</button>' +
           "</div>" +
           '<svg id="layCanvas"></svg>' +
           '<div id="layReadout"></div>' +
           '<div class="lay-warn" id="layWarn"></div>' +
+          '<div class="lay-cond" id="layCond"></div>' +
           '<div class="lay-note" id="layMsg"></div>' +
         "</div>" +
       "</div>";
@@ -147,6 +194,8 @@
     set("layUnit", r.unit); set("layCeil", r.ceilingHeight); set("layWall", r.wallClearance);
     set("layPub", L.published != null ? L.published : "");
     set("layObst", (r.obstructions || []).map(function (o) { return [o.x, o.y, o.w, o.l].join(","); }).join(" ; "));
+    set("layDoors", (r.doors || []).map(function (o) { return [o.x, o.y, o.w].join(","); }).join(" ; "));
+    set("layZones", (r.reservedZones || []).map(function (o) { return [o.x, o.y, o.w, o.l].join(","); }).join(" ; "));
     set("layType", p.layout); set("layTarget", p.target); set("layHigh", p.highTops || 0);
     chk("layStage", p.stage); chk("layScreen", p.screen); chk("layAv", p.av);
     set("layAisle", p.aisle); set("layRowGap", p.rowGap); set("layChairClear", p.chairClear); set("layTableGap", p.tableGap);
@@ -158,6 +207,8 @@
     r.ceilingHeight = num("layCeil", 12); r.wallClearance = num("layWall", 1);
     L.published = val("layPub") !== "" ? num("layPub", null) : null;
     r.obstructions = parseObst(val("layObst"), r.unit);
+    r.doors = parseDoors(val("layDoors"));
+    r.reservedZones = parseZones(val("layZones"));
     p.layout = val("layType"); p.target = num("layTarget", 40); p.highTops = num("layHigh", 0);
     p.stage = chkv("layStage"); p.screen = chkv("layScreen"); p.av = chkv("layAv");
     p.aisle = num("layAisle", 3.5); p.rowGap = num("layRowGap", 2.2);
@@ -171,6 +222,37 @@
         return { x: a[0], y: a[1], w: a[2], l: a[3], label: "Column", category: "obstruction" };
       return null;
     }).filter(Boolean);
+  }
+  function parseDoors(s) {
+    if (!s) return [];
+    return s.split(/[;\n]/).map(function (line) {
+      var a = line.split(",").map(function (x) { return parseFloat(x.trim()); });
+      if (a.length >= 3 && a.slice(0, 3).every(function (n) { return !isNaN(n); }))
+        return { x: a[0], y: a[1], w: a[2], l: 0.5, label: "Door", category: "door" };
+      return null;
+    }).filter(Boolean);
+  }
+  function parseZones(s) {
+    if (!s) return [];
+    return s.split(/[;\n]/).map(function (line) {
+      var a = line.split(",").map(function (x) { return parseFloat(x.trim()); });
+      if (a.length >= 4 && a.every(function (n) { return !isNaN(n); }))
+        return { x: a[0], y: a[1], w: a[2], l: a[3], label: "Unavailable", category: "reserved" };
+      return null;
+    }).filter(Boolean);
+  }
+  function catalogPanelHtml() {
+    return (E.CATALOG || []).map(function (grp) {
+      return '<div class="lay-catg">' + esc(grp.group) + "</div><div class=\"lay-cat\">" +
+        grp.items.map(function (key) {
+          var f = E.FURNITURE[key] || {}; return '<button data-add="' + key + '" title="' + esc(dimLabel(key)) + '">' + esc(f.sub || f.label || key) + "</button>";
+        }).join("") + "</div>";
+    }).join("");
+  }
+  function dimLabel(key) {
+    var f = E.FURNITURE[key] || {};
+    var d = f.kind === "circle" ? ("Ø " + f.d + " ft") : (f.w + "×" + f.l + " ft");
+    return (f.label || key) + " — " + d + ", h " + (f.h || "?") + " ft" + (f.clear ? (", clearance " + f.clear + " ft") : "");
   }
 
   /* ---------- helpers ---------- */
@@ -220,7 +302,46 @@
     var fitEl = '<div class="lay-fit fit-' + fit.status + '">' + fit.status.replace(/_/g, " ") + " — " + esc(fit.reason) + "</div>";
     $("layReadout").insertAdjacentHTML("beforeend", fitEl);
     warn(v.feasible ? "" : (v.violations.length + " conflict(s): " + v.violations.slice(0, 4).map(function (x) { return x.msg; }).join("; ") + (v.violations.length > 4 ? "…" : "")));
+    var cl = v.clearance || [];
+    var cond = $("layCond"); if (cond) cond.textContent = cl.length ? ("⚠ " + cl.length + " operational-clearance warning(s): " + cl.slice(0, 3).map(function (x) { return x.msg; }).join("; ") + (cl.length > 3 ? "…" : "")) : "";
+    if (L.sel) showInspector();
   }
+  /* ---------- inspector ---------- */
+  function showInspector() {
+    var o = cur(); var box = $("layInsp"); if (!box) return;
+    if (!o) { box.style.display = "none"; return; }
+    box.style.display = "";
+    $("layInspName").textContent = (o.label || o.type) + (o.sub ? (" · " + o.sub) : "");
+    var isCircle = o.kind === "circle";
+    set("inspW", isCircle ? o.d : o.w);
+    var lw = $("inspLwrap"); if (lw) lw.style.display = isCircle ? "none" : "";
+    if (!isCircle) set("inspL", o.l);
+    set("inspH", o.h != null ? o.h : "");
+    set("inspR", o.r || 0);
+    var isrc = $("inspSrc"); if (isrc) isrc.value = o.src || "STANDARD";
+    var ilk = $("inspLock"); if (ilk) ilk.checked = !!o.locked;
+    var isSeat = o.category === "chair";
+    var sb = $("inspSeat"); if (sb) sb.style.display = isSeat ? "" : "none";
+  }
+  function hideInspector() { var b = $("layInsp"); if (b) b.style.display = "none"; }
+  function seatView3D() {
+    var o = cur(); if (!o || o.category !== "chair") return;
+    readFormToState();
+    var idx = 0, i = 0;
+    for (var k = 0; k < L.objects.length; k++) { if (L.objects[k].category === "chair") { if (L.objects[k].id === o.id) { idx = i; break; } i++; } }
+    var go = function () { if (root.Layout3D) root.Layout3D.open("seat", L.objects, L.room, L.params, { seatIndex: idx }); };
+    if (root.Layout3D) go(); else { ensure3D(go); msg("Opening 3D seat view…"); }
+  }
+  function applyInspector() {
+    var o = cur(); if (!o) return;
+    if (o.kind === "circle") { var d = num("inspW", o.d); if (d > 0) o.d = d; }
+    else { var w = num("inspW", o.w), l = num("inspL", o.l); if (w > 0) o.w = w; if (l > 0) o.l = l; }
+    var h = num("inspH", o.h); if (h > 0) o.h = h;
+    o.r = num("inspR", o.r) % 360;
+    var isrc = $("inspSrc"); if (isrc) o.src = isrc.value;
+    render(); recalc();
+  }
+  function toggleLockSel() { var o = cur(); if (!o) return false; pushHist(); o.locked = !o.locked; return true; }
   function countNonViolatingChairs(v) {
     var bad = {}; v.violations.forEach(function (x) { x.ids.forEach(function (id) { bad[id] = 1; }); });
     return L.objects.filter(function (o) { return o.category === "chair" && !bad[o.id]; }).length;
@@ -254,10 +375,21 @@
     r.obstructions.forEach(function (o) { parts.push(rectSvg(o, "lay-obst")); });
     r.reservedZones.forEach(function (o) { parts.push(rectSvg(o, "lay-obst")); });
     r.doors.forEach(function (d) { parts.push('<line class="lay-door" x1="' + d.x + '" y1="' + d.y + '" x2="' + (d.x + d.w) + '" y2="' + d.y + '"></line>'); });
+    // operational envelopes (clearance) overlay
+    if (L.showEnv) {
+      L.objects.forEach(function (o) {
+        if (!o.clear) return;
+        var ew = (o.kind === "circle" ? o.d : o.w) + 2 * o.clear;
+        var el = (o.kind === "circle" ? o.d : o.l) + 2 * o.clear;
+        var rot = o.r ? ' transform="rotate(' + o.r + " " + o.x + " " + o.y + ')"' : "";
+        parts.push('<rect class="lay-env" x="' + (o.x - ew / 2) + '" y="' + (o.y - el / 2) + '" width="' + ew + '" height="' + el + '"' + rot + "></rect>");
+      });
+    }
     // objects
     L.objects.forEach(function (o) {
       var cls = o.category === "chair" ? "lay-chair" : o.category === "equipment" ? "lay-equip" : "lay-tbl";
       if (L.sel === o.id) cls += " lay-sel";
+      if (o.locked) cls += " lay-locked";
       if (o.kind === "circle") parts.push('<circle data-id="' + o.id + '" class="' + cls + '" cx="' + o.x + '" cy="' + o.y + '" r="' + (o.d / 2) + '"></circle>');
       else parts.push(rectSvg(o, cls, o.id));
     });
@@ -292,6 +424,26 @@
     $("layDup").onclick = function () { if (dupSel()) { render(); recalc(); } };
     $("layDel").onclick = function () { if (delSel()) { render(); recalc(); } };
     $("layUndo").onclick = undo; $("layRedo").onclick = redo;
+    $("layLock").onclick = function () { if (toggleLockSel()) { render(); recalc(); } };
+    $("layEnv").onclick = function () { L.showEnv = !L.showEnv; $("layEnv").textContent = "Envelopes: " + (L.showEnv ? "on" : "off"); render(); };
+    $("layPdf").onclick = exportPdf;
+    $("layAutoFit").onclick = autoFit;
+    $("layMaxCap").onclick = doMaxCap;
+    $("layCompare").onclick = doCompare;
+    $("layFindSize").onclick = doFindSize;
+    var o3 = $("lay3dOrbit"); if (o3) o3.onclick = function () { open3D("orbit"); };
+    var w3 = $("lay3dWalk"); if (w3) w3.onclick = function () { open3D("walk"); };
+    // catalog add (delegated)
+    L.mount.querySelectorAll("[data-add]").forEach(function (b) {
+      b.onclick = function () { addFromCatalog(b.getAttribute("data-add")); };
+    });
+    // inspector
+    ["inspW", "inspL", "inspH", "inspR"].forEach(function (id) { var e = $(id); if (e) e.oninput = applyInspector; });
+    var isrc = $("inspSrc"); if (isrc) { isrc.innerHTML = (E.DIM_SOURCES || []).map(function (s) { return '<option>' + s + '</option>'; }).join(""); isrc.onchange = applyInspector; }
+    var ilk = $("inspLock"); if (ilk) ilk.onchange = function () { var o = cur(); if (o) { pushHist(); o.locked = ilk.checked; render(); recalc(); } };
+    var idup = $("inspDup"); if (idup) idup.onclick = function () { if (dupSel()) { render(); recalc(); showInspector(); } };
+    var idel = $("inspDel"); if (idel) idel.onclick = function () { if (delSel()) { render(); recalc(); hideInspector(); } };
+    var isb = $("inspSeat"); if (isb) isb.onclick = seatView3D;
     L.mount.querySelectorAll(".lay-tools [data-z]").forEach(function (b) {
       b.onclick = function () { var z = b.getAttribute("data-z"); if (z === "fit") fitView(); else zoomAt(z === "in" ? 1.2 : 1 / 1.2, L.svg.clientWidth / 2, L.svg.clientHeight / 2); render(); };
     });
@@ -316,11 +468,13 @@
     var pt = screenToFeet(e.clientX, e.clientY);
     if (id) {
       L.sel = id; var o = L.objects.find(function (x) { return x.id === id; });
+      showInspector();
+      if (o && o.locked) { L.drag = null; render(); return; }   // locked: select only, no drag
       pushHist();
       L.drag = { id: id, dx: pt.x - o.x, dy: pt.y - o.y, moved: false };
       render();
     } else {
-      L.sel = null;
+      L.sel = null; hideInspector();
       L.drag = { pan: true, sx: e.clientX, sy: e.clientY, ox: L.view.ox, oy: L.view.oy };
       render();
     }
@@ -352,6 +506,90 @@
   function cur() { return L.sel ? L.objects.find(function (x) { return x.id === L.sel; }) : null; }
   function undo() { if (!L.hist.length) return; L.redo.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.hist.pop()); L.sel = null; render(); recalc(); }
   function redo() { if (!L.redo.length) return; L.hist.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.redo.pop()); L.sel = null; render(); recalc(); }
+
+  /* ---------- catalog add + smart actions ---------- */
+  function addFromCatalog(key) {
+    var r = E.normalizeRoom(L.room);
+    var o = E.makeObj(key, E.round2(r.width / 2), E.round2(r.length / 2), 0);
+    pushHist(); L.objects.push(o); L.sel = o.id; render(); recalc(); showInspector();
+    msg("Added " + (o.label || key) + ". Drag to position; edit size/height/source in the inspector.");
+  }
+  function actOut(html) { var e = $("layActOut"); if (e) e.innerHTML = html; }
+  function autoFit() {
+    readFormToState();
+    var res = E.reflow(L.params.layout, L.room, Object.assign({}, L.params), L.objects);
+    pushHist(); L.objects = res.objects.map(cloneObj); L.sel = null; hideInspector(); fitView(); render(); recalc();
+    var rf = res.reflow;
+    actOut(rf.fits
+      ? ("<b>Auto-Fit ✓</b> — " + esc((E.LAYOUT_META[L.params.layout] || {}).name || L.params.layout) + " reflowed to " + L.room.width + "×" + L.room.length + " ft. Seats " + res.seats + (rf.target ? (" / requested " + rf.target) : "") + (rf.lockedKept ? (" · kept " + rf.lockedKept + " locked") : "") + ".")
+      : ("<b>Auto-Fit — does not fit.</b> " + esc(rf.reason || "")));
+  }
+  function doMaxCap() {
+    readFormToState();
+    var mc = E.maxCapacity(L.params.layout, L.room, L.params);
+    actOut("<b>Max capacity:</b> " + mc.validated + " seats found for " + esc((E.LAYOUT_META[L.params.layout] || {}).name) + " in " + L.room.width + "×" + L.room.length + " ft.<br><span class='lay-note'>" + esc(mc.note) + "</span>");
+  }
+  function doCompare() {
+    readFormToState();
+    var rows = E.compareLayouts(L.room, L.params.target, L.params);
+    var html = "<table><tr><th>Layout</th><th>Fit</th><th>Seats</th></tr>" + rows.map(function (r) {
+      return "<tr><td>" + esc(r.name) + "</td><td class='s-" + r.status + "'>" + r.status.replace(/_/g, " ") + "</td><td>" + (r.validated != null ? r.validated : (r.estimated != null ? ("~" + r.estimated) : "—")) + "</td></tr>";
+    }).join("") + "</table>";
+    actOut("<b>Compare layouts</b> (" + L.room.width + "×" + L.room.length + " ft, " + L.params.target + " attendees):" + html);
+  }
+  function doFindSize() {
+    readFormToState();
+    var fs = E.findRoomSize(L.params.target, L.params.layout, L.params);
+    var html = fs.candidates.length ? ("<table><tr><th>Room (ft)</th><th>Area</th><th>Seats</th></tr>" + fs.candidates.map(function (c) { return "<tr><td>" + c.width + "×" + c.length + "</td><td>" + c.area + " ft²</td><td>" + c.validated + "</td></tr>"; }).join("") + "</table>") : "";
+    actOut("<b>Required room size</b> for " + fs.target + " in " + esc((E.LAYOUT_META[L.params.layout] || {}).name) + ":" + html + "<span class='lay-note'>" + esc(fs.note) + "</span>");
+  }
+  function open3D(mode) {
+    readFormToState();
+    if (root.Layout3D && typeof root.Layout3D.open === "function") {
+      root.Layout3D.open(mode, L.objects, L.room, L.params, { onSeat: function (info) {} });
+    } else {
+      msg("Loading 3D… if it doesn’t open, this device may not support WebGL — the 2D planner remains fully usable.");
+      ensure3D(function () { if (root.Layout3D) root.Layout3D.open(mode, L.objects, L.room, L.params, {}); });
+    }
+  }
+  function ensure3D(cb) {
+    if (root.Layout3D) { cb && cb(); return; }
+    if (document.getElementById("lay-3d-js")) { setTimeout(function () { cb && cb(); }, 400); return; }
+    var s = document.createElement("script"); s.id = "lay-3d-js"; s.src = "layout-3d.js";
+    s.onload = function () { cb && cb(); }; document.head.appendChild(s);
+  }
+  function exportPdf() {
+    readFormToState();
+    var v = E.validate(L.objects, L.room, {});
+    var counts = {}; L.objects.forEach(function (o) { var k = o.label || o.type; counts[k] = (counts[k] || 0) + 1; });
+    var fit = E.assessFit(L.params.layout, L.room, L.params.target, L.params);
+    var svg = L.svg.cloneNode(true); svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("width", L.svg.clientWidth); svg.setAttribute("height", L.svg.clientHeight);
+    var data = new XMLSerializer().serializeToString(svg);
+    var img = new Image();
+    img.onload = function () {
+      var c = document.createElement("canvas"); c.width = L.svg.clientWidth * 2; c.height = L.svg.clientHeight * 2;
+      var ctx = c.getContext("2d"); ctx.scale(2, 2); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0);
+      var png = c.toDataURL("image/png");
+      var rowsC = Object.keys(counts).sort().map(function (k) { return "<tr><td>" + esc(k) + "</td><td>" + counts[k] + "</td></tr>"; }).join("");
+      var cl = v.clearance || [];
+      var est = L.params.layout === "RECEPTION" ? E.validatedCapacity("RECEPTION", L.room, L.params).standingEstimate : E.estimatedCapacity(L.params.layout, L.room);
+      var html = '<!doctype html><html><head><meta charset="utf-8"><title>Room plan — ' + esc(L.room.name || "") + '</title>' +
+        '<style>body{font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#22303f;margin:24px}h1{color:#1e3a5f;font-size:20px;margin:0}h2{color:#b8860b;font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 4px}table{border-collapse:collapse;font-size:13px}td,th{border-bottom:1px solid #e6ddca;padding:4px 12px;text-align:left}img{max-width:100%;border:1px solid #e6ddca;border-radius:8px;margin-top:4px}.muted{color:#6b7480;font-size:12px}</style></head><body>' +
+        '<h1>' + esc(L.room.venue || "Venue") + " — " + esc(L.room.name || "Room") + "</h1>" +
+        '<div class="muted">' + esc((E.LAYOUT_META[L.params.layout] || {}).name || L.params.layout) + " · " + L.room.width + "×" + L.room.length + " ft, ceiling " + (L.room.ceilingHeight || "?") + " ft · " + new Date().toLocaleString() + "</div>" +
+        "<h2>Capacity</h2><table><tr><td>Published</td><td>" + (L.published != null ? L.published : "—") + "</td></tr><tr><td>Estimated</td><td>" + est + "</td></tr><tr><td>Validated</td><td>" + (fit.validated != null ? fit.validated : "—") + "</td></tr><tr><td>Requested</td><td>" + L.params.target + "</td></tr><tr><td>Fit</td><td>" + fit.status.replace(/_/g, " ") + "</td></tr></table>" +
+        '<h2>Floor plan (to scale)</h2><img src="' + png + '">' +
+        "<h2>Furniture &amp; equipment</h2><table><tr><th>Item</th><th>Qty</th></tr>" + rowsC + "</table>" +
+        "<h2>Checks &amp; assumptions</h2><p>" + (v.feasible ? '<span style="color:#1f6b4a">No hard conflicts.</span>' : '<span style="color:#a52a22">' + v.violations.length + " conflict(s).</span>") + " " + (cl.length ? (cl.length + " operational-clearance warning(s).") : "") + "</p>" +
+        '<p class="muted">Planning tool only. Dimensions are nominal unless marked HOTEL-CONFIRMED / MANUFACTURER-VERIFIED. Not an official fire, occupancy, or accessibility approval; subject to qualified review.</p>' +
+        '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print();},350);}</scr' + 'ipt></body></html>';
+      var w = window.open("", "_blank"); if (!w) { msg("Allow pop-ups to export the PDF report (print dialog → Save as PDF)."); return; }
+      w.document.open(); w.document.write(html); w.document.close();
+      msg("PDF report opened in a new tab — use your browser’s print dialog → Save as PDF.");
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(data)));
+  }
 
   /* ---------- serialize / persistence / export ---------- */
   function serialize() {

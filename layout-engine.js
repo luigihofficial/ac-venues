@@ -107,28 +107,87 @@
     return polysIntersect(objCorners(a), objCorners(b));
   }
 
-  /* ---------- furniture library (feet) ---------- */
-  // Nominal footprints. Chair footprint = SEATED occupant zone (seat + body),
-  // deliberately larger than a bare chair so packing stays honest.
+  /* ---------- furniture & equipment library (feet) ---------- */
+  // Every entry carries PHYSICAL footprint (w,l or d) + HEIGHT (h) and an
+  // OPERATIONAL CLEARANCE (clear, ft) = the service/access space around it that
+  // must stay free of other physical objects (addendum §2). `share:true` means
+  // that clearance is circulation that may overlap other sharable circulation.
+  // Chair footprints already encode the seated occupant zone, so chairs/tables
+  // carry clear:0 (their adjacency is intentional); equipment projects real
+  // access envelopes (stage front, AV service, queue in front of buffet…).
+  // Dimensions are NOMINAL STANDARD templates — label per object as
+  // STANDARD / MANUFACTURER-VERIFIED / HOTEL-CONFIRMED / CUSTOM once known.
+  var DIM_SOURCES = ["STANDARD", "MANUFACTURER-VERIFIED", "HOTEL-CONFIRMED", "CUSTOM"];
   var FURNITURE = {
-    TBL_4FT: { category: "table", kind: "rect", w: 4.0, l: 2.5, label: "4 ft table" },
-    TBL_6FT: { category: "table", kind: "rect", w: 6.0, l: 2.5, label: "6 ft table" },
-    TBL_8FT: { category: "table", kind: "rect", w: 8.0, l: 2.5, label: "8 ft table" },
-    RND_48:  { category: "table", kind: "circle", d: 4.0, seats: 6,  label: "48\" round" },
-    RND_60:  { category: "table", kind: "circle", d: 5.0, seats: 8,  label: "60\" round" },
-    RND_72:  { category: "table", kind: "circle", d: 6.0, seats: 10, label: "72\" round" },
-    HIGHTOP: { category: "table", kind: "circle", d: 2.5, label: "High-top" },
-    CHAIR:   { category: "chair", kind: "rect", w: 1.6, l: 1.6, label: "Chair" },
-    STAGE:   { category: "equipment", kind: "rect", w: 12.0, l: 8.0, label: "Stage" },
-    PODIUM:  { category: "equipment", kind: "rect", w: 2.5, l: 2.0, label: "Podium" },
-    SCREEN:  { category: "equipment", kind: "rect", w: 8.0, l: 1.0, label: "Screen" },
-    AV_BOOTH:{ category: "equipment", kind: "rect", w: 6.0, l: 4.0, label: "AV / control" },
-    REG_TABLE:{category: "equipment", kind: "rect", w: 6.0, l: 2.5, label: "Registration" }
+    // Tables — rectangular (w = length, l = depth)
+    TBL_4FT: { category: "table", sub: "Banquet 4 ft", kind: "rect", w: 4.0, l: 2.5, h: 2.5, clear: 0, seats: 4, label: "4 ft table" },
+    TBL_5FT: { category: "table", sub: "Banquet 5 ft", kind: "rect", w: 5.0, l: 2.5, h: 2.5, clear: 0, seats: 5, label: "5 ft table" },
+    TBL_6FT: { category: "table", sub: "Banquet 6 ft", kind: "rect", w: 6.0, l: 2.5, h: 2.5, clear: 0, seats: 6, label: "6 ft table" },
+    TBL_8FT: { category: "table", sub: "Banquet 8 ft", kind: "rect", w: 8.0, l: 2.5, h: 2.5, clear: 0, seats: 8, label: "8 ft table" },
+    CLASSROOM_TBL: { category: "table", sub: "Classroom 6×18\"", kind: "rect", w: 6.0, l: 1.5, h: 2.5, clear: 0, seats: 3, label: "Classroom table" },
+    CONF_TBL: { category: "table", sub: "Conference", kind: "rect", w: 8.0, l: 4.0, h: 2.5, clear: 0, label: "Conference table" },
+    SQUARE_TBL: { category: "table", sub: "Square 3 ft", kind: "rect", w: 3.0, l: 3.0, h: 2.5, clear: 0, seats: 4, label: "Square table" },
+    DISPLAY_TBL: { category: "table", sub: "Display 6 ft", kind: "rect", w: 6.0, l: 2.0, h: 2.5, clear: 0, label: "Display table" },
+    HALFRND_60: { category: "table", sub: "Half-round 60\"", kind: "rect", w: 5.0, l: 2.5, h: 2.5, clear: 0, label: "Half-round" },
+    CRESCENT: { category: "table", sub: "Crescent / serpentine", kind: "rect", w: 5.0, l: 2.5, h: 2.5, clear: 0, label: "Crescent" },
+    // Tables — round (d = diameter)
+    RND_30: { category: "table", sub: "30\" round", kind: "circle", d: 2.5, h: 2.5, clear: 0, seats: 2, label: "30\" round" },
+    RND_36: { category: "table", sub: "36\" round", kind: "circle", d: 3.0, h: 2.5, clear: 0, seats: 4, label: "36\" round" },
+    RND_48: { category: "table", sub: "48\" round", kind: "circle", d: 4.0, h: 2.5, clear: 0, seats: 6, label: "48\" round" },
+    RND_54: { category: "table", sub: "54\" round", kind: "circle", d: 4.5, h: 2.5, clear: 0, seats: 7, label: "54\" round" },
+    RND_60: { category: "table", sub: "60\" round", kind: "circle", d: 5.0, h: 2.5, clear: 0, seats: 8, label: "60\" round" },
+    RND_66: { category: "table", sub: "66\" round", kind: "circle", d: 5.5, h: 2.5, clear: 0, seats: 9, label: "66\" round" },
+    RND_72: { category: "table", sub: "72\" round", kind: "circle", d: 6.0, h: 2.5, clear: 0, seats: 10, label: "72\" round" },
+    HIGHTOP: { category: "table", sub: "Cocktail high-top", kind: "circle", d: 2.5, h: 3.5, clear: 0, label: "High-top" },
+    // Chairs (footprint = seated occupant zone)
+    CHAIR: { category: "chair", sub: "Banquet chair", kind: "rect", w: 1.6, l: 1.6, h: 1.5, clear: 0, label: "Chair" },
+    CHAIR_FOLD: { category: "chair", sub: "Folding chair", kind: "rect", w: 1.5, l: 1.5, h: 1.5, clear: 0, label: "Folding chair" },
+    CHAIR_EXEC: { category: "chair", sub: "Executive chair", kind: "rect", w: 2.0, l: 2.0, h: 1.6, clear: 0, label: "Executive chair" },
+    BARSTOOL: { category: "chair", sub: "Bar stool", kind: "circle", d: 1.4, h: 2.5, clear: 0, label: "Bar stool" },
+    LOUNGE: { category: "chair", sub: "Lounge chair", kind: "rect", w: 2.6, l: 2.6, h: 2.4, clear: 0, label: "Lounge chair" },
+    WHEELCHAIR: { category: "chair", sub: "Accessible space (ADA)", kind: "rect", w: 3.0, l: 4.0, h: 3.2, clear: 0, label: "Accessible seat" },
+    // Stage / platforms
+    STAGE: { category: "equipment", sub: "Stage / riser", kind: "rect", w: 12.0, l: 8.0, h: 1.5, clear: 3, label: "Stage" },
+    RISER: { category: "equipment", sub: "Modular riser 4×8", kind: "rect", w: 8.0, l: 4.0, h: 1.0, clear: 2, label: "Riser" },
+    PODIUM: { category: "equipment", sub: "Podium / lectern", kind: "rect", w: 2.5, l: 2.0, h: 3.8, clear: 1.5, label: "Podium" },
+    STAGE_STAIRS: { category: "equipment", sub: "Stage stairs / ramp", kind: "rect", w: 4.0, l: 3.0, h: 1.5, clear: 1.5, label: "Stage stairs" },
+    // AV
+    SCREEN: { category: "equipment", sub: "Projection screen", kind: "rect", w: 8.0, l: 1.0, h: 7.5, clear: 0, label: "Screen" },
+    LED_WALL: { category: "equipment", sub: "LED wall", kind: "rect", w: 10.0, l: 1.5, h: 8.0, clear: 0, label: "LED wall" },
+    TV_MONITOR: { category: "equipment", sub: "TV monitor + stand", kind: "rect", w: 5.0, l: 2.0, h: 6.0, clear: 1, label: "TV monitor" },
+    PROJECTOR: { category: "equipment", sub: "Projector on stand", kind: "rect", w: 2.0, l: 2.0, h: 4.0, clear: 1, label: "Projector" },
+    SPEAKER: { category: "equipment", sub: "Speaker on stand", kind: "rect", w: 1.5, l: 1.5, h: 6.0, clear: 1, label: "Speaker" },
+    MIC_STAND: { category: "equipment", sub: "Microphone stand", kind: "rect", w: 1.0, l: 1.0, h: 4.5, clear: 0.5, label: "Mic stand" },
+    CAMERA: { category: "equipment", sub: "Camera tripod", kind: "rect", w: 2.5, l: 2.5, h: 5.0, clear: 2, label: "Camera" },
+    AV_BOOTH: { category: "equipment", sub: "AV / control station", kind: "rect", w: 6.0, l: 4.0, h: 3.0, clear: 2, label: "AV / control" },
+    LIGHT: { category: "equipment", sub: "Lighting tree", kind: "rect", w: 2.0, l: 2.0, h: 9.0, clear: 1, label: "Lighting" },
+    // Catering / registration / other
+    REG_TABLE: { category: "equipment", sub: "Registration desk", kind: "rect", w: 6.0, l: 2.5, h: 2.5, clear: 5, label: "Registration" },
+    BUFFET: { category: "equipment", sub: "Buffet table", kind: "rect", w: 8.0, l: 2.5, h: 2.5, clear: 5, label: "Buffet" },
+    COFFEE: { category: "equipment", sub: "Coffee / beverage station", kind: "rect", w: 6.0, l: 2.5, h: 2.5, clear: 4, label: "Coffee station" },
+    WATER: { category: "equipment", sub: "Water station", kind: "rect", w: 3.0, l: 2.0, h: 3.5, clear: 3, label: "Water station" },
+    BAR: { category: "equipment", sub: "Portable bar", kind: "rect", w: 6.0, l: 2.5, h: 3.8, clear: 5, label: "Bar" },
+    CATERING: { category: "equipment", sub: "Catering station", kind: "rect", w: 8.0, l: 3.0, h: 2.5, clear: 5, label: "Catering" },
+    DRAPE: { category: "equipment", sub: "Pipe & drape", kind: "rect", w: 10.0, l: 0.6, h: 8.0, clear: 0, label: "Pipe & drape" },
+    PARTITION: { category: "equipment", sub: "Partition wall", kind: "rect", w: 8.0, l: 0.6, h: 7.0, clear: 0, label: "Partition" },
+    SIGNAGE: { category: "equipment", sub: "Signage", kind: "rect", w: 2.5, l: 2.5, h: 7.0, clear: 1, label: "Signage" },
+    BOOTH: { category: "equipment", sub: "Trade-show booth 10×10", kind: "rect", w: 10.0, l: 10.0, h: 8.0, clear: 4, label: "Booth" }
   };
+  // Grouped catalog for the UI palette.
+  var CATALOG = [
+    { group: "Tables — rectangular", items: ["TBL_4FT", "TBL_5FT", "TBL_6FT", "TBL_8FT", "CLASSROOM_TBL", "CONF_TBL", "SQUARE_TBL", "HALFRND_60", "CRESCENT", "DISPLAY_TBL"] },
+    { group: "Tables — round", items: ["RND_30", "RND_36", "RND_48", "RND_54", "RND_60", "RND_66", "RND_72", "HIGHTOP"] },
+    { group: "Chairs", items: ["CHAIR", "CHAIR_FOLD", "CHAIR_EXEC", "BARSTOOL", "LOUNGE", "WHEELCHAIR"] },
+    { group: "Stage & platforms", items: ["STAGE", "RISER", "PODIUM", "STAGE_STAIRS"] },
+    { group: "AV", items: ["SCREEN", "LED_WALL", "TV_MONITOR", "PROJECTOR", "SPEAKER", "MIC_STAND", "CAMERA", "AV_BOOTH", "LIGHT"] },
+    { group: "Catering & other", items: ["REG_TABLE", "BUFFET", "COFFEE", "WATER", "BAR", "CATERING", "DRAPE", "PARTITION", "SIGNAGE", "BOOTH"] }
+  ];
   function makeObj(type, x, y, r, over) {
-    var base = FURNITURE[type] || { category: "misc", kind: "rect", w: 2, l: 2 };
-    var o = { id: uid(), type: type, category: base.category, kind: base.kind,
-      x: x, y: y, r: r || 0, label: base.label };
+    var base = FURNITURE[type] || { category: "misc", kind: "rect", w: 2, l: 2, h: 2.5, clear: 0 };
+    var o = { id: uid(), type: type, category: base.category, sub: base.sub || base.label, kind: base.kind,
+      x: x, y: y, r: r || 0,
+      h: base.h != null ? base.h : 2.5, clear: base.clear != null ? base.clear : 0, share: !!base.share,
+      src: "STANDARD", locked: false, label: base.label };
     if (base.kind === "circle") { o.d = base.d; o.seats = base.seats; }
     else { o.w = base.w; o.l = base.l; }
     if (over) for (var k in over) o[k] = over[k];
@@ -158,7 +217,8 @@
   function normZone(o, unit) {
     return { id: o.id || uid(), kind: "rect", category: o.category || "obstruction",
       x: toFeet(o.x, unit), y: toFeet(o.y, unit),
-      w: toFeet(o.w, unit), l: toFeet(o.l, unit), r: o.r || 0, label: o.label || "" };
+      w: toFeet(o.w, unit), l: toFeet(o.l, unit), r: o.r || 0,
+      h: o.h != null ? toFeet(o.h, unit) : null, label: o.label || "" };
   }
   function grossArea(room) {
     var r = room.width != null && room.boundary ? room : normalizeRoom(room);
@@ -207,8 +267,35 @@
     return rectCorners(o).every(function (p) { return pointInPolygon(p, room.boundary); });
   }
 
+  /* ---------- operational envelope (clearance) ---------- */
+  // Bounding footprint of an object as a rect-like (circles → bounding square).
+  function footRect(o) {
+    if (o.kind === "circle") return { kind: "rect", x: o.x, y: o.y, w: o.d, l: o.d, r: 0 };
+    return { kind: "rect", x: o.x, y: o.y, w: o.w, l: o.l, r: o.r || 0 };
+  }
+  function grownEnvelope(o, m) { var f = footRect(o); return { kind: "rect", x: f.x, y: f.y, w: f.w + 2 * m, l: f.l + 2 * m, r: f.r }; }
+  // Operational-clearance violations: an object's service/access envelope blocked
+  // by another physical object. Only items with clear>0 (equipment) project an
+  // envelope; two sharable circulation envelopes may overlap without a violation.
+  function clearanceViolations(objects) {
+    var out = [];
+    objects.forEach(function (o) {
+      var cl = o.clear || 0; if (cl <= 0) return;
+      var env = grownEnvelope(o, cl);
+      objects.forEach(function (p) {
+        if (p === o || p.id === o.id) return;
+        if (o.share && p.share) return;          // shared circulation may overlap
+        if (objectsOverlap(env, p)) {
+          out.push({ type: "clearance", ids: [o.id, p.id],
+            msg: (o.label || o.type) + " operational clearance is blocked by " + (p.label || p.type) });
+        }
+      });
+    });
+    return dedupeViolations(out);
+  }
+
   /* ---------- spatial validation ---------- */
-  // Returns { feasible, violations:[{type,ids,msg}], seats }
+  // Returns { feasible, violations (hard), clearance (operational warnings), seats }
   function validate(objects, roomRaw, opts) {
     opts = opts || {};
     var room = normalizeRoom(roomRaw);
@@ -257,10 +344,13 @@
     }
 
     var seats = objects.filter(function (o) { return o.category === "chair"; }).length;
-    // rounds with implicit seats (reception/cabaret counts explicit chairs only)
+    // Operational-envelope warnings (do NOT flip feasibility; they make a layout
+    // CONDITIONAL rather than FIT — see assessFit).
+    var clearance = clearanceViolations(objects);
     return {
       feasible: violations.length === 0,
       violations: dedupeViolations(violations),
+      clearance: clearance,
       seats: seats,
       room: room
     };
@@ -689,6 +779,7 @@
       seatsPlaced: res.seats,
       feasible: res.validation.feasible,
       violations: res.validation.violations,
+      clearance: res.validation.clearance || [],
       objects: res.objects
     };
   }
@@ -721,12 +812,17 @@
     }
     if (!vc.feasible) {
       return { status: "DOES_NOT_FIT", validated: 0, seatsPlaced: vc.seatsPlaced,
-        reason: violationSummary(vc.violations), violations: vc.violations };
+        reason: violationSummary(vc.violations), violations: vc.violations, clearance: (vc.clearance || []).length };
     }
+    var clr = (vc.clearance || []).length;
     if (vc.validated >= requested) {
-      return { status: "FIT", validated: vc.validated, reason: "A valid configuration seats " + vc.validated + " (>= " + requested + ")." };
+      if (clr > 0) {
+        return { status: "CONDITIONAL", validated: vc.validated, clearance: clr,
+          reason: "Seats " + vc.validated + " (>= " + requested + "), but " + clr + " operational-clearance warning(s) — verify access/service space." };
+      }
+      return { status: "FIT", validated: vc.validated, clearance: 0, reason: "A valid configuration seats " + vc.validated + " (>= " + requested + ")." };
     }
-    return { status: "DOES_NOT_FIT", validated: vc.validated,
+    return { status: "DOES_NOT_FIT", validated: vc.validated, clearance: clr,
       reason: "Highest validated capacity found is " + vc.validated + ", below requested " + requested + "." };
   }
   function violationSummary(vs) {
@@ -749,24 +845,116 @@
     return { score: Math.round(score * 100), hardFail: !!hardFail, weights: w };
   }
 
+  /* ============================================================================
+   * REFLOW + OPTIMIZATION ACTIONS (spec §1 reflow, §4 actions, §6 conflicts)
+   * ==========================================================================*/
+  function cloneObj(o) { return JSON.parse(JSON.stringify(o)); }
+
+  // Automatic reflow: regenerate the current layout at new room dimensions,
+  // preserving locked objects (they keep coordinates; generated items overlapping
+  // them are dropped). Reports whether the requested attendee count still fits
+  // and, if not, WHY — never silently drops attendees/equipment.
+  function reflow(layoutId, newRoom, params, currentObjects) {
+    params = params || {};
+    var res = generate(layoutId, newRoom, Object.assign({}, params));
+    var locked = (currentObjects || []).filter(function (o) { return o && o.locked; });
+    if (locked.length) {
+      var kept = res.objects.filter(function (o) {
+        return !locked.some(function (L) { return objectsOverlap(o, L); });
+      });
+      res.objects = locked.map(cloneObj).concat(kept);
+      res.validation = validate(res.objects, newRoom, {});
+      res.seats = res.objects.filter(function (o) { return o.category === "chair"; }).length;
+    }
+    var target = params.target;
+    var standing = (layoutId === "RECEPTION") ? (res.meta && res.meta.standingEstimate) : null;
+    var fits = target
+      ? (layoutId === "RECEPTION" ? (standing >= target) : (res.validation.feasible && res.seats >= target))
+      : res.validation.feasible;
+    var reason = null;
+    if (target && !fits) {
+      reason = layoutId === "RECEPTION"
+        ? ("Standing estimate " + (standing || 0) + " < requested " + target + ".")
+        : (!res.validation.feasible
+            ? ("Conflicts remain: " + violationSummary(res.validation.violations))
+            : ("Only " + res.seats + " seats fit vs requested " + target + " — the room is too small for this layout at these dimensions. Try a larger room, a denser layout, or fewer attendees."));
+    }
+    res.reflow = { layout: layoutId, target: target || null, fits: fits, reason: reason,
+      lockedKept: locked.length, clearance: (res.validation.clearance || []).length };
+    return res;
+  }
+
+  // Highest validated capacity FOUND (heuristic packing, not a proven maximum).
+  function maxCapacity(layoutId, room, params) {
+    var base = params || {};
+    var presets = [ {}, { rowGap: 1.6, chairGap: 0.1, tableGap: 0.6, aisle: 3.0 }, { rowGap: 1.3, chairGap: 0.05, tableGap: 0.4, aisle: 2.5 } ];
+    var best = { validated: 0, params: base, feasible: false };
+    presets.forEach(function (p) {
+      var pr = Object.assign({}, base, p);
+      var vc = validatedCapacity(layoutId, room, pr);
+      var n = layoutId === "RECEPTION" ? (vc.standingEstimate || 0) : (vc.feasible ? vc.seatsPlaced : 0);
+      if (n > best.validated) best = { validated: n, params: pr, feasible: vc.feasible };
+    });
+    best.note = "Highest validated capacity found by heuristic packing — not a mathematically proven maximum.";
+    return best;
+  }
+
+  // Given attendees + layout, return geometrically-validated candidate room sizes.
+  function findRoomSize(target, layoutId, params) {
+    var base = params || {};
+    var per = SQFT_PER_SEAT[layoutId] || 15;
+    var seed = Math.max(300, target * per * 1.25);
+    var ratios = [1.0, 1.3, 1.6];
+    var cands = [];
+    for (var m = 0.8; m <= 2.4; m += 0.2) {
+      var area = seed * m;
+      for (var ri = 0; ri < ratios.length; ri++) {
+        var ratio = ratios[ri];
+        var W = Math.round(Math.sqrt(area / ratio)), L = Math.round(W * ratio);
+        if (W < 10 || L < 10) continue;
+        var room = { width: W, length: L, unit: "ft" };
+        var vc = validatedCapacity(layoutId, room, base);
+        var n = layoutId === "RECEPTION" ? (vc.standingEstimate || 0) : (vc.feasible ? vc.seatsPlaced : 0);
+        if (n >= target) cands.push({ width: W, length: L, area: W * L, validated: n, feasible: vc.feasible });
+      }
+    }
+    cands.sort(function (a, b) { return a.area - b.area; });
+    var seen = {}, out = [];
+    cands.forEach(function (c) { var k = c.width + "x" + c.length; if (!seen[k]) { seen[k] = 1; out.push(c); } });
+    return { target: target, layout: layoutId, candidates: out.slice(0, 5),
+      note: out.length ? ("Candidate rooms that seat ≥ " + target + " (each geometrically validated — area alone is not sufficient).") : ("No candidate within the scanned range; try a different layout or fewer attendees.") };
+  }
+
+  // Compare presets under the same room + attendee target.
+  function compareLayouts(room, target, params, list) {
+    list = list || ["THEATER", "CLASSROOM", "U_SHAPE", "DOUBLE_U", "BANQUET", "CABARET", "BOARDROOM", "HOLLOW_SQUARE", "CHEVRON", "PODS", "SEMICIRCLE", "RECEPTION"];
+    return list.map(function (id) {
+      var fit = assessFit(id, room, target, params);
+      return { layout: id, name: (LAYOUT_META[id] || {}).name || id, status: fit.status,
+        validated: fit.validated, estimated: fit.estimated, clearance: fit.clearance || 0, reason: fit.reason };
+    });
+  }
+
   /* ---------- public API ---------- */
   var API = {
     // constants / libs
-    FURNITURE: FURNITURE, REGISTRY: REGISTRY, LAYOUT_META: LAYOUT_META, FIT_WEIGHTS: FIT_WEIGHTS,
-    SQFT_PER_SEAT: SQFT_PER_SEAT,
+    FURNITURE: FURNITURE, CATALOG: CATALOG, DIM_SOURCES: DIM_SOURCES,
+    REGISTRY: REGISTRY, LAYOUT_META: LAYOUT_META, FIT_WEIGHTS: FIT_WEIGHTS, SQFT_PER_SEAT: SQFT_PER_SEAT,
     // units
     ft2m: ft2m, m2ft: m2ft, toFeet: toFeet, round2: round2,
     // geometry
     rectCorners: rectCorners, polysIntersect: polysIntersect, objectsOverlap: objectsOverlap,
-    pointInPolygon: pointInPolygon, polygonArea: polygonArea,
+    pointInPolygon: pointInPolygon, polygonArea: polygonArea, footRect: footRect, grownEnvelope: grownEnvelope,
     // room
     normalizeRoom: normalizeRoom, grossArea: grossArea, usableArea: usableArea, insideUsable: insideUsable,
     makeObj: makeObj,
     // validation + generate
-    validate: validate, generate: generate,
+    validate: validate, clearanceViolations: clearanceViolations, generate: generate,
     // capacity
     validatedCapacity: validatedCapacity, estimatedCapacity: estimatedCapacity,
-    assessFit: assessFit, fitScore: fitScore
+    assessFit: assessFit, fitScore: fitScore,
+    // actions
+    reflow: reflow, maxCapacity: maxCapacity, findRoomSize: findRoomSize, compareLayouts: compareLayouts
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = API;
