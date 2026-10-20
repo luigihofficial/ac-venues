@@ -2088,6 +2088,7 @@ function dateBlock(d, citySlug){
           <button class="btn sm navy" data-sendsheet="${d.id}">✉ Enviar ficha ahora</button>
           <button class="btn sm ghost" data-copysheet="${d.id}">🔗 Copiar enlace</button>
           <button class="btn sm ghost" data-notifysheet="${d.id}">🔔 Avisar actualización</button>
+          ${wonOfferForDate(d.id)?`<button class="btn sm gold" data-fillsheet="${d.id}" title="Rellenar la ficha con los datos de la oferta aprobada">📥 Rellenar con el ganador</button>`:''}
         </div>
         <div class="muted survnote">Se envía automáticamente dos días antes del primer día del evento${d.start_date?` (inicio: ${fmtDay(d.start_date)})`:''}. El correo incluye un <b>enlace vivo</b>: si luego cambias algo, no hace falta reenviar — los líderes/speakers ven lo último al abrir el mismo enlace. Usa <b>🔔 Avisar actualización</b> solo si quieres notificarles de un cambio.</div>
       </div>
@@ -2697,6 +2698,7 @@ document.addEventListener('click', async (e)=>{
   if(t.dataset.sendsheet){ await sendSheet(t.dataset.sendsheet, t); return; }
   if(t.dataset.copysheet){ await copySheetLink(t.dataset.copysheet, t); return; }
   if(t.dataset.notifysheet){ await notifySheet(t.dataset.notifysheet, t); return; }
+  if(t.dataset.fillsheet){ await fillSheetFromWinner(t.dataset.fillsheet); return; }
   if(t.dataset.delfile){ await deleteEventFile(t.dataset.delfile); return; }
   if(t.dataset.addrc){
     const dateId=t.dataset.addrc;
@@ -3882,8 +3884,8 @@ function sheetFromOffer(off){
   if(off.contact_phone) pat.contact_phone=off.contact_phone;
   const conc=Array.isArray(off.concessions)?off.concessions:[];
   const find=re=>conc.find(c=>re.test(((c.label||'')+' '+(c.key||''))));
-  const wifi=find(/wifi/i); if(wifi) pat.wifi_included = wifi.status==='comp'?'si':(wifi.status==='no'?'no':'');
-  const green=find(/green\s*-?\s*room/i); if(green) pat.greenroom_included = green.status==='comp'?'si':(green.status==='no'?'no':'');
+  const wifi=find(/wifi|wi-?fi|internet/i); if(wifi) pat.wifi_included = wifi.status==='comp'?'si':(wifi.status?'no':'');
+  const green=find(/green\s*-?\s*room|sala\s+(para\s+)?speakers|backstage/i); if(green) pat.greenroom_included = green.status==='comp'?'si':(green.status?'no':'');
   const park=find(/parking|parqueo|self-?park/i);
   if(park){ pat.parking_cost = park.status==='comp'?'Cortesía (incluido)':(park.status==='cost'?((park.amount?park.amount:'Con costo')):(park.status==='no'?'No incluido':'')); }
   // Notas: depósito + validez + notas de la oferta
@@ -3897,6 +3899,35 @@ function sheetFromOffer(off){
   const contract=files.find(f=>/contrat|contract|agreement|acuerdo/i.test(f&&f.name||''))||files[0];
   if(contract && contract.url) pat.contract_url=contract.url;
   return pat;
+}
+// Oferta ganadora (won) de un evento, si existe.
+function wonOfferForDate(dateId){
+  const inv=(state.rfpInvites||[]).find(i=>i.date_id===dateId && i.status==='won');
+  if(!inv) return null;
+  return (state.rfpOffers||[]).find(o=>o.invite_id===inv.id)||null;
+}
+// Rellenar la ficha con la oferta ganadora SIN reenviar el correo de aprobación.
+async function fillSheetFromWinner(dateId){
+  if(!sb||!USER) return;
+  const off=wonOfferForDate(dateId);
+  if(!off){ alert('Este evento no tiene un RFP aprobado (ganador) con oferta.'); return; }
+  const cur=sheetFor(dateId)||{};
+  const pat=sheetFromOffer(off);
+  const patch={date_id:dateId, updated_at:new Date().toISOString()};
+  ['hotel_name','room_name','contact_name','contact_phone'].forEach(k=>{ if(pat[k]!=null&&pat[k]!=='') patch[k]=pat[k]; });
+  const filled=[];
+  [['parking_cost'],['wifi_included'],['greenroom_included'],['contract_url']].forEach(function(p){ const k=p[0]; if(pat[k]!=null&&pat[k]!==''&&!(cur[k]&&String(cur[k]).trim())){ patch[k]=pat[k]; filled.push(k); } });
+  if(pat._notes && !(cur.notes&&String(cur.notes).trim())){ patch.notes=pat._notes; filled.push('notes'); }
+  await sb.from('event_sheet').upsert(patch,{onConflict:'date_id'});
+  if(!state.sheets) state.sheets={}; state.sheets[dateId]=Object.assign({date_id:dateId},cur,patch);
+  try{ await autofillSheetFromVenue(dateId, off.venue||''); }catch(e){}
+  logChange('evento', dateLabelById(dateId), 'rellenó la ficha con la oferta ganadora ('+(off.venue||'')+')');
+  await loadAll();
+  const concAnswered=(off.concessions||[]).some(c=>c.status==='comp'||c.status==='cost'||c.status==='no');
+  let m='✅ Ficha rellenada con '+(off.venue||'el ganador')+'.';
+  if(!concAnswered) m+='\n\nOjo: la oferta ganadora NO trae concesiones respondidas, por eso WiFi / parqueo / green room no se pudieron derivar. Complétalos a mano, o pídele al hotel que responda esas casillas en su portal.';
+  else if(!filled.some(k=>/wifi|parking|green/.test(k))) m+='\n\n(WiFi / parqueo / green room ya tenían valor o el hotel los marcó con costo; revisa y ajusta si hace falta.)';
+  alert(m);
 }
 async function rapDoSend(){
   if(!_rapInvite){ return; }
