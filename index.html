@@ -372,6 +372,16 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 
 /* ---------- Hoteles / venues editables por ciudad ---------- */
 .vrow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.dbhotels{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.dbhotel{border:1px solid var(--line);border-radius:9px;padding:7px 10px;margin-bottom:6px;background:#fffdf8}
+.dbhotel .dbh-top{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--navy);flex-wrap:wrap}
+.dbhotel .dbh-top .btn{margin-left:auto}
+.dbhotel .dbh-meta{font-size:12px;color:var(--muted);margin-top:2px;word-break:break-word}
+.dbhotel .dbh-meta a{color:var(--navy);text-decoration:none}
+.dbmore{margin-top:2px}
+.dbmore>summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--navy);list-style:none;padding:4px 0}
+.dbmore>summary::-webkit-details-marker{display:none}
+.dbmore[open]>summary::before{content:"▾ "}.dbmore:not([open])>summary::before{content:"▸ "}
 .vrow .vname{flex:1.4;font-weight:600}
 .vrow .varea{flex:1}
 .vrow .vnotes{flex:1.2}
@@ -1959,6 +1969,20 @@ function extraCitySlugOf(text){
   }
   return '';
 }
+// Hoteles del directorio (contacts) que caen en una ciudad y tienen INFO COMPLETA
+// (hotel + contacto + teléfono + email). Dedup por hotel; agrega contactos extra del mismo hotel.
+function dbHotelsForCity(slug){
+  const byVenue={}, order=[];
+  (state.contacts||[]).forEach(c=>{
+    if(contactMetro(c)!==slug) return;
+    const venue=(c.venue||'').trim(), name=(c.name||'').trim(), phone=(c.phone||'').trim(), email=(c.email||'').trim();
+    if(!venue||!name||!phone||!email) return;        // solo info completa
+    const k=normName(venue);
+    if(!byVenue[k]){ byVenue[k]={venue, id:c.id, area:(c.area||c.role||'').trim(), contacts:[]}; order.push(k); }
+    byVenue[k].contacts.push({name, phone, email});
+  });
+  return order.map(k=>byVenue[k]).sort((a,b)=>a.venue.localeCompare(b.venue));
+}
 // Nombres de hotel/venue únicos de los contactos que caen en una ciudad (para el datalist del evento)
 function contactVenuesForCity(slug){
   const seen={}, out=[];
@@ -2116,6 +2140,7 @@ function dateBlock(d, citySlug){
       <label class="muted" style="font-size:12px;font-weight:700">Venue elegido</label>
       <input class="cell" list="dl-${citySlug}" data-dmeta="${d.id}:chosen_venue" placeholder="— elige o escribe —" value="${esc(meta.chosen_venue||'')}">
       <textarea data-dmeta="${d.id}:notes" rows="2" placeholder="Notas de esta fecha..." style="margin-top:6px">${esc(meta.notes||'')}</textarea>
+      <button class="btn sm gold" data-rfpevent="${d.id}" style="margin-top:6px" title="Procesar el RFP para este evento con sus datos ya cargados">✉ Procesar RFP de este evento</button>
       <div class="evalsec">
         <h5 class="dsub">Evaluación del venue <span class="dsubn">1–5 · 5 = excelente · equipo + encuestas</span></h5>
         ${evalsHtml}
@@ -2246,6 +2271,25 @@ function cityCard(c, disabled){
   (disabled?[]:contactVenuesForCity(c.slug)).forEach(nm=>{ const k=normName(nm); if(dlSeen[k])return; dlSeen[k]=1; dlNames.push(nm); });
   const datalist = `<datalist id="dl-${c.slug}">${dlNames.map(nm=>`<option value="${esc(nm)}">`).join('')}</datalist>`;
   const links=c.search.map(s=>`<a href="${s[1]}" target="_blank" rel="noopener">${esc(s[0])} ↗</a>`).join('');
+  // Hoteles ya registrados en la base (directorio de contactos) con info completa
+  const dbHotels = disabled?[]:dbHotelsForCity(c.slug);
+  const dbRow = h=>{
+    const ct=h.contacts[0]||{};
+    const more = h.contacts.length>1 ? ` <span class="muted">+${h.contacts.length-1} contacto(s)</span>` : '';
+    const meta = [ct.name, ct.phone?`<a href="tel:${esc(ct.phone)}">${esc(ct.phone)}</a>`:'', ct.email?`<a href="mailto:${esc(ct.email)}">${esc(ct.email)}</a>`:''].filter(Boolean).join(' · ');
+    return `<div class="dbhotel">
+      <div class="dbh-top"><b>${esc(h.venue)}</b>${h.area?` <span class="muted">· ${esc(h.area)}</span>`:''}${more}
+        <button class="btn sm ghost" data-openc="${h.id}" title="Ver contacto">ver</button></div>
+      <div class="dbh-meta">${meta}</div>
+    </div>`;
+  };
+  const dbTop = dbHotels.slice(0,3).map(dbRow).join('');
+  const dbRest = dbHotels.slice(3).map(dbRow).join('');
+  const dbHtml = dbHotels.length ? `<div class="dbhotels">
+      <h4 style="margin-bottom:6px">En nuestra base <span class="muted" style="font-weight:600">(${dbHotels.length})</span></h4>
+      ${dbTop}
+      ${dbRest ? `<details class="dbmore"><summary>Ver ${dbHotels.length-3} más</summary>${dbRest}</details>` : ''}
+    </div>` : '';
   const datesHtml = dates.length ? dates.map(d=>dateBlock(d,c.slug)).join('')
     : `<div class="muted" style="font-size:13px;padding:6px 0">Sin fechas todavía. Agrega la primera del año 👇</div>`;
   const avg = dates.length? Math.round(dates.reduce((s,d)=>s+datePct(d.id),0)/dates.length):0;
@@ -2259,6 +2303,7 @@ function cityCard(c, disabled){
        <h4>Hoteles / venues</h4>
        <div class="vlist">${venuesHtml}</div>
        ${disabled?'':`<button class="btn sm gold" data-addvenue="${c.slug}" style="margin-top:4px">+ Agregar hotel</button>`}
+       ${dbHtml}
        <div class="links" style="margin-top:10px">${links}</div>
      </div>
    </div>`;
@@ -2749,6 +2794,7 @@ document.addEventListener('click', async (e)=>{
   if(t.dataset.copysheet){ await copySheetLink(t.dataset.copysheet, t); return; }
   if(t.dataset.notifysheet){ await notifySheet(t.dataset.notifysheet, t); return; }
   if(t.dataset.fillsheet){ await fillSheetFromWinner(t.dataset.fillsheet); return; }
+  if(t.dataset.rfpevent){ openRfpForDate(t.dataset.rfpevent); return; }
   if(t.dataset.delfile){ await deleteEventFile(t.dataset.delfile); return; }
   if(t.dataset.addrc){
     const dateId=t.dataset.addrc;
@@ -3558,6 +3604,16 @@ function renderRfpHistory(){
     const ev = r.date_id ? dateLabelById(r.date_id) : (r.city_slug?cityName(r.city_slug).split(',')[0]:'');
     return `<div class="rfphrow"><span><b>${esc(r.venue||r.to_name||r.to_email)}</b> <span class="muted">· ${esc(r.to_email)}</span>${ev?(' · '+esc(ev)):''}</span><span class="hwhen">${esc(fmtDateTime(r.sent_at))}</span></div>`;
   }).join('') : '<div class="muted" style="font-size:13px">Aún no has enviado RFPs.</div>';
+}
+// Abrir el RFP ya enfocado en un evento concreto (desde la tarjeta de la ciudad)
+function openRfpForDate(dateId){
+  if(!dateId) return;
+  _rfpEvent=dateId; _rfpApplied='';
+  const nm=$('rfField_name'); if(nm) nm.value='';   // fuerza el autollenado del evento elegido
+  const ru=$('rfpReuse'); if(ru) ru.value='';
+  const onRfp=(location.hash||'').replace(/^#/,'')==='rfp';
+  if(onRfp){ renderRfp(); } else { location.hash='rfp'; }   // hashchange → routeView → renderRfp
+  setTimeout(()=>{ const sec=document.getElementById('rfp'); if(sec) sec.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
 }
 function renderRfp(){
   const sel=$('rfpEvent'); if(!sel) return;
