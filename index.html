@@ -898,6 +898,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
         <label>Contrato antes de<input id="rapDeadline" type="date"></label>
         <label class="cfull">Datos de pago nuestros (para el depósito)<input id="rapPay" placeholder="Ej. Pagamos por ACH/cheque; envíen factura e instrucciones"></label>
         <label class="cfull">Nota adicional<textarea id="rapNote" rows="2" placeholder="Opcional"></textarea></label>
+        <label class="cfull" style="display:flex;align-items:center;gap:8px;font-weight:600"><input type="checkbox" id="rapFillSheet" checked style="width:auto"> Llenar la <b>ficha técnica</b> de este evento con los datos del ganador (hotel, salón, contacto, WiFi/parqueo/green room según sus concesiones, depósito/validez)</label>
       </div>
       <div class="rfpprev" style="margin-top:12px">
         <div class="rfpprev-subj"><b>Para:</b> <span id="rapTo"></span></div>
@@ -3871,6 +3872,32 @@ function openRfpApprove(inviteId){
   const m=$('rfpApprove'); if(m) m.classList.remove('hidden');
 }
 function closeRfpApprove(){ const m=$('rfpApprove'); if(m) m.classList.add('hidden'); _rapInvite=null; }
+// Mapea la oferta ganadora (y sus concesiones) a los campos de la ficha técnica.
+function sheetFromOffer(off){
+  off=off||{};
+  const pat={};
+  if(off.venue) pat.hotel_name=off.venue;
+  if(off.room_name) pat.room_name=off.room_name;
+  if(off.contact_name) pat.contact_name=off.contact_name;
+  if(off.contact_phone) pat.contact_phone=off.contact_phone;
+  const conc=Array.isArray(off.concessions)?off.concessions:[];
+  const find=re=>conc.find(c=>re.test(((c.label||'')+' '+(c.key||''))));
+  const wifi=find(/wifi/i); if(wifi) pat.wifi_included = wifi.status==='comp'?'si':(wifi.status==='no'?'no':'');
+  const green=find(/green\s*-?\s*room/i); if(green) pat.greenroom_included = green.status==='comp'?'si':(green.status==='no'?'no':'');
+  const park=find(/parking|parqueo|self-?park/i);
+  if(park){ pat.parking_cost = park.status==='comp'?'Cortesía (incluido)':(park.status==='cost'?((park.amount?park.amount:'Con costo')):(park.status==='no'?'No incluido':'')); }
+  // Notas: depósito + validez + notas de la oferta
+  const bits=[];
+  if(off.notes) bits.push(String(off.notes).trim());
+  if(off.deposit) bits.push('Depósito: '+off.deposit);
+  if(off.valid_until) bits.push('Propuesta válida hasta: '+off.valid_until);
+  if(bits.length) pat._notes=bits.join(' · ');
+  // Contrato: archivo que parezca contrato, o el primero
+  const files=Array.isArray(off.files)?off.files:[];
+  const contract=files.find(f=>/contrat|contract|agreement|acuerdo/i.test(f&&f.name||''))||files[0];
+  if(contract && contract.url) pat.contract_url=contract.url;
+  return pat;
+}
 async function rapDoSend(){
   if(!_rapInvite){ return; }
   const ctx=rapCtx(); const inv=_rapInvite.inv, off=_rapInvite.off||{};
@@ -3889,13 +3916,31 @@ async function rapDoSend(){
     try{
       await sb.from('rfp_invites').update({status:'won'}).eq('id', inv.id);
       if(inv.date_id){
-        await sb.from('date_meta').upsert({date_id:inv.date_id, chosen_venue:ctx.venue||'', updated_at:new Date().toISOString()},{onConflict:'date_id'});
-        await sb.from('event_sheet').upsert({date_id:inv.date_id, hotel_name:ctx.venue||'', room_name:off.room_name||'', contact_name:off.contact_name||'', contact_phone:off.contact_phone||'', updated_at:new Date().toISOString()},{onConflict:'date_id'});
-        if(off.total_estimate!=null && off.total_estimate!==''){ await sb.from('event_payments').upsert({date_id:inv.date_id, total_amount:Number(off.total_estimate)||0, updated_at:new Date().toISOString()},{onConflict:'date_id'}); }
+        const nowIso=new Date().toISOString();
+        await sb.from('date_meta').upsert({date_id:inv.date_id, chosen_venue:ctx.venue||'', updated_at:nowIso},{onConflict:'date_id'});
+        const fill = !$('rapFillSheet') || $('rapFillSheet').checked;
+        if(fill){
+          // Llena la ficha con los datos del ganador: identidad siempre; campos
+          // derivados (parqueo/wifi/green/notas/contrato) solo si estaban vacíos
+          // para no pisar lo que el equipo ya escribió a mano.
+          const cur=(state.sheets&&state.sheets[inv.date_id])||{};
+          const pat=sheetFromOffer(off);
+          const patch={date_id:inv.date_id, updated_at:nowIso};
+          ['hotel_name','room_name','contact_name','contact_phone'].forEach(k=>{ if(pat[k]!=null&&pat[k]!=='') patch[k]=pat[k]; });
+          [['parking_cost'],['wifi_included'],['greenroom_included'],['contract_url']].forEach(function(p){ const k=p[0]; if(pat[k]!=null&&pat[k]!==''&&!(cur[k]&&String(cur[k]).trim())) patch[k]=pat[k]; });
+          if(pat._notes && !(cur.notes&&String(cur.notes).trim())) patch.notes=pat._notes;
+          await sb.from('event_sheet').upsert(patch,{onConflict:'date_id'});
+          if(!state.sheets) state.sheets={}; state.sheets[inv.date_id]=Object.assign({date_id:inv.date_id}, cur, patch);
+          // Completa dirección/mapa/contacto desde el directorio de contactos (solo vacíos)
+          await autofillSheetFromVenue(inv.date_id, ctx.venue||'');
+        } else {
+          await sb.from('event_sheet').upsert({date_id:inv.date_id, hotel_name:ctx.venue||'', room_name:off.room_name||'', contact_name:off.contact_name||'', contact_phone:off.contact_phone||'', updated_at:nowIso},{onConflict:'date_id'});
+        }
+        if(off.total_estimate!=null && off.total_estimate!==''){ await sb.from('event_payments').upsert({date_id:inv.date_id, total_amount:Number(off.total_estimate)||0, updated_at:nowIso},{onConflict:'date_id'}); }
       }
     }catch(pe){ /* no romper por permisos de alguna tabla */ }
     logChange('rfp', ctx.venue||'RFP', 'aprobó la oferta ganadora y pidió el contrato'+(ctx.venue?(' ('+ctx.venue+')'):''));
-    if(msg){ msg.style.color='#2e7d5b'; msg.textContent='✅ Aprobación enviada a '+to+'. Ganador registrado en el evento.'; }
+    if(msg){ const didFill = !$('rapFillSheet') || $('rapFillSheet').checked; msg.style.color='#2e7d5b'; msg.textContent='✅ Aprobación enviada a '+to+'. Ganador registrado'+(didFill?' y ficha técnica rellenada con sus datos.':' en el evento.'); }
     btn.disabled=false; btn.textContent=old;
     setTimeout(()=>{ closeRfpApprove(); loadAll(); }, 1300);
   }catch(e){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='No se pudo completar: '+(e.message||e); } btn.disabled=false; btn.textContent=old; }
