@@ -707,7 +707,9 @@
     document.addEventListener("keydown", function (e) {
       if ($("layout") && $("layout").style.display === "none") return;
       if (/input|select|textarea/i.test((e.target.tagName || ""))) return;
-      if (e.key === "r" || e.key === "R") { if (rotateSel(15)) { render(); recalc(); } }
+      if (e.key === "Escape") { L.selected=[];L.sel=null;hideInspector();render(); }
+      else if ((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="a") { e.preventDefault(); selectIds(L.objects.map(function(o){return o.id;}),false);render(); }
+      else if (e.key === "r" || e.key === "R") { if (rotateSel(15)) { render(); recalc(); } }
       else if (e.key === "Delete" || e.key === "Backspace") { if (delSel()) { render(); recalc(); } }
       else if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D")) { e.preventDefault(); if (dupSel()) { render(); recalc(); } }
       else if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); undo(); }
