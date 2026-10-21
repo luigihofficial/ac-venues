@@ -157,6 +157,11 @@
             '<label class="lay-f">Room name</label><input id="layRoom">' +
             '<div class="lay-row"><div><label class="lay-f">Width</label><input id="layW" type="number" step="0.1"></div>' +
               '<div><label class="lay-f">Length</label><input id="layL" type="number" step="0.1"></div></div>' +
+            '<div aria-live="polite" style="margin-top:10px;padding:10px 12px;background:var(--card,#fffdf8);border:1px solid var(--line,#e6ddca);border-radius:9px">' +
+              '<label class="lay-f" for="layArea" style="margin:0 0 4px">Total room area (sq ft)</label>' +
+              '<input id="layArea" type="text" readonly aria-label="Calculated total room area in square feet" style="font-size:18px;font-weight:800;color:var(--navy,#1e3a5f);background:#f5f3ed" value="—">' +
+              '<div class="lay-note" id="layAreaFormula" style="margin-top:4px">Width × Length</div>' +
+            '</div>' +
             '<div class="lay-row"><div><label class="lay-f">Unit</label><select id="layUnit"><option value="ft">feet</option><option value="m">meters</option></select></div>' +
               '<div><label class="lay-f">Ceiling</label><input id="layCeil" type="number" step="0.1"></div></div>' +
             '<div class="lay-row"><div><label class="lay-f">Perimeter clearance</label><input id="layWall" type="number" step="0.1"></div>' +
@@ -241,6 +246,7 @@
     var r = L.room, p = L.params;
     set("layVenue", r.venue); set("layRoom", r.name); set("layW", r.width); set("layL", r.length);
     set("layUnit", r.unit); set("layCeil", r.ceilingHeight); set("layWall", r.wallClearance);
+    updateRoomArea();
     set("layPub", L.published != null ? L.published : "");
     set("layObst", (r.obstructions || []).map(function (o) { return [o.x, o.y, o.w, o.l].join(","); }).join(" ; "));
     set("layDoors", (r.doors || []).map(function (o) { return [o.x, o.y, o.w].join(","); }).join(" ; "));
@@ -248,6 +254,23 @@
     set("layType", p.layout); set("layTarget", p.target); set("layHigh", p.highTops || 0);
     chk("layStage", p.stage); chk("layScreen", p.screen); chk("layAv", p.av);
     set("layAisle", p.aisle); set("layRowGap", p.rowGap); set("layChairClear", p.chairClear); set("layTableGap", p.tableGap);
+  }
+  // Gross rectangular area, always shown in square feet regardless of input unit.
+  // This is distinct from the usable area after circulation/obstacles.
+  function updateRoomArea() {
+    var w=parseFloat(val("layW")), l=parseFloat(val("layL"));
+    var unit=val("layUnit")==="m"?"m":"ft";
+    var display=$("layArea"), formula=$("layAreaFormula");
+    if(!display||!formula)return;
+    if(!Number.isFinite(w)||!Number.isFinite(l)||w<=0||l<=0){
+      display.value="—";
+      formula.textContent="Enter a positive width and length.";
+      return;
+    }
+    var area=w*l*(unit==="m"?10.76391041671:1);
+    display.value=area.toLocaleString("en-US",{maximumFractionDigits:2})+" ft²";
+    formula.textContent=w+" "+unit+" × "+l+" "+unit+
+      (unit==="m"?" = "+(w*l).toLocaleString("en-US",{maximumFractionDigits:2})+" m²":"");
   }
   function readFormToState() {
     var r = L.room, p = L.params;
@@ -592,6 +615,8 @@
     return { x: (clientX - rect.left - L.view.ox) / L.view.scale, y: (clientY - rect.top - L.view.oy) / L.view.scale };
   }
   function wire() {
+    ["layW","layL"].forEach(function(id){$(id).addEventListener("input",updateRoomArea);});
+    $("layUnit").addEventListener("change",updateRoomArea);
     $("layGen").onclick = regenerate;
     $("laySave").onclick = doSave;
     $("layLoad").onclick = doLoad;
