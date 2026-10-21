@@ -172,9 +172,11 @@
       var base = partCyl(THREE, H, rad * 0.9, rad * 0.95, 0.08, 0x2e3b4e, 0.4, 0.6, 18); base.position.y = 0.04; g.add(base);
       return { obj: g, seatMesh: seat, floorAnchor: true };
     }
-    var seatH = 1.45, seatT = 0.16, legT = 0.09, fabric = 0x6f94c4, frame = 0x2e3b4e;
+    var seatH = 1.48, seatT = 0.23, legT = 0.075, fabric = 0x52687c, frame = 0x363a3d;
     var seat2 = partBox(THREE, H, w * 0.9, seatT, l * 0.82, fabric, 0.75, 0); seat2.position.set(0, seatH, 0.03 * l); g.add(seat2);
-    var back = partBox(THREE, H, w * 0.9, 1.15, 0.14, fabric, 0.75, 0); back.position.set(0, seatH + 0.6, l * 0.40); g.add(back);
+    var back = partBox(THREE, H, w * 0.88, 0.98, 0.17, fabric, 0.9, 0); back.position.set(0, seatH + 0.63, l * 0.40); back.rotation.x=-0.12; g.add(back);
+    var inset = partBox(THREE,H,w*0.72,0.72,0.028,0x72889a,0.93,0); inset.position.set(0,seatH+0.65,l*0.40-0.10); inset.rotation.x=-0.12;g.add(inset);
+    var trim=partBox(THREE,H,w*0.88,0.055,0.085,0xa18e70,0.5,0.15);trim.position.set(0,seatH+1.13,l*0.40);g.add(trim);
     var lx = w * 0.38, lz = l * 0.36;
     [[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].forEach(function (p) {
       var lg = partBox(THREE, H, legT, seatH, legT, frame, 0.5, 0.2); lg.position.set(p[0], seatH / 2, p[1]); g.add(lg);
@@ -182,7 +184,7 @@
     return { obj: g, seatMesh: seat2, floorAnchor: true };
   }
   function tableMesh(THREE, H, s, g) {
-    var topH = s.h || 2.5, linen = 0xf3efe6, wood = 0xb98a52, woodDark = 0x6f5436;
+    var topH = s.h || 2.5, linen = 0xe6dacc, wood = 0xae8356, woodDark = 0x624c34;
     if (s.kind === "cyl") {
       var d = s.d || 5, r = d / 2;
       if (s.type === "HIGHTOP") {
@@ -191,8 +193,12 @@
         var base = partCyl(THREE, H, r * 0.55, r * 0.62, 0.1, 0x3a3f47, 0.4, 0.6, 20); base.position.y = 0.05; g.add(base);
         return { obj: g, floorAnchor: true };
       }
-      var cloth = partCyl(THREE, H, r * 0.98, r * 1.02, topH, linen, 0.9, 0, 26); cloth.position.y = topH / 2; g.add(cloth);
-      var topr = partCyl(THREE, H, r * 1.02, r * 1.02, 0.08, linen, 0.85, 0, 28); topr.position.y = topH + 0.02; g.add(topr);
+      var basePole=partCyl(THREE,H,0.12,0.12,topH,0x5d6265,0.48,0.3,12);basePole.position.y=topH/2;g.add(basePole);
+      var baseDisc=partCyl(THREE,H,r*0.32,r*0.34,0.09,0x606366,0.5,0.2,28);baseDisc.position.y=0.045;g.add(baseDisc);
+      var drapeH=Math.min(topH*0.52,1.3);
+      var cloth=new THREE.Mesh(new THREE.CylinderGeometry(r*0.985,r*1.02,drapeH,48,1,true),H.mat(linen,0.98,0));cloth.position.y=topH-drapeH/2;cloth.castShadow=true;cloth.receiveShadow=true;g.add(cloth);
+      var topr = partCyl(THREE,H,r,r,0.08,0xf6f0e7,0.88,0,48);topr.position.y=topH+0.02;g.add(topr);
+      var edge=new THREE.Mesh(new THREE.TorusGeometry(r*0.995,0.025,7,48),H.mat(0xc3ad92,0.85,0));edge.rotation.x=Math.PI/2;edge.position.y=topH+0.055;g.add(edge);
       // simple floral centerpiece → realism cue on banquet rounds
       var vase = partCyl(THREE, H, 0.22, 0.28, 0.55, 0xeef2f4, 0.25, 0.1, 12); vase.position.y = topH + 0.3; g.add(vase);
       try {
@@ -204,7 +210,10 @@
     var w = s.w || 6, l = s.l || 2.5;
     var skirted = /^TBL_|DISPLAY_TBL|REG_TABLE|BUFFET|COFFEE|CATERING|CRESCENT|HALFRND/.test(s.type || "");
     if (skirted) {
-      var clothb = partBox(THREE, H, w, topH, l, linen, 0.9, 0); clothb.position.y = topH / 2; g.add(clothb);
+      var skirtH=Math.min(1.1,topH*0.44);
+      [[-w*.43,-l*.39],[w*.43,-l*.39],[-w*.43,l*.39],[w*.43,l*.39]].forEach(function(p){var leg=partBox(THREE,H,0.11,topH,0.11,0x515b64,0.5,0.2);leg.position.set(p[0],topH/2,p[1]);g.add(leg);});
+      [-1,1].forEach(function(sign){var side=partBox(THREE,H,w,skirtH,0.06,linen,0.97,0);side.position.set(0,topH-skirtH/2,sign*l/2);g.add(side);
+        var end=partBox(THREE,H,0.06,skirtH,l,linen,0.97,0);end.position.set(sign*w/2,topH-skirtH/2,0);g.add(end);});
       var topb = partBox(THREE, H, w + 0.06, 0.08, l + 0.06, linen, 0.85, 0); topb.position.y = topH + 0.02; g.add(topb);
       return { obj: g, floorAnchor: true };
     }
@@ -334,13 +343,13 @@
     var rm = specs._room;
 
     var scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x101c2e);
+    scene.background = new THREE.Color(0xdde3e8);
     var farD = Math.max(rm.W, rm.L);
-    scene.fog = new THREE.Fog(0x101c2e, farD * 1.3, farD * 3.4);
+    scene.fog = new THREE.Fog(0xdde3e8, farD * 1.8, farD * 4);
     // Lighting: soft ambient + hemisphere sky/ground + warm key with shadows + cool fill
-    var hemi = new THREE.HemisphereLight(0xfdfbf5, 0x39414f, 0.55); scene.add(hemi);
-    var amb = new THREE.AmbientLight(0xffffff, 0.32); scene.add(amb);
-    var key = new THREE.DirectionalLight(0xfff3df, 0.95);
+    var hemi = new THREE.HemisphereLight(0xfff7ea, 0x808a96, 0.85); scene.add(hemi);
+    var amb = new THREE.AmbientLight(0xffffff, 0.45); scene.add(amb);
+    var key = new THREE.DirectionalLight(0xfff3df, 1.25);
     key.position.set(rm.W * 0.5, rm.ceil * 2.4, rm.L * 0.38);
     key.castShadow = true;
     key.shadow.mapSize.width = key.shadow.mapSize.height = 2048;
@@ -350,7 +359,7 @@
     key.shadow.camera.near = 1; key.shadow.camera.far = rm.ceil * 6;
     key.shadow.bias = -0.0004; key.shadow.radius = 3;
     scene.add(key);
-    var fill = new THREE.DirectionalLight(0xdbe4f2, 0.28); fill.position.set(-rm.W * 0.45, rm.ceil * 1.6, -rm.L * 0.45); scene.add(fill);
+    var fill = new THREE.DirectionalLight(0xdbe4f2, 0.45); fill.position.set(-rm.W * 0.45, rm.ceil * 1.6, -rm.L * 0.45); scene.add(fill);
 
     var W = wrap.clientWidth, H = wrap.clientHeight;
     var cam = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
@@ -359,7 +368,7 @@
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) { try { renderer.outputColorSpace = THREE.SRGBColorSpace; } catch (e) {} }
     // photographic tone mapping → warmer, more realistic gradients (Prismm-like)
-    if (THREE.ACESFilmicToneMapping != null) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; }
+    if (THREE.ACESFilmicToneMapping != null) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.17; }
     renderer.domElement.style.cssText = "position:absolute;inset:0";
     wrap.insertBefore(renderer.domElement, wrap.firstChild);
 
@@ -384,6 +393,12 @@
     // ceiling (visual only — kept out of pure specs so engine/tests are unchanged)
     var ceilMesh = new THREE.Mesh(H3.boxGeo(rm.W, 0.2, rm.L), H3.mat(0xf6f3ec, 0.95, 0));
     ceilMesh.position.set(0, rm.ceil, 0); ceilMesh.receiveShadow = true; scene.add(ceilMesh);
+    // Ceiling light panels match the architectural environment during walk/seat modes.
+    ceilMesh.userData.panels=[];
+    for(var px=-rm.W/2+4;px<rm.W/2;px+=8){for(var pz=-rm.L/2+4;pz<rm.L/2;pz+=8){
+      var panel=new THREE.Mesh(H3.boxGeo(2.8,0.06,1.0),H3.mat(0xfff4df,0.85,0,0xffe4a9));
+      panel.position.set(px,rm.ceil-0.16,pz);scene.add(panel);ceilMesh.userData.panels.push(panel);
+    }}
 
     // build meshes via furniture factory
     var seatMeshes = [];
@@ -567,7 +582,7 @@
       else if (Math.abs(s.z) > 0.1) m.visible = !(Math.sign(s.z) === Math.sign(cz));
       else m.visible = true;
     });
-    if (V.ceilMesh) V.ceilMesh.visible = inside;
+    if (V.ceilMesh) { V.ceilMesh.visible = inside; (V.ceilMesh.userData.panels||[]).forEach(function(p){p.visible=inside;}); }
   }
   function loop() {
     if (!V) return;
