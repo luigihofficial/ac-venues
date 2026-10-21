@@ -12,7 +12,7 @@ function init(ctx){
   hemi.intensity=hd?0.98:original.hemi;
   amb.intensity=hd?0.34:original.amb;
   R.setPixelRatio(hd?Math.min(root.devicePixelRatio||1,2):original.pixel);
-  var n=hd?Math.min(4096,R.capabilities.maxTextureSize||4096):original.shadow;
+  var n=hd?Math.min(2048,R.capabilities.maxTextureSize||2048):original.shadow;
   if(key.shadow.mapSize.x!==n){key.shadow.mapSize.set(n,n);if(key.shadow.map){key.shadow.map.dispose();key.shadow.map=null;}}
   key.shadow.needsUpdate=true;
  }
