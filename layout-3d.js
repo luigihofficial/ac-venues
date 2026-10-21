@@ -360,7 +360,10 @@
       '<button data-m="seat" class="l3d-b">View from seat</button>' +
       '<select id="l3d-seat" class="l3d-b" style="display:none"></select>' +
       '<label id="l3d-eyewrap" style="display:none;font-size:12px;gap:4px;align-items:center">eye <input id="l3d-eye" type="range" min="2.5" max="6.5" step="0.1" style="vertical-align:middle"></label>' +
-      '<span id="l3d-hint" style="font-size:12px;color:#cdd6e2;margin-left:4px"></span>' +
+      '<select id="l3d-photo-quality" class="l3d-b" aria-label="Render quality"><option value="standard">3D Standard</option><option value="photo">Photo HD Preview</option></select>' +
+      '<select id="l3d-photo-camera" class="l3d-b" aria-label="Camera"><option value="">Camera presets</option><option value="top">Top</option><option value="front">Front</option><option value="corner">Corner</option><option value="photo">Photo angle</option></select>' +
+      '<button id="l3d-photo-export" class="l3d-b">Export HD PNG</button>' +
+      '<span id="l3d-hint"' style="font-size:12px;color:#cdd6e2;margin-left:4px"></span>' +
       '<button id="l3d-close" class="l3d-b" style="margin-left:auto;background:#b8860b">Close ✕</button>' +
       '</div>' +
       '<div id="l3d-info" style="position:absolute;left:12px;bottom:12px;max-width:380px;background:rgba(255,255,255,.95);border-radius:10px;padding:10px 12px;font-size:12.5px;color:#22303f;z-index:2;display:none"></div>';
@@ -378,7 +381,11 @@
     if (!webglOk()) { fallback("This device/browser can’t render 3D (no WebGL). The 2D planner remains fully usable."); return; }
     loadThree(function (ok) {
       if (!ok || !root.THREE) { fallback("Couldn’t load the 3D library (offline or blocked). The 2D planner remains fully usable."); return; }
-      start(mode || "orbit", objects, room, params, opts);
+      function finish(){start(mode || "orbit",objects,room,params,opts);}
+      if(root.ACVPhotoHD){finish();return;}
+      var addon=document.createElement("script");addon.src="layout-photo-hd.js";addon.onload=finish;
+      addon.onerror=function(){fallback("The Photo HD module could not load.");};
+      document.head.appendChild(addon);
     });
   }
   function fallback(message) {
@@ -424,7 +431,7 @@
 
     var W = wrap.clientWidth, H = wrap.clientHeight;
     var cam = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
-    var renderer = new THREE.WebGLRenderer({ antialias: true });
+    var renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) { try { renderer.outputColorSpace = THREE.SRGBColorSpace; } catch (e) {} }
@@ -483,6 +490,7 @@
       orbit: { az: 0.6, pol: 0.9, rad: Math.max(rm.W, rm.L) * 1.1, tx: 0, ty: 3, tz: 0 },
       walk: { x: 0, y: EYE_STAND, z: rm.L / 2 - 4, yaw: 0, pitch: -0.05 },
       keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED };
+    V.photo = root.ACVPhotoHD.init({THREE:THREE,renderer:renderer,scene:scene,key:key,fill:fill,hemi:hemi,amb:amb});
 
     buildSeatSelect();
     wireOverlay();
@@ -500,6 +508,17 @@
     var wrap = V.wrap;
     wrap.querySelectorAll("[data-m]").forEach(function (b) { b.onclick = function () { setMode(b.getAttribute("data-m")); }; });
     wrap.querySelector("#l3d-close").onclick = close;
+    var quality=wrap.querySelector("#l3d-photo-quality");
+    quality.onchange=function(){V.photo.qualityMode(quality.value);onResize();};
+    var camera=wrap.querySelector("#l3d-photo-camera");
+    camera.onchange=function(){
+      if(camera.value)V.photo.preset({orbit:V.orbit,rm:V.rm,setMode:setMode},camera.value);
+      camera.value="";
+    };
+    wrap.querySelector("#l3d-photo-export").onclick=function(){
+      try{V.photo.exportPNG({cam:V.cam,updateCamera:updateCamera,updateWalls:updateWalls});}
+      catch(e){fallback("HD export failed: "+(e.message||e));}
+    };
     var sel = wrap.querySelector("#l3d-seat");
     sel.onchange = function () { V.seatIdx = +sel.value; applySeat(); };
     var eye = wrap.querySelector("#l3d-eye");
