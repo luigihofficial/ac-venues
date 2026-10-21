@@ -363,7 +363,7 @@
       '<select id="l3d-photo-quality" class="l3d-b" aria-label="Render quality"><option value="standard">3D Standard</option><option value="photo">Photo HD Preview</option></select>' +
       '<select id="l3d-photo-camera" class="l3d-b" aria-label="Camera"><option value="">Camera presets</option><option value="top">Top</option><option value="front">Front</option><option value="corner">Corner</option><option value="photo">Photo angle</option></select>' +
       '<button id="l3d-photo-export" class="l3d-b">Export HD PNG</button>' +
-      '<span id="l3d-hint"' style="font-size:12px;color:#cdd6e2;margin-left:4px"></span>' +
+      '<span id="l3d-hint" style="font-size:12px;color:#cdd6e2;margin-left:4px"></span>' +
       '<button id="l3d-close" class="l3d-b" style="margin-left:auto;background:#b8860b">Close ✕</button>' +
       '</div>' +
       '<div id="l3d-info" style="position:absolute;left:12px;bottom:12px;max-width:380px;background:rgba(255,255,255,.95);border-radius:10px;padding:10px 12px;font-size:12.5px;color:#22303f;z-index:2;display:none"></div>';
