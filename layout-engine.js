@@ -602,7 +602,9 @@
   function rounds(room, params, name, cabaret) {
     var cfg = defaults(room, params), r = cfg.room, g = r.wallClearance;
     var objs = frontEquipment(cfg);
-    var TT = params && params.round ? FURNITURE[params.round] : FURNITURE.RND_60;
+    var roundKey=(params && params.furniture && /^RND_(60|72)$/.test(params.furniture.tableType||""))
+      ? params.furniture.tableType : (params && params.round ? params.round : "RND_60");
+    var TT = FURNITURE[roundKey] || FURNITURE.RND_60;
     var d = TT.d, seatsFull = TT.seats || 8;
     var chairClear = cfg.chairClear;
     var cell = d + 2 * chairClear + cfg.tableGap;       // table + seated ring + gap
@@ -614,7 +616,7 @@
       for (var ci = 0; ci < cols; ci++) {
         var cx = g + (ci + 0.5) * (usableW / cols);
         var cy = g + cfg.front + (ri + 0.5) * (usableL / rowsN);
-        objs.push(makeObj(params && params.round ? params.round : "RND_60", cx, cy, 0));
+        objs.push(makeObj(roundKey, cx, cy, 0));
         var nSeat = cabaret ? Math.round(seatsFull * 0.66) : seatsFull;
         var startA = cabaret ? Math.PI * 0.2 : 0;       // leave the front arc open for cabaret
         var sweep = cabaret ? Math.PI * 1.6 : Math.PI * 2;
