@@ -376,6 +376,7 @@
   function seatView3D() {
     var o = cur(); if (!o || o.category !== "chair") return;
     readFormToState();
+    updateChairFacing();
     var idx = 0, i = 0;
     for (var k = 0; k < L.objects.length; k++) { if (L.objects[k].category === "chair") { if (L.objects[k].id === o.id) { idx = i; break; } i++; } }
     var go = function () { if (root.Layout3D) root.Layout3D.open("seat", L.objects, L.room, L.params, { seatIndex: idx }); };
@@ -386,7 +387,9 @@
     if (o.kind === "circle") { var d = num("inspW", o.d); if (d > 0) o.d = d; }
     else { var w = num("inspW", o.w), l = num("inspL", o.l); if (w > 0) o.w = w; if (l > 0) o.l = l; }
     var h = num("inspH", o.h); if (h > 0) o.h = h;
-    o.r = num("inspR", o.r) % 360;
+    var nextR = num("inspR", o.r) % 360;
+    if (o.category === "chair" && nextR !== o.r) { o.manualFacing = true; o.visualRotation = nextR; }
+    o.r = nextR;
     var isrc = $("inspSrc"); if (isrc) o.src = isrc.value;
     render(); recalc();
   }
@@ -412,7 +415,42 @@
     var s = Math.min((cw - 2 * pad) / r.width, (ch - 2 * pad) / r.length);
     L.view.scale = s; L.view.ox = (cw - r.width * s) / 2; L.view.oy = (ch - r.length * s) / 2;
   }
+  // Visual facing only: the occupancy footprints remain in their original
+  // engineering orientation, so changing chair facing cannot alter fit scores.
+  // Chair front is local -Y in the 2D glyph and local -Z in the 3D model.
+  function updateChairFacing() {
+    var layout=L.params.layout;
+    var presentationOnly={THEATER:1,CHEVRON:1,SEMICIRCLE:1};
+    var tables=L.objects.filter(function(o){return o.category==="table";});
+    L.objects.forEach(function(chair){
+      if(chair.category!=="chair" || chair.manualFacing) return;
+      if(presentationOnly[layout] || !tables.length){chair.visualRotation=null;return;}
+      var best=null,score=Infinity;
+      tables.forEach(function(t){
+        // Distance to the *nearest edge*, not just the center, avoids
+        // assigning a seat next to a long meeting table to another table.
+        var dx=chair.x-t.x,dy=chair.y-t.y,ang=(t.r||0)*Math.PI/180;
+        var lx=dx*Math.cos(ang)+dy*Math.sin(ang);
+        var ly=-dx*Math.sin(ang)+dy*Math.cos(ang);
+        var hw=t.kind==="circle"?(t.d||0)/2:(t.w||0)/2;
+        var hl=t.kind==="circle"?(t.d||0)/2:(t.l||0)/2;
+        var dist=t.kind==="circle"?Math.max(0,Math.hypot(dx,dy)-hw):
+          Math.hypot(Math.max(Math.abs(lx)-hw,0),Math.max(Math.abs(ly)-hl,0));
+        if(chair.tableId!=null && String(chair.tableId)===String(t.id))dist-=100000;
+        if(dist<score){score=dist;best=t;}
+      });
+      if(!best){chair.visualRotation=null;return;}
+      var vx=best.x-chair.x,vy=best.y-chair.y;
+      if(Math.hypot(vx,vy)<0.00001)return;
+      chair.visualRotation=Math.atan2(vx,-vy)*180/Math.PI;
+    });
+  }
+  function chairRotation(o) {
+    return o.visualRotation == null ? (o.r||0) : o.visualRotation;
+  }
+
   function render() {
+    updateChairFacing();
     var r = E.normalizeRoom(L.room), vw = L.view;
     var mode = L.viewMode || "furnished";
     var parts = ['<g transform="translate(' + vw.ox + "," + vw.oy + ") scale(" + vw.scale + ')">'];
@@ -467,7 +505,8 @@
   // visible frame and inset seam, all inside the real object footprint.
   function chairSym(o) {
     var w=o.w||1.6,l=o.l||1.6,id=o.id;
-    var rot=o.r?' transform="rotate('+o.r+' '+o.x+' '+o.y+')"':"";
+    var facing=chairRotation(o);
+    var rot=facing?' transform="rotate('+facing+' '+o.x+' '+o.y+')"':"";
     var x=o.x-w/2,y=o.y-l/2;
     var shell='<rect data-id="'+id+'" class="'+stateCls(o,"lay-back")+'" x="'+(x+w*.04)+'" y="'+(y+l*.06)+'" width="'+(w*.92)+'" height="'+(l*.90)+'" rx="'+(w*.24)+'"></rect>';
     var seat='<rect data-id="'+id+'" class="'+stateCls(o,"lay-chair")+'" x="'+(x+w*.13)+'" y="'+(y+l*.10)+'" width="'+(w*.74)+'" height="'+(l*.65)+'" rx="'+(w*.19)+'"></rect>';
@@ -481,7 +520,7 @@
     if (o.kind === "circle") {
       var rr = (o.d || 4) / 2;
       return '<g><circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + rr + '"></circle>' +
-             '<circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl-rim") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + (rr * 0.8) + '"></circle>' + num + "</g>";
+             num + "</g>";
     }
     var rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
     return '<g' + (rot ? "" : "") + '>' + "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" x="' + (o.x - o.w / 2) + '" y="' + (o.y - o.l / 2) + '" width="' + o.w + '" height="' + o.l + '" rx="0.25"></rect></g>' + num + "</g>";
@@ -615,7 +654,7 @@
     L.view.scale *= factor;
     L.view.ox = px - before.x * L.view.scale; L.view.oy = py - before.y * L.view.scale;
   }
-  function rotateSel(d) { var o = cur(); if (!o) return false; pushHist(); o.r = ((o.r || 0) + d) % 360; return true; }
+  function rotateSel(d) { var o = cur(); if (!o) return false; pushHist(); o.r = ((o.category === "chair" ? chairRotation(o) : (o.r || 0)) + d) % 360; if (o.category === "chair") { o.manualFacing = true; o.visualRotation = o.r; } return true; }
   function dupSel() { var o = cur(); if (!o) return false; pushHist(); var c = cloneObj(o); c.id = "o_" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); c.x = snap(o.x + 2); c.y = snap(o.y + 2); L.objects.push(c); L.sel = c.id; return true; }
   function delSel() { var o = cur(); if (!o) return false; pushHist(); L.objects = L.objects.filter(function (x) { return x.id !== L.sel; }); L.sel = null; return true; }
   function cur() { return L.sel ? L.objects.find(function (x) { return x.id === L.sel; }) : null; }
@@ -660,6 +699,7 @@
   }
   function open3D(mode) {
     readFormToState();
+    updateChairFacing();
     if (root.Layout3D && typeof root.Layout3D.open === "function") {
       root.Layout3D.open(mode, L.objects, L.room, L.params, { onSeat: function (info) {} });
     } else {
