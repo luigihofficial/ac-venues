@@ -22,7 +22,7 @@
     params: { layout: "DOUBLE_U", target: 40, stage: false, screen: true, av: true, aisle: 3.5, rowGap: 2.2, chairGap: 0.2, tableGap: 1.0, chairClear: 2.0 },
     published: null,
     objects: [],
-    sel: null,
+    sel: null, selected: [],
     view: { scale: 10, ox: 20, oy: 20 },
     hist: [], redo: [],
     drag: null,
@@ -49,6 +49,7 @@
       ".lay-tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}",
       ".lay-tools button{background:#fff;border:1px solid var(--line,#e6ddca);border-radius:8px;padding:6px 10px;font-size:12.5px;cursor:pointer;color:#22303f;font-weight:600}",
       ".lay-tools button:hover{background:#f3eee2}",
+      ".lay-marquee{fill:rgba(27,97,159,.10);stroke:#287fc2;stroke-dasharray:5 3;stroke-width:1.3;vector-effect:non-scaling-stroke;pointer-events:none}",
       "#layCanvas{width:100%;height:560px;background:#fcfaf4;border:1px solid var(--line,#e6ddca);border-radius:12px;touch-action:none;display:block}",
       ".lay-room{fill:#ffffff;stroke:#8a7a4a;stroke-width:2;vector-effect:non-scaling-stroke}",
       ".lay-grid{stroke:#eee3c9;stroke-width:1;vector-effect:non-scaling-stroke}",
@@ -226,6 +227,7 @@
         '<div class="lay-stage">' +
           '<div class="lay-tools">' +
             '<button data-z="in">+ Zoom</button><button data-z="out">− Zoom</button><button data-z="fit">Fit</button>' +
+            '<button id="layClearSelection">Clear selection</button><span id="laySelectionCount" style="font-size:12px;color:#475b73">0 selected</span>' +
             '<button id="layRot">Rotate 15°</button><button id="layDup">Duplicate</button><button id="layLock">Lock</button><button id="layDel">Delete</button>' +
             '<button id="layUndo">Undo</button><button id="layRedo">Redo</button>' +
             '<button id="layEnv">Envelopes: off</button>' +
@@ -366,7 +368,7 @@
     var res = E.generate(L.params.layout, L.room, Object.assign({}, L.params));
     pushHist();
     L.objects = res.objects.map(cloneObj);
-    L.sel = null;
+    L.sel = null; L.selected=[];
     fitView();
     render(); recalc();
     msg("Generated " + (E.LAYOUT_META[L.params.layout] || {}).name + " — drag, rotate or delete pieces and the capacity updates live.");
@@ -400,11 +402,12 @@
     warn(v.feasible ? "" : (v.violations.length + " conflict(s): " + v.violations.slice(0, 4).map(function (x) { return x.msg; }).join("; ") + (v.violations.length > 4 ? "…" : "")));
     var cl = v.clearance || [];
     var cond = $("layCond"); if (cond) cond.textContent = cl.length ? ("⚠ " + cl.length + " operational-clearance warning(s): " + cl.slice(0, 3).map(function (x) { return x.msg; }).join("; ") + (cl.length > 3 ? "…" : "")) : "";
-    if (L.sel) showInspector();
+    if (L.sel && L.selected.length<=1) showInspector();
   }
   /* ---------- inspector ---------- */
   function showInspector() {
     var o = cur(); var box = $("layInsp"); if (!box) return;
+    if(L.selected.length>1){box.style.display="none";return;}
     if (!o) { box.style.display = "none"; return; }
     box.style.display = "";
     $("layInspName").textContent = (o.label || o.type) + (o.sub ? (" · " + o.sub) : "");
@@ -547,14 +550,19 @@
       var n = (o.category === "table") ? (++tnum) : 0;   // number tables like a pro floor plan
       parts.push(furnSymbol(o, n));
     });
+    if(L.drag && L.drag.box){
+      var q=L.drag.box,xx=Math.min(q.x0,q.x1),yy=Math.min(q.y0,q.y1);
+      parts.push('<rect class="lay-marquee" x="'+xx+'" y="'+yy+'" width="'+Math.abs(q.x1-q.x0)+'" height="'+Math.abs(q.y1-q.y0)+'"></rect>');
+    }
     parts.push("</g>");
     // dimension labels (screen space)
     parts.push('<text class="lay-dim" x="' + (vw.ox + r.width * vw.scale / 2 - 20) + '" y="' + (vw.oy - 6) + '">' + fmtDim(r.width) + "</text>");
     parts.push('<text class="lay-dim" x="' + (vw.ox - 18) + '" y="' + (vw.oy + r.length * vw.scale / 2) + '" transform="rotate(-90 ' + (vw.ox - 18) + " " + (vw.oy + r.length * vw.scale / 2) + ')">' + fmtDim(r.length) + "</text>");
     if (mode === "dimensioned") parts.push(dimLines(r, vw));
     L.svg.innerHTML = parts.join("");
+    var count=$("laySelectionCount");if(count)count.textContent=L.selected.length+" selected";
   }
-  function stateCls(o, base) { var c = base; if (L.sel === o.id) c += " lay-sel"; if (o.locked) c += " lay-locked"; return c; }
+  function stateCls(o, base) { var c = base; if (L.selected.indexOf(o.id)!==-1) c += " lay-sel"; if (o.locked) c += " lay-locked"; return c; }
   // Technical mode: clean primitives (fast, blueprint-style) — the original look.
   function techSymbol(o) {
     var cls = stateCls(o, o.category === "chair" ? "lay-chair" : o.category === "equipment" ? "lay-equip" : "lay-tbl");
@@ -661,6 +669,7 @@
     $("layLoad").onclick = doLoad;
     $("layJson").onclick = exportJson;
     $("layPng").onclick = exportPng;
+    $("layClearSelection").onclick=function(){L.selected=[];L.sel=null;hideInspector();render();};
     $("layRot").onclick = function () { if (rotateSel(15)) { render(); recalc(); } };
     $("layDup").onclick = function () { if (dupSel()) { render(); recalc(); } };
     $("layDel").onclick = function () { if (delSel()) { render(); recalc(); } };
@@ -705,36 +714,67 @@
       else if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) { e.preventDefault(); redo(); }
     });
   }
+  function selectIds(ids, additive){
+    var next=additive?L.selected.slice():[];
+    ids.forEach(function(id){var i=next.indexOf(id);if(i<0)next.push(id);else if(additive)next.splice(i,1);});
+    L.selected=next;
+    L.sel=next.length===1?next[0]:null;
+    if(L.sel)showInspector();else hideInspector();
+  }
+  // Shift+click toggles objects; Shift+drag on blank canvas draws a marquee.
+  // Drag a member of a multi-selection to move the group with relative offsets.
   function onDown(e) {
-    var id = e.target.getAttribute && e.target.getAttribute("data-id");
-    var pt = screenToFeet(e.clientX, e.clientY);
-    if (id) {
-      L.sel = id; var o = L.objects.find(function (x) { return x.id === id; });
-      showInspector();
-      if (o && o.locked) { L.drag = null; render(); return; }   // locked: select only, no drag
-      pushHist();
-      L.drag = { id: id, dx: pt.x - o.x, dy: pt.y - o.y, moved: false };
+    if(e.button!=null&&e.button!==0)return;
+    var id=e.target.getAttribute&&e.target.getAttribute("data-id");
+    var pt=screenToFeet(e.clientX,e.clientY);
+    if(id){
+      var obj=L.objects.find(function(o){return o.id===id;});
+      if(!obj)return;
+      if(e.shiftKey||e.metaKey||e.ctrlKey){
+        selectIds([id],true);L.drag=null;render();return;
+      }
+      if(L.selected.indexOf(id)<0)selectIds([id],false);
+      var items=L.objects.filter(function(o){return L.selected.indexOf(o.id)!==-1&&!o.locked;});
+      if(obj.locked||!items.length){L.drag=null;render();return;}
+      L.drag={group:true,origin:pt,items:items.map(function(o){return{id:o.id,x:o.x,y:o.y};}),moved:false,history:false};
       render();
-    } else {
-      L.sel = null; hideInspector();
-      L.drag = { pan: true, sx: e.clientX, sy: e.clientY, ox: L.view.ox, oy: L.view.oy };
+    }else if(e.shiftKey){
+      L.drag={box:{x0:pt.x,y0:pt.y,x1:pt.x,y1:pt.y},additive:e.ctrlKey||e.metaKey};
+      render();
+    }else{
+      L.selected=[];L.sel=null;hideInspector();
+      L.drag={pan:true,sx:e.clientX,sy:e.clientY,ox:L.view.ox,oy:L.view.oy};
       render();
     }
   }
   function onMove(e) {
-    if (!L.drag) return;
-    if (L.drag.pan) { L.view.ox = L.drag.ox + (e.clientX - L.drag.sx); L.view.oy = L.drag.oy + (e.clientY - L.drag.sy); render(); return; }
-    var pt = screenToFeet(e.clientX, e.clientY);
-    var o = L.objects.find(function (x) { return x.id === L.drag.id; });
-    if (!o) return;
-    o.x = snap(pt.x - L.drag.dx); o.y = snap(pt.y - L.drag.dy);
-    L.drag.moved = true;
-    render();
+    if(!L.drag)return;
+    if(L.drag.pan){L.view.ox=L.drag.ox+(e.clientX-L.drag.sx);L.view.oy=L.drag.oy+(e.clientY-L.drag.sy);render();return;}
+    var pt=screenToFeet(e.clientX,e.clientY);
+    if(L.drag.box){L.drag.box.x1=pt.x;L.drag.box.y1=pt.y;render();return;}
+    if(!L.drag.group)return;
+    var d=L.drag,dx=snap(pt.x-d.origin.x),dy=snap(pt.y-d.origin.y);
+    if(!dx&&!dy&&!d.moved)return;
+    if(!d.history){pushHist();d.history=true;}
+    d.items.forEach(function(item){
+      var o=L.objects.find(function(x){return x.id===item.id;});
+      if(o){o.x=item.x+dx;o.y=item.y+dy;}
+    });
+    d.moved=true;render();
   }
   function onUp() {
-    if (L.drag && L.drag.moved) recalc();
-    if (L.drag && !L.drag.moved && !L.drag.pan) { /* click select only */ }
-    L.drag = null;
+    if(!L.drag)return;
+    if(L.drag.box){
+      var q=L.drag.box,minX=Math.min(q.x0,q.x1),maxX=Math.max(q.x0,q.x1);
+      var minY=Math.min(q.y0,q.y1),maxY=Math.max(q.y0,q.y1);
+      var ids=L.objects.filter(function(o){
+        var w=o.kind==="circle"?o.d:o.w,l=o.kind==="circle"?o.d:o.l;
+        return o.x-w/2>=minX&&o.x+w/2<=maxX&&o.y-l/2>=minY&&o.y+l/2<=maxY;
+      }).map(function(o){return o.id;});
+      selectIds(ids,L.drag.additive);
+      msg(ids.length+" objects selected. Drag any unlocked selected object to move the group.");
+    }else if(L.drag.group && L.drag.moved)recalc();
+    L.drag=null;render();
   }
   function snap(v) { var grid = 0.5; return Math.round(v / grid) * grid; }
   function zoomAt(factor, px, py) {
@@ -743,17 +783,17 @@
     L.view.ox = px - before.x * L.view.scale; L.view.oy = py - before.y * L.view.scale;
   }
   function rotateSel(d) { var o = cur(); if (!o) return false; pushHist(); o.r = ((o.category === "chair" ? chairRotation(o) : (o.r || 0)) + d) % 360; if (o.category === "chair") { o.manualFacing = true; o.visualRotation = o.r; } return true; }
-  function dupSel() { var o = cur(); if (!o) return false; pushHist(); var c = cloneObj(o); c.id = "o_" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); c.x = snap(o.x + 2); c.y = snap(o.y + 2); L.objects.push(c); L.sel = c.id; return true; }
-  function delSel() { var o = cur(); if (!o) return false; pushHist(); L.objects = L.objects.filter(function (x) { return x.id !== L.sel; }); L.sel = null; return true; }
+  function dupSel() { var o = cur(); if (!o) return false; pushHist(); var c = cloneObj(o); c.id = "o_" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); c.x = snap(o.x + 2); c.y = snap(o.y + 2); L.objects.push(c); L.sel = c.id;L.selected=[c.id]; return true; }
+  function delSel() { var o = cur(); if (!o) return false; pushHist(); L.objects = L.objects.filter(function (x) { return x.id !== L.sel; }); L.sel = null;L.selected=[]; return true; }
   function cur() { return L.sel ? L.objects.find(function (x) { return x.id === L.sel; }) : null; }
-  function undo() { if (!L.hist.length) return; L.redo.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.hist.pop()); L.sel = null; render(); recalc(); }
-  function redo() { if (!L.redo.length) return; L.hist.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.redo.pop()); L.sel = null; render(); recalc(); }
+  function undo() { if (!L.hist.length) return; L.redo.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.hist.pop()); L.sel = null;L.selected=[]; render(); recalc(); }
+  function redo() { if (!L.redo.length) return; L.hist.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.redo.pop()); L.sel = null;L.selected=[]; render(); recalc(); }
 
   /* ---------- catalog add + smart actions ---------- */
   function addFromCatalog(key) {
     var r = E.normalizeRoom(L.room);
     var o = E.makeObj(key, E.round2(r.width / 2), E.round2(r.length / 2), 0);
-    pushHist(); L.objects.push(o); L.sel = o.id; render(); recalc(); showInspector();
+    pushHist(); L.objects.push(o); L.sel = o.id;L.selected=[o.id]; render(); recalc(); showInspector();
     msg("Added " + (o.label || key) + ". Drag to position; edit size/height/source in the inspector.");
   }
   function actOut(html) { var e = $("layActOut"); if (e) e.innerHTML = html; }
