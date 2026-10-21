@@ -140,9 +140,9 @@
     RND_72: { category: "table", sub: "72\" round", kind: "circle", d: 6.0, h: 2.5, clear: 0, seats: 10, label: "72\" round" },
     HIGHTOP: { category: "table", sub: "Cocktail high-top", kind: "circle", d: 2.5, h: 3.5, clear: 0, label: "High-top" },
     // Chairs (footprint = seated occupant zone)
-    CHAIR: { category: "chair", sub: "Banquet chair", kind: "rect", w: 1.6, l: 1.6, h: 1.5, clear: 0, label: "Chair" },
-    CHAIR_FOLD: { category: "chair", sub: "Folding chair", kind: "rect", w: 1.5, l: 1.5, h: 1.5, clear: 0, label: "Folding chair" },
-    CHAIR_EXEC: { category: "chair", sub: "Executive chair", kind: "rect", w: 2.0, l: 2.0, h: 1.6, clear: 0, label: "Executive chair" },
+    CHAIR: { category: "chair", sub: "Banquet chair", kind: "rect", w: 1.6, l: 1.6, h: 3, clear: 0, label: "Chair" },
+    CHAIR_FOLD: { category: "chair", sub: "Folding chair", kind: "rect", w: 1.5, l: 1.5, h: 3, clear: 0, label: "Folding chair" },
+    CHAIR_EXEC: { category: "chair", sub: "Executive chair", kind: "rect", w: 2.0, l: 2.0, h: 3.35, clear: 0, label: "Executive chair" },
     BARSTOOL: { category: "chair", sub: "Bar stool", kind: "circle", d: 1.4, h: 2.5, clear: 0, label: "Bar stool" },
     LOUNGE: { category: "chair", sub: "Lounge chair", kind: "rect", w: 2.6, l: 2.6, h: 2.4, clear: 0, label: "Lounge chair" },
     WHEELCHAIR: { category: "chair", sub: "Accessible space (ADA)", kind: "rect", w: 3.0, l: 4.0, h: 3.2, clear: 0, label: "Accessible seat" },
