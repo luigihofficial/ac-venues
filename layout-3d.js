@@ -163,25 +163,61 @@
     var m = new THREE.Mesh(H.cylGeo(rt, rb, h, seg), H.mat(color, rough, metal));
     m.castShadow = true; m.receiveShadow = true; return m;
   }
+  // Premium upholstered event chair. All geometry stays inside the engine footprint.
   function chairMesh(THREE, H, s, g) {
     var w = s.w || 1.6, l = s.l || 1.6;
     if (s.type === "BARSTOOL") {
       var sh = s.h || 2.5, rad = (s.d || 1.4) / 2 * 0.82;
-      var seat = partCyl(THREE, H, rad, rad, 0.18, 0x5b7bb0, 0.6, 0.1, 18); seat.position.y = sh; g.add(seat);
-      var pole = partCyl(THREE, H, 0.09, 0.09, sh, 0x2e3b4e, 0.4, 0.6, 10); pole.position.y = sh / 2; g.add(pole);
-      var base = partCyl(THREE, H, rad * 0.9, rad * 0.95, 0.08, 0x2e3b4e, 0.4, 0.6, 18); base.position.y = 0.04; g.add(base);
-      return { obj: g, seatMesh: seat, floorAnchor: true };
+      var seat = partCyl(THREE,H,rad,rad,0.2,0x475d76,0.85,0,32);
+      seat.position.y=sh;g.add(seat);
+      var pole=partCyl(THREE,H,0.065,0.065,sh,0xb2a188,0.25,0.72,16);
+      pole.position.y=sh/2;g.add(pole);
+      var base=partCyl(THREE,H,rad*0.72,rad*0.78,0.07,0x414b58,0.3,0.4,32);
+      base.position.y=0.04;g.add(base);
+      var ring=new THREE.Mesh(new THREE.TorusGeometry(rad*0.64,0.035,8,32),H.mat(0xb2a188,0.35,0.6));
+      ring.rotation.x=Math.PI/2;ring.position.y=sh*0.36;g.add(ring);
+      return {obj:g,seatMesh:seat,floorAnchor:true};
     }
-    var seatH = 1.48, seatT = 0.23, legT = 0.075, fabric = 0x52687c, frame = 0x363a3d;
-    var seat2 = partBox(THREE, H, w * 0.9, seatT, l * 0.82, fabric, 0.75, 0); seat2.position.set(0, seatH, 0.03 * l); g.add(seat2);
-    var back = partBox(THREE, H, w * 0.88, 0.98, 0.17, fabric, 0.9, 0); back.position.set(0, seatH + 0.63, l * 0.40); back.rotation.x=-0.12; g.add(back);
-    var inset = partBox(THREE,H,w*0.72,0.72,0.028,0x72889a,0.93,0); inset.position.set(0,seatH+0.65,l*0.40-0.10); inset.rotation.x=-0.12;g.add(inset);
-    var trim=partBox(THREE,H,w*0.88,0.055,0.085,0xa18e70,0.5,0.15);trim.position.set(0,seatH+1.13,l*0.40);g.add(trim);
-    var lx = w * 0.38, lz = l * 0.36;
-    [[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].forEach(function (p) {
-      var lg = partBox(THREE, H, legT, seatH, legT, frame, 0.5, 0.2); lg.position.set(p[0], seatH / 2, p[1]); g.add(lg);
+    var seatH=Math.min(1.5,(s.h||3)*0.52), upholstery=0x647a8c, piping=0xc4b49a, frame=0x454a50;
+    // Rounded cushions with physically separated piping and stitching.
+    var cushion=new THREE.Mesh(new THREE.BoxGeometry(w*0.87,0.22,l*0.76),H.mat(upholstery,0.94,0));
+    cushion.position.set(0,seatH, -l*0.055);
+    cushion.castShadow=true;cushion.receiveShadow=true;g.add(cushion);
+    var cushionEdge=partBox(THREE,H,w*0.88,0.035,l*0.78,piping,0.8,0);
+    cushionEdge.position.set(0,seatH-0.11,-l*0.055);g.add(cushionEdge);
+    // Rounded oval chair back, vertically framed; unlike the original rectangular slab.
+    var backW=w*0.87,backH=Math.min(1.02,(s.h||3)-seatH-0.15);
+    var backShape=new THREE.Shape();
+    var bw=backW/2,bh=backH/2,round=Math.min(0.26,bw*0.6,bh*0.6);
+    backShape.moveTo(-bw+round,-bh);
+    backShape.lineTo(bw-round,-bh);
+    backShape.quadraticCurveTo(bw,-bh,bw,-bh+round);
+    backShape.lineTo(bw,bh-round);
+    backShape.quadraticCurveTo(bw,bh,bw-round,bh);
+    backShape.lineTo(-bw+round,bh);
+    backShape.quadraticCurveTo(-bw,bh,-bw,bh-round);
+    backShape.lineTo(-bw,-bh+round);
+    backShape.quadraticCurveTo(-bw,-bh,-bw+round,-bh);
+    var backGeo=new THREE.ExtrudeGeometry(backShape,{depth:0.13,bevelEnabled:true,bevelThickness:0.045,bevelSize:0.045,bevelSegments:2,steps:1,curveSegments:8});
+    var back=new THREE.Mesh(backGeo,H.mat(upholstery,0.92,0));
+    back.position.set(0,seatH+backH*0.51,l*0.34);
+    back.rotation.x=-0.08;back.castShadow=true;g.add(back);
+    var edging=new THREE.Mesh(new THREE.TorusGeometry(Math.min(backW,backH)*0.4,0.018,6,32),H.mat(piping,0.6,0.15));
+    edging.scale.set(backW/Math.min(backW,backH),backH/Math.min(backW,backH),1);
+    edging.position.set(0,seatH+backH*0.51,l*0.34+0.18);
+    g.add(edging);
+    var lx=w*0.35,lz=l*0.34,legH=seatH;
+    [[-lx,-lz],[lx,-lz],[-lx,lz],[lx,lz]].forEach(function(p){
+      var leg=partCyl(THREE,H,0.047,0.057,legH,frame,0.3,0.56,10);
+      leg.position.set(p[0],legH/2,p[1]);g.add(leg);
+      var foot=partCyl(THREE,H,0.066,0.07,0.065,0x1e242b,0.75,0,10);
+      foot.position.set(p[0],0.035,p[1]);g.add(foot);
     });
-    return { obj: g, seatMesh: seat2, floorAnchor: true };
+    [-lx,lx].forEach(function(x){
+      var support=partBox(THREE,H,0.075,backH*0.82,0.075,frame,0.38,0.5);
+      support.position.set(x,seatH+backH*0.39,l*0.36);support.rotation.x=-0.08;g.add(support);
+    });
+    return {obj:g,seatMesh:cushion,floorAnchor:true};
   }
   function tableMesh(THREE, H, s, g) {
     var topH = s.h || 2.5, linen = 0xe6dacc, wood = 0xae8356, woodDark = 0x624c34;
@@ -196,7 +232,23 @@
       var basePole=partCyl(THREE,H,0.12,0.12,topH,0x5d6265,0.48,0.3,12);basePole.position.y=topH/2;g.add(basePole);
       var baseDisc=partCyl(THREE,H,r*0.32,r*0.34,0.09,0x606366,0.5,0.2,28);baseDisc.position.y=0.045;g.add(baseDisc);
       var drapeH=Math.min(topH*0.52,1.3);
-      var cloth=new THREE.Mesh(new THREE.CylinderGeometry(r*0.985,r*1.02,drapeH,48,1,true),H.mat(linen,0.98,0));cloth.position.y=topH-drapeH/2;cloth.castShadow=true;cloth.receiveShadow=true;g.add(cloth);
+      // Drapery silhouette uses alternating radial folds rather than a smooth cylinder.
+      var foldCount=64,verts=[],indices=[];
+      for(var yi=0;yi<=5;yi++){var yy=yi/5;
+        for(var fi=0;fi<=foldCount;fi++){var a=fi/foldCount*Math.PI*2;
+          var fold=1+0.017*Math.sin(a*16)*(0.2+yy*0.8);
+          var rad=r*(0.987+yy*0.025)*fold;
+          verts.push(Math.cos(a)*rad,topH-yy*drapeH,Math.sin(a)*rad);
+        }
+      }
+      for(var fy=0;fy<5;fy++)for(var fx=0;fx<foldCount;fx++){
+        var ix=fy*(foldCount+1)+fx;indices.push(ix,ix+foldCount+1,ix+1,ix+1,ix+foldCount+1,ix+foldCount+2);
+      }
+      var clothGeo=new THREE.BufferGeometry();
+      clothGeo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
+      clothGeo.setIndex(indices);clothGeo.computeVertexNormals();
+      var cloth=new THREE.Mesh(clothGeo,new THREE.MeshStandardMaterial({color:linen,roughness:1,side:THREE.DoubleSide}));
+      cloth.castShadow=true;cloth.receiveShadow=true;g.add(cloth);
       var topr = partCyl(THREE,H,r,r,0.08,0xf6f0e7,0.88,0,48);topr.position.y=topH+0.02;g.add(topr);
       var edge=new THREE.Mesh(new THREE.TorusGeometry(r*0.995,0.025,7,48),H.mat(0xc3ad92,0.85,0));edge.rotation.x=Math.PI/2;edge.position.y=topH+0.055;g.add(edge);
       // simple floral centerpiece → realism cue on banquet rounds
@@ -212,8 +264,17 @@
     if (skirted) {
       var skirtH=Math.min(1.1,topH*0.44);
       [[-w*.43,-l*.39],[w*.43,-l*.39],[-w*.43,l*.39],[w*.43,l*.39]].forEach(function(p){var leg=partBox(THREE,H,0.11,topH,0.11,0x515b64,0.5,0.2);leg.position.set(p[0],topH/2,p[1]);g.add(leg);});
-      [-1,1].forEach(function(sign){var side=partBox(THREE,H,w,skirtH,0.06,linen,0.97,0);side.position.set(0,topH-skirtH/2,sign*l/2);g.add(side);
-        var end=partBox(THREE,H,0.06,skirtH,l,linen,0.97,0);end.position.set(sign*w/2,topH-skirtH/2,0);g.add(end);});
+      // Individually pleated drape panels make meeting tables read as fabric.
+      [-1,1].forEach(function(sign){
+        var side=partBox(THREE,H,w,skirtH,0.055,linen,0.98,0);
+        side.position.set(0,topH-skirtH/2,sign*l/2);g.add(side);
+        var end=partBox(THREE,H,0.055,skirtH,l,linen,0.98,0);
+        end.position.set(sign*w/2,topH-skirtH/2,0);g.add(end);
+        for(var j=1;j<Math.ceil(w/0.6);j++){
+          var pleat=partBox(THREE,H,0.025,skirtH*0.97,0.047,0xc6b7a7,1,0);
+          pleat.position.set(-w/2+j*w/Math.ceil(w/0.6),topH-skirtH/2,sign*(l/2+0.038));g.add(pleat);
+        }
+      });
       var topb = partBox(THREE, H, w + 0.06, 0.08, l + 0.06, linen, 0.85, 0); topb.position.y = topH + 0.02; g.add(topb);
       return { obj: g, floorAnchor: true };
     }
