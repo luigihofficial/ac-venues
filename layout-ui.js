@@ -579,6 +579,20 @@
     var seat='<rect data-id="'+id+'" class="'+stateCls(o,"lay-chair")+'" x="'+(x+w*.13)+'" y="'+(y+l*.10)+'" width="'+(w*.74)+'" height="'+(l*.65)+'" rx="'+(w*.19)+'"></rect>';
     var seam='<rect pointer-events="none" x="'+(x+w*.19)+'" y="'+(y+l*.17)+'" width="'+(w*.62)+'" height="'+(l*.51)+'" rx="'+(w*.13)+'" fill="none" stroke="#e7ecf1" stroke-width="0.025" opacity=".88"></rect>';
     var back='<path data-id="'+id+'" d="M '+(x+w*.14)+' '+(y+l*.82)+' Q '+o.x+' '+(y+l*1.03)+' '+(x+w*.86)+' '+(y+l*.82)+'" fill="none" stroke="#35475b" stroke-width="'+Math.max(.045,l*.065)+'" stroke-linecap="round"></path>';
+    if(o.type==="CHAIR_FOLD"){
+      var xx=o.x-w*.33,yy=o.y-l*.30;
+      return '<g'+rot+'><rect data-id="'+id+'" class="'+stateCls(o,"lay-chair")+
+        '" x="'+xx+'" y="'+yy+'" width="'+(w*.66)+'" height="'+(l*.62)+
+        '" rx="0.07" fill="#84949e" stroke="#445666" stroke-width=".04"></rect>'+
+        '<path data-id="'+id+'" d="M '+xx+' '+(o.y+l*.38)+' H '+(xx+w*.66)+
+        '" fill="none" stroke="#445666" stroke-width=".10"/></g>';
+    }
+    if(o.type==="CHAIR_EXEC"){
+      return '<g'+rot+'>'+shell+seat+seam+back+
+        '<path pointer-events="none" d="M '+(x-w*.04)+' '+(y+l*.28)+' v '+(l*.44)+
+        ' M '+(x+w*1.04)+' '+(y+l*.28)+' v '+(l*.44)+
+        '" stroke="#273b4c" stroke-width=".10" stroke-linecap="round"/></g>';
+    }
     return '<g'+rot+'>'+shell+seat+seam+back+'</g>';
   }
   function tableSym(o, tnum) {
