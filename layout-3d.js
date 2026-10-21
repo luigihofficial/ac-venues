@@ -134,6 +134,27 @@
    * verified footprint; collision/seat/obstruction logic keeps using the pure
    * box specs (addendum §6: visual ≠ geometry). No external assets are fetched,
    * so there is no asset-licensing dependency and nothing to fail to load. */
+  // Procedural warm-wood floor texture (no external asset, no license dependency).
+  function makeFloorTexture(THREE) {
+    try {
+      var c = document.createElement("canvas"); c.width = c.height = 512; var x = c.getContext("2d");
+      x.fillStyle = "#d9c7a8"; x.fillRect(0, 0, 512, 512);
+      var planks = 8, ph = 512 / planks;
+      for (var i = 0; i < planks; i++) {
+        var y = i * ph;
+        x.fillStyle = i % 2 ? "#d3be9c" : "#ddcbae"; x.fillRect(0, y, 512, ph);
+        x.strokeStyle = "rgba(120,95,60,.22)"; x.lineWidth = 2; x.strokeRect(0.5, y + 0.5, 511, ph - 1);
+        for (var g = 0; g < 46; g++) {
+          x.strokeStyle = "rgba(150,120,80," + (0.03 + Math.random() * 0.06) + ")"; x.lineWidth = 1; x.beginPath();
+          var yy = y + Math.random() * ph; x.moveTo(0, yy);
+          x.bezierCurveTo(170, yy + (Math.random() * 6 - 3), 340, yy + (Math.random() * 6 - 3), 512, yy); x.stroke();
+        }
+      }
+      var t = new THREE.Texture(c); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      if (THREE.SRGBColorSpace && "colorSpace" in t) { try { t.colorSpace = THREE.SRGBColorSpace; } catch (e) {} }
+      return t;
+    } catch (e) { return null; }
+  }
   function partBox(THREE, H, w, h, l, color, rough, metal, emis) {
     var m = new THREE.Mesh(H.boxGeo(w, h, l), H.mat(color, rough, metal, emis));
     m.castShadow = true; m.receiveShadow = true; return m;
@@ -172,6 +193,12 @@
       }
       var cloth = partCyl(THREE, H, r * 0.98, r * 1.02, topH, linen, 0.9, 0, 26); cloth.position.y = topH / 2; g.add(cloth);
       var topr = partCyl(THREE, H, r * 1.02, r * 1.02, 0.08, linen, 0.85, 0, 28); topr.position.y = topH + 0.02; g.add(topr);
+      // simple floral centerpiece → realism cue on banquet rounds
+      var vase = partCyl(THREE, H, 0.22, 0.28, 0.55, 0xeef2f4, 0.25, 0.1, 12); vase.position.y = topH + 0.3; g.add(vase);
+      try {
+        var floral = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 9), H.mat(0x7d9e63, 0.85, 0));
+        floral.position.y = topH + 0.95; floral.castShadow = true; g.add(floral);
+      } catch (e) {}
       return { obj: g, floorAnchor: true };
     }
     var w = s.w || 6, l = s.l || 2.5;
@@ -331,6 +358,8 @@
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) { try { renderer.outputColorSpace = THREE.SRGBColorSpace; } catch (e) {} }
+    // photographic tone mapping → warmer, more realistic gradients (Prismm-like)
+    if (THREE.ACESFilmicToneMapping != null) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; }
     renderer.domElement.style.cssText = "position:absolute;inset:0";
     wrap.insertBefore(renderer.domElement, wrap.firstChild);
 
@@ -348,8 +377,12 @@
       cylGeo: function (rt, rb, h, seg) { var k = "c" + rt.toFixed(3) + "_" + rb.toFixed(3) + "_" + h.toFixed(3) + "_" + (seg || 20); return GC[k] || (GC[k] = new THREE.CylinderGeometry(rt, rb, h, seg || 20)); }
     };
 
+    // realistic wood floor (procedural texture → no external asset)
+    var floorMat = new THREE.MeshStandardMaterial({ map: makeFloorTexture(THREE), roughness: 0.82, metalness: 0.04 });
+    if (floorMat.map) { floorMat.map.repeat.set(Math.max(2, rm.W / 8), Math.max(2, rm.L / 8)); }
+
     // ceiling (visual only — kept out of pure specs so engine/tests are unchanged)
-    var ceilMesh = new THREE.Mesh(H3.boxGeo(rm.W, 0.2, rm.L), H3.mat(0xf4f1ea, 0.95, 0));
+    var ceilMesh = new THREE.Mesh(H3.boxGeo(rm.W, 0.2, rm.L), H3.mat(0xf6f3ec, 0.95, 0));
     ceilMesh.position.set(0, rm.ceil, 0); ceilMesh.receiveShadow = true; scene.add(ceilMesh);
 
     // build meshes via furniture factory
@@ -366,6 +399,7 @@
       if (s.id) meshById[s.id] = node.obj;
       if (s.seat && node.seatMesh) { node.seatMesh.userData = s; seatMeshes.push(node.seatMesh); }
       if (s.role === "wall") { node.obj.userData = s; wallMeshes.push(node.obj); }
+      if (s.role === "floor") { node.obj.material = floorMat; node.obj.receiveShadow = true; }
     });
 
     V = { THREE: THREE, wrap: wrap, scene: scene, cam: cam, renderer: renderer, specs: specs, rm: rm,

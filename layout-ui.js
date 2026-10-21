@@ -52,20 +52,21 @@
       "#layCanvas{width:100%;height:560px;background:#fcfaf4;border:1px solid var(--line,#e6ddca);border-radius:12px;touch-action:none;display:block}",
       ".lay-room{fill:#ffffff;stroke:#8a7a4a;stroke-width:2;vector-effect:non-scaling-stroke}",
       ".lay-grid{stroke:#eee3c9;stroke-width:1;vector-effect:non-scaling-stroke}",
-      ".lay-tbl{fill:#d8c79a;stroke:#9c853f;stroke-width:1.2;vector-effect:non-scaling-stroke}",
-      ".lay-chair{fill:#6f94c4;stroke:#3c5f91;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tbl{fill:#ffffff;stroke:#bfc5cd;stroke-width:1.2;vector-effect:non-scaling-stroke}",
+      ".lay-chair{fill:#9fb3d1;stroke:#6f87ad;stroke-width:1;vector-effect:non-scaling-stroke}",
       ".lay-equip{fill:#c9b8e0;stroke:#7a5fae;stroke-width:1.2;vector-effect:non-scaling-stroke}",
       ".lay-obst{fill:#d98b8b;stroke:#9c3f3f;stroke-width:1.2;vector-effect:non-scaling-stroke}",
       ".lay-door{fill:none;stroke:#2e7d5b;stroke-width:3;vector-effect:non-scaling-stroke}",
       ".lay-bad{fill:#e2574f !important;stroke:#a52a22 !important}",
       ".lay-sel{stroke:#b8860b !important;stroke-width:2.5 !important}",
       ".lay-dim{font-size:12px;fill:#6b7480}",
-      ".lay-back{fill:#4a6ea5;stroke:#2c4a73;stroke-width:1;vector-effect:non-scaling-stroke}",
-      ".lay-tbl-rim{fill:none;stroke:#c9b27f;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-back{fill:#6f87ad;stroke:#51688c;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tbl-rim{fill:none;stroke:#e0e4ea;stroke-width:1;vector-effect:non-scaling-stroke}",
       ".lay-stage{fill:#c3ccd6;stroke:#5b6472;stroke-width:1.5;vector-effect:non-scaling-stroke}",
       ".lay-screen{fill:#2f6f8f;stroke:#1d4d66;stroke-width:1.4;vector-effect:non-scaling-stroke}",
       ".lay-eqlabel{fill:#223042;font-weight:800;pointer-events:none}",
       ".lay-dimline{stroke:#8a9199;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tnum{fill:#5b6472;font-weight:800}",
       "#layReadout{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px}",
       ".lay-stat{background:var(--card,#fffdf8);border:1px solid var(--line,#e6ddca);border-radius:10px;padding:8px 12px;min-width:120px}",
       ".lay-stat .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#8a9199;font-weight:700}",
@@ -394,7 +395,12 @@
       });
     }
     // objects — technical (clean primitives) vs furnished (recognizable symbols)
-    L.objects.forEach(function (o) { parts.push(mode === "technical" ? techSymbol(o) : furnSymbol(o)); });
+    var tnum = 0;
+    L.objects.forEach(function (o) {
+      if (mode === "technical") { parts.push(techSymbol(o)); return; }
+      var n = (o.category === "table") ? (++tnum) : 0;   // number tables like a pro floor plan
+      parts.push(furnSymbol(o, n));
+    });
     parts.push("</g>");
     // dimension labels (screen space)
     parts.push('<text class="lay-dim" x="' + (vw.ox + r.width * vw.scale / 2 - 20) + '" y="' + (vw.oy - 6) + '">' + fmtDim(r.width) + "</text>");
@@ -410,42 +416,46 @@
     return rectSvg(o, cls, o.id);
   }
   // Furnished mode: recognizable furniture silhouettes (seat+back, linen rounds, stage, screen).
-  function furnSymbol(o) {
+  function furnSymbol(o, tnum) {
     if (o.category === "chair") return chairSym(o);
-    if (o.category === "table") return tableSym(o);
+    if (o.category === "table") return tableSym(o, tnum);
     return equipSym(o);
   }
+  // A rounded chair glyph: cushion + curved backrest on the far edge (Prismm-style).
   function chairSym(o) {
     var w = o.w || 1.6, l = o.l || 1.6, id = o.id;
     var rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
-    // seat body + backrest bar on the far edge (+y local → away from the table it serves)
-    var seat = '<rect data-id="' + id + '" class="' + stateCls(o, "lay-chair") + '" x="' + (o.x - w * 0.45) + '" y="' + (o.y - l * 0.42) + '" width="' + (w * 0.9) + '" height="' + (l * 0.72) + '" rx="' + (w * 0.14) + '"></rect>';
-    var back = '<rect data-id="' + id + '" class="' + stateCls(o, "lay-back") + '" x="' + (o.x - w * 0.45) + '" y="' + (o.y + l * 0.28) + '" width="' + (w * 0.9) + '" height="' + (l * 0.17) + '" rx="' + (l * 0.07) + '"></rect>';
-    return "<g" + rot + ">" + seat + back + "</g>";
+    var sx = o.x - w * 0.42, sw = w * 0.84;
+    // seat cushion (rounded) + backrest bar hugging the far edge (+y local → away from table)
+    var seat = '<rect data-id="' + id + '" class="' + stateCls(o, "lay-chair") + '" x="' + sx + '" y="' + (o.y - l * 0.38) + '" width="' + sw + '" height="' + (l * 0.66) + '" rx="' + (w * 0.22) + '"></rect>';
+    var back = '<rect data-id="' + id + '" class="' + stateCls(o, "lay-back") + '" x="' + (o.x - w * 0.46) + '" y="' + (o.y + l * 0.24) + '" width="' + (w * 0.92) + '" height="' + (l * 0.2) + '" rx="' + (l * 0.1) + '"></rect>';
+    return "<g" + rot + ">" + back + seat + "</g>";
   }
-  function tableSym(o) {
+  function tableSym(o, tnum) {
     var id = o.id;
+    var num = tnum ? '<text class="lay-tnum" x="' + o.x + '" y="' + o.y + '" font-size="' + tnumFs(o) + '" text-anchor="middle" dominant-baseline="central">' + tnum + "</text>" : "";
     if (o.kind === "circle") {
       var rr = (o.d || 4) / 2;
-      return '<circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + rr + '"></circle>' +
-             '<circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl-rim") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + (rr * 0.72) + '"></circle>';
+      return '<g><circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + rr + '"></circle>' +
+             '<circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl-rim") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + (rr * 0.8) + '"></circle>' + num + "</g>";
     }
     var rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
-    return "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" x="' + (o.x - o.w / 2) + '" y="' + (o.y - o.l / 2) + '" width="' + o.w + '" height="' + o.l + '" rx="0.25"></rect></g>';
+    return '<g' + (rot ? "" : "") + '>' + "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" x="' + (o.x - o.w / 2) + '" y="' + (o.y - o.l / 2) + '" width="' + o.w + '" height="' + o.l + '" rx="0.25"></rect></g>' + num + "</g>";
   }
+  function tnumFs(o) { var s = o.kind === "circle" ? (o.d || 4) : Math.min(o.w || 4, o.l || 2.5); return Math.max(0.85, Math.min(s * 0.26, 1.4)); }
   function equipSym(o) {
     var t = o.type || "", id = o.id, rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
     var x = o.x - o.w / 2, y = o.y - o.l / 2;
     if (t === "STAGE" || t === "RISER" || t === "STAGE_STAIRS") {
       var fs = Math.max(1, Math.min(o.w, o.l) * 0.45);
-      return "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-stage") + '" x="' + x + '" y="' + y + '" width="' + o.w + '" height="' + o.l + '" rx="0.3"></rect>' +
+      return '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-stage") + '" x="' + x + '" y="' + y + '" width="' + o.w + '" height="' + o.l + '" rx="0.3"></rect>' +
              '<text class="lay-eqlabel" x="' + o.x + '" y="' + (o.y + fs * 0.35) + '" font-size="' + fs + '" text-anchor="middle">' + esc(o.label || "STAGE") + "</text></g>";
     }
     if (t === "SCREEN" || t === "LED_WALL" || t === "TV_MONITOR" || t === "DRAPE" || t === "PARTITION") {
       var hl = Math.max(o.l, 0.6);
-      return "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-screen") + '" x="' + x + '" y="' + (o.y - hl / 2) + '" width="' + o.w + '" height="' + hl + '" rx="0.2"></rect></g>';
+      return '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-screen") + '" x="' + x + '" y="' + (o.y - hl / 2) + '" width="' + o.w + '" height="' + hl + '" rx="0.2"></rect></g>';
     }
-    var out = "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-equip") + '" x="' + x + '" y="' + y + '" width="' + o.w + '" height="' + o.l + '" rx="0.3"></rect>';
+    var out = '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-equip") + '" x="' + x + '" y="' + y + '" width="' + o.w + '" height="' + o.l + '" rx="0.3"></rect>';
     if (o.w >= 4 && o.l >= 1.6) { var fs2 = Math.max(0.9, Math.min(o.w, o.l) * 0.4); out += '<text class="lay-eqlabel" x="' + o.x + '" y="' + (o.y + fs2 * 0.35) + '" font-size="' + fs2 + '" text-anchor="middle">' + esc(o.label || "") + "</text>"; }
     return out + "</g>";
   }
@@ -626,20 +636,21 @@
     return [
       ".lay-room{fill:#ffffff;stroke:#8a7a4a;stroke-width:2;vector-effect:non-scaling-stroke}",
       ".lay-grid{stroke:#eee3c9;stroke-width:1;fill:none;vector-effect:non-scaling-stroke}",
-      ".lay-tbl{fill:#d8c79a;stroke:#9c853f;stroke-width:1.2;vector-effect:non-scaling-stroke}",
-      ".lay-chair{fill:#6f94c4;stroke:#3c5f91;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tbl{fill:#ffffff;stroke:#bfc5cd;stroke-width:1.2;vector-effect:non-scaling-stroke}",
+      ".lay-chair{fill:#9fb3d1;stroke:#6f87ad;stroke-width:1;vector-effect:non-scaling-stroke}",
       ".lay-equip{fill:#c9b8e0;stroke:#7a5fae;stroke-width:1.2;vector-effect:non-scaling-stroke}",
       ".lay-obst{fill:#d98b8b;stroke:#9c3f3f;stroke-width:1.2;vector-effect:non-scaling-stroke}",
       ".lay-door{fill:none;stroke:#2e7d5b;stroke-width:3;vector-effect:non-scaling-stroke}",
       ".lay-bad{fill:#e2574f;stroke:#a52a22}",
       ".lay-sel{stroke:#b8860b;stroke-width:2.5}",
       ".lay-dim{font-size:12px;fill:#6b7480}",
-      ".lay-back{fill:#4a6ea5;stroke:#2c4a73;stroke-width:1;vector-effect:non-scaling-stroke}",
-      ".lay-tbl-rim{fill:none;stroke:#c9b27f;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-back{fill:#6f87ad;stroke:#51688c;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tbl-rim{fill:none;stroke:#e0e4ea;stroke-width:1;vector-effect:non-scaling-stroke}",
       ".lay-stage{fill:#c3ccd6;stroke:#5b6472;stroke-width:1.5;vector-effect:non-scaling-stroke}",
       ".lay-screen{fill:#2f6f8f;stroke:#1d4d66;stroke-width:1.4;vector-effect:non-scaling-stroke}",
       ".lay-eqlabel{fill:#223042;font-weight:800}",
       ".lay-dimline{stroke:#8a9199;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tnum{fill:#5b6472;font-weight:800}",
       ".lay-env{fill:none;stroke:#b8860b;stroke-dasharray:3 3;stroke-width:1;vector-effect:non-scaling-stroke;opacity:.65}",
       ".lay-locked{stroke:#14263f;stroke-dasharray:4 2}"
     ].join("");
