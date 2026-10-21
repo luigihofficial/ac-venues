@@ -441,12 +441,20 @@
           var hw=(t.w||0)/2,hl=(t.l||0)/2;
           // Closest perimeter point for table association.
           dist=Math.hypot(Math.max(Math.abs(lx)-hw,0),Math.max(Math.abs(ly)-hl,0));
-          // At corners choose the physically nearest side; NEVER aim diagonally
-          // at the table center. Each rectangular edge has one normal.
-          var sideX=Math.abs(Math.abs(lx)-hw);
-          var sideY=Math.abs(Math.abs(ly)-hl);
+          // Prefer the LONG edge for rectangular banquet / classroom tables.
+          // End seats in a row must face the same way as middle seats, even
+          // when their centers are close to a table's short-end corners.
+          // Square tables retain the nearest-face behavior.
           var tx=0,ty=0;
-          if(sideX<=sideY){tx=lx>=0?-1:1;}else{ty=ly>=0?-1:1;}
+          if(hw>hl+0.15){
+            ty=ly>=0?-1:1; // local +/-Y is normal to the long edge
+          }else if(hl>hw+0.15){
+            tx=lx>=0?-1:1; // local +/-X is normal to the long edge
+          }else{
+            var sideX=Math.abs(Math.abs(lx)-hw);
+            var sideY=Math.abs(Math.abs(ly)-hl);
+            if(sideX<=sideY){tx=lx>=0?-1:1;}else{ty=ly>=0?-1:1;}
+          }
           nx=tx*co-ty*si;ny=tx*si+ty*co;
         }
         if(chair.tableId!=null && String(chair.tableId)===String(t.id))dist-=100000;
