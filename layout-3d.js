@@ -38,7 +38,7 @@
       var h = o.h != null ? o.h : 2.5;
       var color = o.category === "chair" ? 0x6f94c4 : o.category === "equipment" ? 0xb9a7e0 : 0xd8c79a;
       var base = { id: o.id, x: o.x - cx, z: o.y - cz, h: h, color: color, role: o.category,
-        type: o.type, label: o.label || o.type, rot: (o.r || 0) };
+        type: o.type, label: o.label || o.type, rot: (o.category === "chair" && o.visualRotation != null ? o.visualRotation : (o.r || 0)) };
       if (o.kind === "circle") {
         base.kind = "cyl"; base.d = o.d; base.y = h / 2;
       } else {
