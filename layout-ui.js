@@ -418,31 +418,43 @@
   // Visual facing only: the occupancy footprints remain in their original
   // engineering orientation, so changing chair facing cannot alter fit scores.
   // Chair front is local -Y in the 2D glyph and local -Z in the 3D model.
+  // Assign each chair to the nearest table EDGE, then face perpendicular to
+  // that edge. This avoids diagonal corner chairs at long rectangular tables.
+  // Geometry and collision rotation (o.r) are deliberately unchanged.
   function updateChairFacing() {
-    var layout=L.params.layout;
     var presentationOnly={THEATER:1,CHEVRON:1,SEMICIRCLE:1};
     var tables=L.objects.filter(function(o){return o.category==="table";});
     L.objects.forEach(function(chair){
-      if(chair.category!=="chair" || chair.manualFacing) return;
-      if(presentationOnly[layout] || !tables.length){chair.visualRotation=null;return;}
-      var best=null,score=Infinity;
+      if(chair.category!=="chair" || chair.manualFacing)return;
+      if(presentationOnly[L.params.layout] || !tables.length){chair.visualRotation=null;return;}
+      var chosen=null,best=Infinity,normal=null;
       tables.forEach(function(t){
-        // Distance to the *nearest edge*, not just the center, avoids
-        // assigning a seat next to a long meeting table to another table.
-        var dx=chair.x-t.x,dy=chair.y-t.y,ang=(t.r||0)*Math.PI/180;
-        var lx=dx*Math.cos(ang)+dy*Math.sin(ang);
-        var ly=-dx*Math.sin(ang)+dy*Math.cos(ang);
-        var hw=t.kind==="circle"?(t.d||0)/2:(t.w||0)/2;
-        var hl=t.kind==="circle"?(t.d||0)/2:(t.l||0)/2;
-        var dist=t.kind==="circle"?Math.max(0,Math.hypot(dx,dy)-hw):
-          Math.hypot(Math.max(Math.abs(lx)-hw,0),Math.max(Math.abs(ly)-hl,0));
+        var dx=chair.x-t.x,dy=chair.y-t.y,angle=(t.r||0)*Math.PI/180;
+        var co=Math.cos(angle),si=Math.sin(angle);
+        var lx=dx*co+dy*si,ly=-dx*si+dy*co;
+        var dist,nx,ny;
+        if(t.kind==="circle"){
+          var radius=(t.d||0)/2;
+          dist=Math.abs(Math.hypot(dx,dy)-radius);
+          nx=-dx;ny=-dy;
+        }else{
+          var hw=(t.w||0)/2,hl=(t.l||0)/2;
+          // Closest perimeter point for table association.
+          dist=Math.hypot(Math.max(Math.abs(lx)-hw,0),Math.max(Math.abs(ly)-hl,0));
+          // At corners choose the physically nearest side; NEVER aim diagonally
+          // at the table center. Each rectangular edge has one normal.
+          var sideX=Math.abs(Math.abs(lx)-hw);
+          var sideY=Math.abs(Math.abs(ly)-hl);
+          var tx=0,ty=0;
+          if(sideX<=sideY){tx=lx>=0?-1:1;}else{ty=ly>=0?-1:1;}
+          nx=tx*co-ty*si;ny=tx*si+ty*co;
+        }
         if(chair.tableId!=null && String(chair.tableId)===String(t.id))dist-=100000;
-        if(dist<score){score=dist;best=t;}
+        if(dist<best){best=dist;chosen=t;normal={x:nx,y:ny};}
       });
-      if(!best){chair.visualRotation=null;return;}
-      var vx=best.x-chair.x,vy=best.y-chair.y;
-      if(Math.hypot(vx,vy)<0.00001)return;
-      chair.visualRotation=Math.atan2(vx,-vy)*180/Math.PI;
+      if(!chosen||!normal)return;
+      if(Math.hypot(normal.x,normal.y)<0.00001)return;
+      chair.visualRotation=Math.atan2(normal.x,-normal.y)*180/Math.PI;
     });
   }
   function chairRotation(o) {
@@ -516,7 +528,7 @@
   }
   function tableSym(o, tnum) {
     var id = o.id;
-    var num = tnum ? '<text class="lay-tnum" x="' + o.x + '" y="' + o.y + '" font-size="' + tnumFs(o) + '" text-anchor="middle" dominant-baseline="central">' + tnum + "</text>" : "";
+    var num = ""; // Clean tabletop: no numbers or faux centerpieces in 2D.
     if (o.kind === "circle") {
       var rr = (o.d || 4) / 2;
       return '<g><circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + rr + '"></circle>' +
@@ -537,6 +549,10 @@
     if (t === "SCREEN" || t === "LED_WALL" || t === "TV_MONITOR" || t === "DRAPE" || t === "PARTITION") {
       var hl = Math.max(o.l, 0.6);
       return '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-screen") + '" x="' + x + '" y="' + (o.y - hl / 2) + '" width="' + o.w + '" height="' + hl + '" rx="0.2"></rect></g>';
+    }
+    if(t==="AV_BOOTH"){
+      return '<g'+rot+'><rect data-id="'+id+'" class="'+stateCls(o,"lay-equip")+
+        '" x="'+x+'" y="'+y+'" width="'+o.w+'" height="'+o.l+'" rx="0.3"></rect></g>';
     }
     var out = '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-equip") + '" x="' + x + '" y="' + y + '" width="' + o.w + '" height="' + o.l + '" rx="0.3"></rect>';
     if (o.w >= 4 && o.l >= 1.6) { var fs2 = Math.max(0.9, Math.min(o.w, o.l) * 0.4); out += '<text class="lay-eqlabel" x="' + o.x + '" y="' + (o.y + fs2 * 0.35) + '" font-size="' + fs2 + '" text-anchor="middle">' + esc(o.label || "") + "</text>"; }
