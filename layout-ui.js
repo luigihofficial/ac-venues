@@ -608,11 +608,11 @@
     var num = ""; // Clean tabletop: no numbers or faux centerpieces in 2D.
     if (o.kind === "circle") {
       var rr = (o.d || 4) / 2;
-      return '<g><circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + rr + '"></circle>' +
+      return '<g data-id="' + id + '"><circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + rr + '"></circle>' +
              num + "</g>";
     }
     var rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
-    return '<g' + (rot ? "" : "") + '>' + "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" x="' + (o.x - o.w / 2) + '" y="' + (o.y - o.l / 2) + '" width="' + o.w + '" height="' + o.l + '" rx="0.25"></rect></g>' + num + "</g>";
+    return '<g data-id="' + id + '">' + "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" x="' + (o.x - o.w / 2) + '" y="' + (o.y - o.l / 2) + '" width="' + o.w + '" height="' + o.l + '" rx="0.25"></rect></g>' + num + "</g>";
   }
   function tnumFs(o) { var s = o.kind === "circle" ? (o.d || 4) : Math.min(o.w || 4, o.l || 2.5); return Math.max(0.85, Math.min(s * 0.26, 1.4)); }
   function equipSym(o) {
@@ -727,7 +727,8 @@
   // Drag a member of a multi-selection to move the group with relative offsets.
   function onDown(e) {
     if(e.button!=null&&e.button!==0)return;
-    var id=e.target.getAttribute&&e.target.getAttribute("data-id");
+    var hit=e.target.closest && e.target.closest("[data-id]");
+    var id=hit && hit.getAttribute("data-id");
     var pt=screenToFeet(e.clientX,e.clientY);
     if(id){
       var obj=L.objects.find(function(o){return o.id===id;});
@@ -771,10 +772,10 @@
       var minY=Math.min(q.y0,q.y1),maxY=Math.max(q.y0,q.y1);
       var ids=L.objects.filter(function(o){
         var w=o.kind==="circle"?o.d:o.w,l=o.kind==="circle"?o.d:o.l;
-        return o.x-w/2>=minX&&o.x+w/2<=maxX&&o.y-l/2>=minY&&o.y+l/2<=maxY;
+        return o.x+w/2>=minX&&o.x-w/2<=maxX&&o.y+l/2>=minY&&o.y-l/2<=maxY;
       }).map(function(o){return o.id;});
       selectIds(ids,L.drag.additive);
-      msg(ids.length+" objects selected. Drag any unlocked selected object to move the group.");
+      msg(ids.length+" objects intersect the selection. Drag a selected piece to move the group.");
     }else if(L.drag.group && L.drag.moved)recalc();
     L.drag=null;render();
   }
