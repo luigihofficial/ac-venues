@@ -178,7 +178,23 @@
       ring.rotation.x=Math.PI/2;ring.position.y=sh*0.36;g.add(ring);
       return {obj:g,seatMesh:seat,floorAnchor:true};
     }
-    var seatH=Math.min(1.5,(s.h||3)*0.52), upholstery=0x647a8c, piping=0xc4b49a, frame=0x454a50;
+    // Folding chairs: slim metal tubing, rigid seat, open back.
+    if(s.type==="CHAIR_FOLD"){
+      var fw=w*0.84,fl=l*0.72,fh=Math.min(1.36,(s.h||1.5)*0.82);
+      var pad=partBox(THREE,H,fw,0.10,fl,0x536875,0.80,0);
+      pad.position.set(0,fh,-l*0.07);g.add(pad);
+      var rear=partBox(THREE,H,fw*0.93,0.13,0.15,0x344958,0.67,0.12);
+      rear.position.set(0,fh+0.38,l*0.32);g.add(rear);
+      [-1,1].forEach(function(sign){
+        var side=partBox(THREE,H,0.045,fh+0.48,0.045,0x929ba5,0.27,0.72);
+        side.position.set(sign*fw*.45,(fh+0.48)/2,l*.31);g.add(side);
+        var front=partBox(THREE,H,0.045,fh,0.045,0x929ba5,0.27,0.72);
+        front.position.set(sign*fw*.45,fh/2,-l*.35);g.add(front);
+      });
+      return {obj:g,seatMesh:pad,floorAnchor:true};
+    }
+    var isExec=s.type==="CHAIR_EXEC";
+    var seatH=Math.min(1.5,(s.h||3)*0.52), upholstery=isExec?0x344452:0x647a8c, piping=isExec?0x738797:0xc4b49a, frame=isExec?0x282e34:0x454a50;
     // Rounded cushions with physically separated piping and stitching.
     var cushion=new THREE.Mesh(new THREE.BoxGeometry(w*0.87,0.22,l*0.76),H.mat(upholstery,0.94,0));
     cushion.position.set(0,seatH, -l*0.055);
