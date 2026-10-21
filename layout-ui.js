@@ -558,14 +558,42 @@
     var s = document.createElement("script"); s.id = "lay-3d-js"; s.src = "layout-3d.js";
     s.onload = function () { cb && cb(); }; document.head.appendChild(s);
   }
+  // CSS de las figuras del plano — se EMBEBE dentro del SVG al exportar.
+  // Sin esto, el SVG exportado pierde las clases de la hoja de estilos de la
+  // página y cada figura cae al relleno por defecto (negro) → plano todo negro.
+  function svgShapeCss() {
+    return [
+      ".lay-room{fill:#ffffff;stroke:#8a7a4a;stroke-width:2;vector-effect:non-scaling-stroke}",
+      ".lay-grid{stroke:#eee3c9;stroke-width:1;fill:none;vector-effect:non-scaling-stroke}",
+      ".lay-tbl{fill:#d8c79a;stroke:#9c853f;stroke-width:1.2;vector-effect:non-scaling-stroke}",
+      ".lay-chair{fill:#6f94c4;stroke:#3c5f91;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-equip{fill:#c9b8e0;stroke:#7a5fae;stroke-width:1.2;vector-effect:non-scaling-stroke}",
+      ".lay-obst{fill:#d98b8b;stroke:#9c3f3f;stroke-width:1.2;vector-effect:non-scaling-stroke}",
+      ".lay-door{fill:none;stroke:#2e7d5b;stroke-width:3;vector-effect:non-scaling-stroke}",
+      ".lay-bad{fill:#e2574f;stroke:#a52a22}",
+      ".lay-sel{stroke:#b8860b;stroke-width:2.5}",
+      ".lay-dim{font-size:12px;fill:#6b7480}",
+      ".lay-env{fill:none;stroke:#b8860b;stroke-dasharray:3 3;stroke-width:1;vector-effect:non-scaling-stroke;opacity:.65}",
+      ".lay-locked{stroke:#14263f;stroke-dasharray:4 2}"
+    ].join("");
+  }
+  // Clona el SVG del plano y le incrusta <style> + xmlns + tamaño, listo para rasterizar.
+  function exportableSvgString() {
+    var svg = L.svg.cloneNode(true);
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("width", L.svg.clientWidth);
+    svg.setAttribute("height", L.svg.clientHeight);
+    var st = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    st.textContent = svgShapeCss();
+    svg.insertBefore(st, svg.firstChild);
+    return new XMLSerializer().serializeToString(svg);
+  }
   function exportPdf() {
     readFormToState();
     var v = E.validate(L.objects, L.room, {});
     var counts = {}; L.objects.forEach(function (o) { var k = o.label || o.type; counts[k] = (counts[k] || 0) + 1; });
     var fit = E.assessFit(L.params.layout, L.room, L.params.target, L.params);
-    var svg = L.svg.cloneNode(true); svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svg.setAttribute("width", L.svg.clientWidth); svg.setAttribute("height", L.svg.clientHeight);
-    var data = new XMLSerializer().serializeToString(svg);
+    var data = exportableSvgString();
     var img = new Image();
     img.onload = function () {
       var c = document.createElement("canvas"); c.width = L.svg.clientWidth * 2; c.height = L.svg.clientHeight * 2;
@@ -636,10 +664,7 @@
     download(blob, (L.room.name || "layout") + ".json");
   }
   function exportPng() {
-    var svg = L.svg.cloneNode(true);
-    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svg.setAttribute("width", L.svg.clientWidth); svg.setAttribute("height", L.svg.clientHeight);
-    var data = new XMLSerializer().serializeToString(svg);
+    var data = exportableSvgString();
     var img = new Image();
     img.onload = function () {
       var c = document.createElement("canvas"); c.width = L.svg.clientWidth * 2; c.height = L.svg.clientHeight * 2;
