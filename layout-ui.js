@@ -62,6 +62,9 @@
       ".lay-dim{font-size:12px;fill:#6b7480}",
       ".lay-back{fill:#6f87ad;stroke:#51688c;stroke-width:1;vector-effect:non-scaling-stroke}",
       ".lay-tbl-rim{fill:none;stroke:#e0e4ea;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-chair{fill:#859bad;stroke:#52687d;stroke-width:1.15;vector-effect:non-scaling-stroke}",
+      ".lay-back{fill:#465c72;stroke:#33485e;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tbl{fill:#fffaf2;stroke:#bcaa8e;stroke-width:1.4;vector-effect:non-scaling-stroke}",
       ".lay-stage{fill:#c3ccd6;stroke:#5b6472;stroke-width:1.5;vector-effect:non-scaling-stroke}",
       ".lay-screen{fill:#2f6f8f;stroke:#1d4d66;stroke-width:1.4;vector-effect:non-scaling-stroke}",
       ".lay-eqlabel{fill:#223042;font-weight:800;pointer-events:none}",
@@ -460,14 +463,17 @@
     return equipSym(o);
   }
   // A rounded chair glyph: cushion + curved backrest on the far edge (Prismm-style).
+  // Premium top-down chair glyph: rounded back shell, contrasting cushion,
+  // visible frame and inset seam, all inside the real object footprint.
   function chairSym(o) {
-    var w = o.w || 1.6, l = o.l || 1.6, id = o.id;
-    var rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
-    var sx = o.x - w * 0.42, sw = w * 0.84;
-    // seat cushion (rounded) + backrest bar hugging the far edge (+y local → away from table)
-    var seat = '<rect data-id="' + id + '" class="' + stateCls(o, "lay-chair") + '" x="' + sx + '" y="' + (o.y - l * 0.38) + '" width="' + sw + '" height="' + (l * 0.66) + '" rx="' + (w * 0.22) + '"></rect>';
-    var back = '<rect data-id="' + id + '" class="' + stateCls(o, "lay-back") + '" x="' + (o.x - w * 0.46) + '" y="' + (o.y + l * 0.24) + '" width="' + (w * 0.92) + '" height="' + (l * 0.2) + '" rx="' + (l * 0.1) + '"></rect>';
-    return "<g" + rot + ">" + back + seat + "</g>";
+    var w=o.w||1.6,l=o.l||1.6,id=o.id;
+    var rot=o.r?' transform="rotate('+o.r+' '+o.x+' '+o.y+')"':"";
+    var x=o.x-w/2,y=o.y-l/2;
+    var shell='<rect data-id="'+id+'" class="'+stateCls(o,"lay-back")+'" x="'+(x+w*.04)+'" y="'+(y+l*.06)+'" width="'+(w*.92)+'" height="'+(l*.90)+'" rx="'+(w*.24)+'"></rect>';
+    var seat='<rect data-id="'+id+'" class="'+stateCls(o,"lay-chair")+'" x="'+(x+w*.13)+'" y="'+(y+l*.10)+'" width="'+(w*.74)+'" height="'+(l*.65)+'" rx="'+(w*.19)+'"></rect>';
+    var seam='<rect pointer-events="none" x="'+(x+w*.19)+'" y="'+(y+l*.17)+'" width="'+(w*.62)+'" height="'+(l*.51)+'" rx="'+(w*.13)+'" fill="none" stroke="#e7ecf1" stroke-width="0.025" opacity=".88"></rect>';
+    var back='<path data-id="'+id+'" d="M '+(x+w*.14)+' '+(y+l*.82)+' Q '+o.x+' '+(y+l*1.03)+' '+(x+w*.86)+' '+(y+l*.82)+'" fill="none" stroke="#35475b" stroke-width="'+Math.max(.045,l*.065)+'" stroke-linecap="round"></path>';
+    return '<g'+rot+'>'+shell+seat+seam+back+'</g>';
   }
   function tableSym(o, tnum) {
     var id = o.id;
