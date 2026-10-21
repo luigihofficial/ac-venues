@@ -784,8 +784,62 @@
     L.view.scale *= factor;
     L.view.ox = px - before.x * L.view.scale; L.view.oy = py - before.y * L.view.scale;
   }
-  function rotateSel(d) { var o = cur(); if (!o) return false; pushHist(); o.r = ((o.category === "chair" ? chairRotation(o) : (o.r || 0)) + d) % 360; if (o.category === "chair") { o.manualFacing = true; o.visualRotation = o.r; } return true; }
-  function dupSel() { var o = cur(); if (!o) return false; pushHist(); var c = cloneObj(o); c.id = "o_" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); c.x = snap(o.x + 2); c.y = snap(o.y + 2); L.objects.push(c); L.sel = c.id;L.selected=[c.id]; return true; }
+  // Rotate the full selection around the center of its bounding box. A single
+  // item rotates in place. Both geometry and chair visual facing stay in sync.
+  function rotateSel(degrees) {
+    var items=L.objects.filter(function(o){return L.selected.indexOf(o.id)>=0 && !o.locked;});
+    if(!items.length)return false;
+    pushHist();
+    var minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    items.forEach(function(o){
+      var hw=(o.kind==="circle"?o.d:o.w)/2,hl=(o.kind==="circle"?o.d:o.l)/2;
+      minX=Math.min(minX,o.x-hw);maxX=Math.max(maxX,o.x+hw);
+      minY=Math.min(minY,o.y-hl);maxY=Math.max(maxY,o.y+hl);
+    });
+    var cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+    var rad=degrees*Math.PI/180,cs=Math.cos(rad),sn=Math.sin(rad);
+    items.forEach(function(o){
+      if(items.length>1){
+        var x=o.x-cx,y=o.y-cy;
+        o.x=Math.round((cx+x*cs-y*sn)*10000)/10000;
+        o.y=Math.round((cy+x*sn+y*cs)*10000)/10000;
+      }
+      var base=o.category==="chair"?chairRotation(o):(o.r||0);
+      o.r=((base+degrees)%360+360)%360;
+      if(o.category==="chair"){o.manualFacing=true;o.visualRotation=o.r;}
+    });
+    msg("Rotated "+items.length+" object(s) by "+degrees+"°. Check clearance warnings before saving.");
+    return true;
+  }
+  // Duplicate an entire selection as a single transaction. All relative
+  // positions, rotations and styles are retained in the copied group.
+  function dupSel() {
+    var items=L.objects.filter(function(o){return L.selected.indexOf(o.id)>=0;});
+    if(!items.length)return false;
+    pushHist();
+    var minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    items.forEach(function(o){
+      var hw=(o.kind==="circle"?o.d:o.w)/2,hl=(o.kind==="circle"?o.d:o.l)/2;
+      minX=Math.min(minX,o.x-hw);maxX=Math.max(maxX,o.x+hw);
+      minY=Math.min(minY,o.y-hl);maxY=Math.max(maxY,o.y+hl);
+    });
+    var rm=E.normalizeRoom(L.room),width=maxX-minX,height=maxY-minY;
+    // Prefer copying to the right without overlapping the original group.
+    var dx=width+2,dy=0;
+    if(maxX+dx>rm.width-rm.wallClearance){dx=0;dy=height+2;}
+    if(maxY+dy>rm.length-rm.wallClearance && dx===0){dx=2;dy=2;}
+    var ids=[];
+    items.forEach(function(o){
+      var copy=cloneObj(o);
+      copy.id="o_"+Date.now().toString(36)+"_"+Math.floor(Math.random()*1e9).toString(36);
+      copy.locked=false;copy.x=o.x+dx;copy.y=o.y+dy;
+      L.objects.push(copy);ids.push(copy.id);
+    });
+    L.selected=ids;L.sel=ids.length===1?ids[0]:null;
+    if(L.sel)showInspector();else hideInspector();
+    msg("Duplicated "+ids.length+" object(s). Copies selected—drag the group to reposition.");
+    return true;
+  }
   function delSel() { var o = cur(); if (!o) return false; pushHist(); L.objects = L.objects.filter(function (x) { return x.id !== L.sel; }); L.sel = null;L.selected=[]; return true; }
   function cur() { return L.sel ? L.objects.find(function (x) { return x.id === L.sel; }) : null; }
   function undo() { if (!L.hist.length) return; L.redo.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.hist.pop()); L.sel = null;L.selected=[]; render(); recalc(); }
