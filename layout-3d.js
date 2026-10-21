@@ -128,6 +128,130 @@
     document.head.appendChild(s);
   }
 
+  /* ---------- procedural furniture factory (visual layer only) ----------
+   * Builds recognizable, multi-part meshes (not flat boxes) from the SAME
+   * geometry spec the engine produces. The visual model is scaled to the
+   * verified footprint; collision/seat/obstruction logic keeps using the pure
+   * box specs (addendum §6: visual ≠ geometry). No external assets are fetched,
+   * so there is no asset-licensing dependency and nothing to fail to load. */
+  function partBox(THREE, H, w, h, l, color, rough, metal, emis) {
+    var m = new THREE.Mesh(H.boxGeo(w, h, l), H.mat(color, rough, metal, emis));
+    m.castShadow = true; m.receiveShadow = true; return m;
+  }
+  function partCyl(THREE, H, rt, rb, h, color, rough, metal, seg) {
+    var m = new THREE.Mesh(H.cylGeo(rt, rb, h, seg), H.mat(color, rough, metal));
+    m.castShadow = true; m.receiveShadow = true; return m;
+  }
+  function chairMesh(THREE, H, s, g) {
+    var w = s.w || 1.6, l = s.l || 1.6;
+    if (s.type === "BARSTOOL") {
+      var sh = s.h || 2.5, rad = (s.d || 1.4) / 2 * 0.82;
+      var seat = partCyl(THREE, H, rad, rad, 0.18, 0x5b7bb0, 0.6, 0.1, 18); seat.position.y = sh; g.add(seat);
+      var pole = partCyl(THREE, H, 0.09, 0.09, sh, 0x2e3b4e, 0.4, 0.6, 10); pole.position.y = sh / 2; g.add(pole);
+      var base = partCyl(THREE, H, rad * 0.9, rad * 0.95, 0.08, 0x2e3b4e, 0.4, 0.6, 18); base.position.y = 0.04; g.add(base);
+      return { obj: g, seatMesh: seat, floorAnchor: true };
+    }
+    var seatH = 1.45, seatT = 0.16, legT = 0.09, fabric = 0x6f94c4, frame = 0x2e3b4e;
+    var seat2 = partBox(THREE, H, w * 0.9, seatT, l * 0.82, fabric, 0.75, 0); seat2.position.set(0, seatH, 0.03 * l); g.add(seat2);
+    var back = partBox(THREE, H, w * 0.9, 1.15, 0.14, fabric, 0.75, 0); back.position.set(0, seatH + 0.6, l * 0.40); g.add(back);
+    var lx = w * 0.38, lz = l * 0.36;
+    [[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].forEach(function (p) {
+      var lg = partBox(THREE, H, legT, seatH, legT, frame, 0.5, 0.2); lg.position.set(p[0], seatH / 2, p[1]); g.add(lg);
+    });
+    return { obj: g, seatMesh: seat2, floorAnchor: true };
+  }
+  function tableMesh(THREE, H, s, g) {
+    var topH = s.h || 2.5, linen = 0xf3efe6, wood = 0xb98a52, woodDark = 0x6f5436;
+    if (s.kind === "cyl") {
+      var d = s.d || 5, r = d / 2;
+      if (s.type === "HIGHTOP") {
+        var top = partCyl(THREE, H, r, r, 0.14, 0x4a3b2a, 0.5, 0.1, 24); top.position.y = topH; g.add(top);
+        var pole = partCyl(THREE, H, 0.12, 0.12, topH, 0x3a3f47, 0.4, 0.6, 12); pole.position.y = topH / 2; g.add(pole);
+        var base = partCyl(THREE, H, r * 0.55, r * 0.62, 0.1, 0x3a3f47, 0.4, 0.6, 20); base.position.y = 0.05; g.add(base);
+        return { obj: g, floorAnchor: true };
+      }
+      var cloth = partCyl(THREE, H, r * 0.98, r * 1.02, topH, linen, 0.9, 0, 26); cloth.position.y = topH / 2; g.add(cloth);
+      var topr = partCyl(THREE, H, r * 1.02, r * 1.02, 0.08, linen, 0.85, 0, 28); topr.position.y = topH + 0.02; g.add(topr);
+      return { obj: g, floorAnchor: true };
+    }
+    var w = s.w || 6, l = s.l || 2.5;
+    var skirted = /^TBL_|DISPLAY_TBL|REG_TABLE|BUFFET|COFFEE|CATERING|CRESCENT|HALFRND/.test(s.type || "");
+    if (skirted) {
+      var clothb = partBox(THREE, H, w, topH, l, linen, 0.9, 0); clothb.position.y = topH / 2; g.add(clothb);
+      var topb = partBox(THREE, H, w + 0.06, 0.08, l + 0.06, linen, 0.85, 0); topb.position.y = topH + 0.02; g.add(topb);
+      return { obj: g, floorAnchor: true };
+    }
+    var topT = 0.14;
+    var topw = partBox(THREE, H, w, topT, l, wood, 0.55, 0.05); topw.position.y = topH; g.add(topw);
+    var lxx = w * 0.44, lzz = l * 0.40, legT2 = 0.14, legH = topH - topT / 2;
+    [[-lxx, -lzz], [lxx, -lzz], [-lxx, lzz], [lxx, lzz]].forEach(function (p) {
+      var lg = partBox(THREE, H, legT2, legH, legT2, woodDark, 0.5, 0.1); lg.position.set(p[0], legH / 2, p[1]); g.add(lg);
+    });
+    return { obj: g, floorAnchor: true };
+  }
+  function equipMesh(THREE, H, s, g) {
+    var t = s.type || "", h = s.h || 3, w = s.w || 3, l = s.l || 2;
+    if (t === "STAGE" || t === "RISER" || t === "STAGE_STAIRS") {
+      var deck = partBox(THREE, H, w, h, l, 0x3b4654, 0.85, 0); deck.position.y = h / 2; g.add(deck);
+      var topc = partBox(THREE, H, w - 0.2, 0.08, l - 0.2, 0x59677a, 0.8, 0); topc.position.y = h + 0.01; g.add(topc);
+      var steps = 2; for (var i = 0; i < steps; i++) { var shh = h * (i + 1) / (steps + 1); var st = partBox(THREE, H, Math.min(w * 0.4, 5), shh, 0.9, 0x3b4654, 0.85, 0); st.position.set(0, shh / 2, -l / 2 - 0.5 - i * 0.9); g.add(st); }
+      return { obj: g, floorAnchor: true };
+    }
+    if (t === "SCREEN") {
+      var sh = h, sw = w, lift = 1.0;
+      var frame = partBox(THREE, H, sw + 0.2, sh + 0.2, 0.1, 0x22262b, 0.5, 0.3); frame.position.y = sh / 2 + lift; g.add(frame);
+      var surf = partBox(THREE, H, sw, sh, 0.06, 0xf7f7fb, 0.3, 0, 0xaab4c6); surf.position.set(0, sh / 2 + lift, 0.06); g.add(surf);
+      [-sw * 0.35, sw * 0.35].forEach(function (x) { var lg = partBox(THREE, H, 0.1, lift, 0.1, 0x22262b, 0.4, 0.4); lg.position.set(x, lift / 2, 0); g.add(lg); });
+      return { obj: g, floorAnchor: true };
+    }
+    if (t === "LED_WALL") {
+      var panel = partBox(THREE, H, w, h, 0.4, 0x0a0e14, 0.3, 0.2, 0x1b3b6b); panel.position.y = h / 2 + 0.5; g.add(panel);
+      var bz = partBox(THREE, H, w + 0.2, h + 0.2, 0.2, 0x16181c, 0.5, 0.4); bz.position.y = h / 2 + 0.5; g.add(bz);
+      return { obj: g, floorAnchor: true };
+    }
+    if (t === "TV_MONITOR") {
+      var pw = Math.min(w, 4.5), ph = pw * 0.56;
+      var pole = partBox(THREE, H, 0.16, h, 0.16, 0x2b2f36, 0.4, 0.5); pole.position.y = h / 2; g.add(pole);
+      var base = partBox(THREE, H, w * 0.7, 0.1, l * 0.7, 0x2b2f36, 0.4, 0.5); base.position.y = 0.05; g.add(base);
+      var panelm = partBox(THREE, H, pw, ph, 0.14, 0x0a0e14, 0.3, 0.2, 0x16304f); panelm.position.y = h - ph * 0.5 - 0.3; g.add(panelm);
+      return { obj: g, floorAnchor: true };
+    }
+    if (t === "PODIUM") {
+      var body = partBox(THREE, H, w * 0.8, h * 0.72, l * 0.7, 0x6f5436, 0.6, 0); body.position.y = h * 0.36; g.add(body);
+      var top = partBox(THREE, H, w, 0.12, l * 0.8, 0x4a3b2a, 0.5, 0); top.position.y = h * 0.78; top.rotation.x = -0.18; g.add(top);
+      return { obj: g, floorAnchor: true };
+    }
+    if (t === "SPEAKER" || t === "MIC_STAND" || t === "CAMERA" || t === "LIGHT" || t === "PROJECTOR" || t === "SIGNAGE") {
+      var pl = partBox(THREE, H, 0.12, h, 0.12, 0x2b2f36, 0.4, 0.5); pl.position.y = h / 2; g.add(pl);
+      var bs = partCyl(THREE, H, Math.max(w, l) * 0.32, Math.max(w, l) * 0.4, 0.08, 0x2b2f36, 0.4, 0.5, 16); bs.position.y = 0.04; g.add(bs);
+      var hh = Math.min(h * 0.3, 2);
+      var head = partBox(THREE, H, w * 0.8, hh, l * 0.8, 0x3a3f47, 0.5, 0.2); head.position.y = h - hh * 0.5 - 0.2; g.add(head);
+      return { obj: g, floorAnchor: true };
+    }
+    if (t === "DRAPE" || t === "PARTITION") {
+      var pw2 = partBox(THREE, H, w, h, Math.max(s.l || 0.6, 0.3), (t === "DRAPE" ? 0x3a4256 : 0xd8d2c4), 0.9, 0); pw2.position.y = h / 2; g.add(pw2);
+      return { obj: g, floorAnchor: true };
+    }
+    if (t === "AV_BOOTH" || t === "BAR" || t === "WATER" || t === "BOOTH") {
+      var bd = partBox(THREE, H, w, h, l, 0x8a93a3, 0.7, 0.1); bd.position.y = h / 2; g.add(bd);
+      var tp = partBox(THREE, H, w + 0.1, 0.1, l + 0.1, 0x5b6472, 0.6, 0.2); tp.position.y = h + 0.05; g.add(tp);
+      return { obj: g, floorAnchor: true };
+    }
+    var body2 = partBox(THREE, H, w, h, l, s.color || 0xb9a7e0, 0.8, 0); body2.position.y = h / 2; g.add(body2);
+    return { obj: g, floorAnchor: true };
+  }
+  function buildFurniture(THREE, s, H) {
+    if (s.role === "floor") { var fm = new THREE.Mesh(H.boxGeo(s.w, s.h, s.l), H.mat(0xe9e0cb, 0.95, 0)); fm.receiveShadow = true; return { obj: fm, floorAnchor: false }; }
+    if (s.role === "wall") { var wm = new THREE.Mesh(H.boxGeo(s.w, s.h, s.l), H.mat(0xeef0f3, 0.9, 0)); wm.receiveShadow = true; return { obj: wm, floorAnchor: false }; }
+    if (s.role === "column") { var cm = partBox(THREE, H, s.w, s.h, s.l, 0xb9b2a4, 0.9, 0); return { obj: cm, floorAnchor: false }; }
+    var g = new THREE.Group();
+    if (s.role === "chair") return chairMesh(THREE, H, s, g);
+    if (s.role === "table") return tableMesh(THREE, H, s, g);
+    if (s.role === "equipment") return equipMesh(THREE, H, s, g);
+    var fb = partBox(THREE, H, s.w || s.d || 2, s.h || 2.5, s.l || s.d || 2, s.color || 0xcccccc, 0.8, 0);
+    fb.position.y = (s.h || 2.5) / 2; g.add(fb); return { obj: g, floorAnchor: true };
+  }
+
   /* ---------- overlay + renderer ---------- */
   var V = null; // active viewer state
 
@@ -183,37 +307,71 @@
     var rm = specs._room;
 
     var scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0d1826);
-    var amb = new THREE.AmbientLight(0xffffff, 0.75); scene.add(amb);
-    var dir = new THREE.DirectionalLight(0xffffff, 0.75); dir.position.set(rm.W * 0.4, rm.ceil * 2, rm.L * 0.4); scene.add(dir);
+    scene.background = new THREE.Color(0x101c2e);
+    var farD = Math.max(rm.W, rm.L);
+    scene.fog = new THREE.Fog(0x101c2e, farD * 1.3, farD * 3.4);
+    // Lighting: soft ambient + hemisphere sky/ground + warm key with shadows + cool fill
+    var hemi = new THREE.HemisphereLight(0xfdfbf5, 0x39414f, 0.55); scene.add(hemi);
+    var amb = new THREE.AmbientLight(0xffffff, 0.32); scene.add(amb);
+    var key = new THREE.DirectionalLight(0xfff3df, 0.95);
+    key.position.set(rm.W * 0.5, rm.ceil * 2.4, rm.L * 0.38);
+    key.castShadow = true;
+    key.shadow.mapSize.width = key.shadow.mapSize.height = 2048;
+    var sr = Math.max(rm.W, rm.L) * 0.8;
+    key.shadow.camera.left = -sr; key.shadow.camera.right = sr;
+    key.shadow.camera.top = sr; key.shadow.camera.bottom = -sr;
+    key.shadow.camera.near = 1; key.shadow.camera.far = rm.ceil * 6;
+    key.shadow.bias = -0.0004; key.shadow.radius = 3;
+    scene.add(key);
+    var fill = new THREE.DirectionalLight(0xdbe4f2, 0.28); fill.position.set(-rm.W * 0.45, rm.ceil * 1.6, -rm.L * 0.45); scene.add(fill);
 
     var W = wrap.clientWidth, H = wrap.clientHeight;
     var cam = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
     var renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) { try { renderer.outputColorSpace = THREE.SRGBColorSpace; } catch (e) {} }
     renderer.domElement.style.cssText = "position:absolute;inset:0";
     wrap.insertBefore(renderer.domElement, wrap.firstChild);
 
-    // build meshes
+    // geometry + material caches → lite instancing (shared geo/mat, per-object matrix)
+    var GC = {}, MC = {};
+    var H3 = {
+      mat: function (color, rough, metal, emis) {
+        var k = color + "_" + (rough == null ? 0.85 : rough) + "_" + (metal || 0) + "_" + (emis || 0);
+        if (MC[k]) return MC[k];
+        var m = new THREE.MeshStandardMaterial({ color: color, roughness: rough == null ? 0.85 : rough, metalness: metal || 0 });
+        if (emis) { m.emissive = new THREE.Color(emis); m.emissiveIntensity = 0.85; }
+        MC[k] = m; return m;
+      },
+      boxGeo: function (w, h, l) { var k = "b" + w.toFixed(3) + "_" + h.toFixed(3) + "_" + l.toFixed(3); return GC[k] || (GC[k] = new THREE.BoxGeometry(w, h, l)); },
+      cylGeo: function (rt, rb, h, seg) { var k = "c" + rt.toFixed(3) + "_" + rb.toFixed(3) + "_" + h.toFixed(3) + "_" + (seg || 20); return GC[k] || (GC[k] = new THREE.CylinderGeometry(rt, rb, h, seg || 20)); }
+    };
+
+    // ceiling (visual only — kept out of pure specs so engine/tests are unchanged)
+    var ceilMesh = new THREE.Mesh(H3.boxGeo(rm.W, 0.2, rm.L), H3.mat(0xf4f1ea, 0.95, 0));
+    ceilMesh.position.set(0, rm.ceil, 0); ceilMesh.receiveShadow = true; scene.add(ceilMesh);
+
+    // build meshes via furniture factory
     var seatMeshes = [];
     var meshById = {};
+    var wallMeshes = [];
     specs.forEach(function (s) {
-      var geo, mat = new THREE.MeshLambertMaterial({ color: s.color });
-      if (s.kind === "cyl") geo = new THREE.CylinderGeometry(s.d / 2, s.d / 2, s.h, 20);
-      else geo = new THREE.BoxGeometry(s.w, s.h, s.l);
-      var mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(s.x, s.y, s.z);
-      if (s.rot) mesh.rotation.y = -s.rot * Math.PI / 180;
-      mesh.userData = s;
-      scene.add(mesh);
-      if (s.id) meshById[s.id] = mesh;
-      if (s.seat) seatMeshes.push(mesh);
+      var node = buildFurniture(THREE, s, H3);
+      if (!node) return;
+      node.obj.position.set(s.x, node.floorAnchor ? 0 : s.y, s.z);
+      if (s.rot) node.obj.rotation.y = -s.rot * Math.PI / 180;
+      node.obj.userData = s;
+      scene.add(node.obj);
+      if (s.id) meshById[s.id] = node.obj;
+      if (s.seat && node.seatMesh) { node.seatMesh.userData = s; seatMeshes.push(node.seatMesh); }
+      if (s.role === "wall") { node.obj.userData = s; wallMeshes.push(node.obj); }
     });
 
     V = { THREE: THREE, wrap: wrap, scene: scene, cam: cam, renderer: renderer, specs: specs, rm: rm,
-      seatMeshes: seatMeshes, meshById: meshById, mode: null, raf: 0,
+      seatMeshes: seatMeshes, meshById: meshById, wallMeshes: wallMeshes, ceilMesh: ceilMesh, mode: null, raf: 0,
       orbit: { az: 0.6, pol: 0.9, rad: Math.max(rm.W, rm.L) * 1.1, tx: 0, ty: 3, tz: 0 },
-      walk: { x: 0, y: EYE_STAND, z: rm.L / 2 - 3, yaw: Math.PI, pitch: -0.05 },
+      walk: { x: 0, y: EYE_STAND, z: rm.L / 2 - 4, yaw: 0, pitch: -0.05 },
       keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED };
 
     buildSeatSelect();
@@ -362,10 +520,26 @@
     var W = V.wrap.clientWidth, H = V.wrap.clientHeight;
     V.cam.aspect = W / H; V.cam.updateProjectionMatrix(); V.renderer.setSize(W, H);
   }
+  // Dollhouse cutaway: in orbit, hide the 2 walls + ceiling nearest the camera so
+  // the furnished interior is always visible; inside modes (walk/seat) keep them.
+  function updateWalls() {
+    if (!V || !V.wallMeshes) return;
+    var inside = (V.mode === "walk" || V.mode === "seat");
+    var cx = V.cam.position.x, cz = V.cam.position.z;
+    V.wallMeshes.forEach(function (m) {
+      var s = m.userData || {};
+      if (inside) { m.visible = true; return; }
+      if (Math.abs(s.x) > 0.1) m.visible = !(Math.sign(s.x) === Math.sign(cx));
+      else if (Math.abs(s.z) > 0.1) m.visible = !(Math.sign(s.z) === Math.sign(cz));
+      else m.visible = true;
+    });
+    if (V.ceilMesh) V.ceilMesh.visible = inside;
+  }
   function loop() {
     if (!V) return;
     V.raf = requestAnimationFrame(loop);
     if (V.mode !== "seat") updateCamera();
+    updateWalls();
     V.renderer.render(V.scene, V.cam);
   }
   function close() {

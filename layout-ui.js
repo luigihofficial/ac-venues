@@ -60,6 +60,12 @@
       ".lay-bad{fill:#e2574f !important;stroke:#a52a22 !important}",
       ".lay-sel{stroke:#b8860b !important;stroke-width:2.5 !important}",
       ".lay-dim{font-size:12px;fill:#6b7480}",
+      ".lay-back{fill:#4a6ea5;stroke:#2c4a73;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tbl-rim{fill:none;stroke:#c9b27f;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-stage{fill:#c3ccd6;stroke:#5b6472;stroke-width:1.5;vector-effect:non-scaling-stroke}",
+      ".lay-screen{fill:#2f6f8f;stroke:#1d4d66;stroke-width:1.4;vector-effect:non-scaling-stroke}",
+      ".lay-eqlabel{fill:#223042;font-weight:800;pointer-events:none}",
+      ".lay-dimline{stroke:#8a9199;stroke-width:1;vector-effect:non-scaling-stroke}",
       "#layReadout{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px}",
       ".lay-stat{background:var(--card,#fffdf8);border:1px solid var(--line,#e6ddca);border-radius:10px;padding:8px 12px;min-width:120px}",
       ".lay-stat .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#8a9199;font-weight:700}",
@@ -171,6 +177,7 @@
             '<button id="layRot">Rotate 15°</button><button id="layDup">Duplicate</button><button id="layLock">Lock</button><button id="layDel">Delete</button>' +
             '<button id="layUndo">Undo</button><button id="layRedo">Redo</button>' +
             '<button id="layEnv">Envelopes: off</button>' +
+            '<select id="layViewMode" title="2D view mode" style="font-weight:600"><option value="furnished">2D: Furnished</option><option value="technical">2D: Technical</option><option value="dimensioned">2D: Dimensioned</option></select>' +
             '<button id="lay3dOrbit">3D Orbit</button><button id="lay3dWalk">3D Walkthrough</button>' +
           "</div>" +
           '<svg id="layCanvas"></svg>' +
@@ -365,6 +372,7 @@
   }
   function render() {
     var r = E.normalizeRoom(L.room), vw = L.view;
+    var mode = L.viewMode || "furnished";
     var parts = ['<g transform="translate(' + vw.ox + "," + vw.oy + ") scale(" + vw.scale + ')">'];
     // room
     parts.push('<rect class="lay-room" x="0" y="0" width="' + r.width + '" height="' + r.length + '"></rect>');
@@ -385,19 +393,71 @@
         parts.push('<rect class="lay-env" x="' + (o.x - ew / 2) + '" y="' + (o.y - el / 2) + '" width="' + ew + '" height="' + el + '"' + rot + "></rect>");
       });
     }
-    // objects
-    L.objects.forEach(function (o) {
-      var cls = o.category === "chair" ? "lay-chair" : o.category === "equipment" ? "lay-equip" : "lay-tbl";
-      if (L.sel === o.id) cls += " lay-sel";
-      if (o.locked) cls += " lay-locked";
-      if (o.kind === "circle") parts.push('<circle data-id="' + o.id + '" class="' + cls + '" cx="' + o.x + '" cy="' + o.y + '" r="' + (o.d / 2) + '"></circle>');
-      else parts.push(rectSvg(o, cls, o.id));
-    });
+    // objects — technical (clean primitives) vs furnished (recognizable symbols)
+    L.objects.forEach(function (o) { parts.push(mode === "technical" ? techSymbol(o) : furnSymbol(o)); });
     parts.push("</g>");
     // dimension labels (screen space)
     parts.push('<text class="lay-dim" x="' + (vw.ox + r.width * vw.scale / 2 - 20) + '" y="' + (vw.oy - 6) + '">' + fmtDim(r.width) + "</text>");
     parts.push('<text class="lay-dim" x="' + (vw.ox - 18) + '" y="' + (vw.oy + r.length * vw.scale / 2) + '" transform="rotate(-90 ' + (vw.ox - 18) + " " + (vw.oy + r.length * vw.scale / 2) + ')">' + fmtDim(r.length) + "</text>");
+    if (mode === "dimensioned") parts.push(dimLines(r, vw));
     L.svg.innerHTML = parts.join("");
+  }
+  function stateCls(o, base) { var c = base; if (L.sel === o.id) c += " lay-sel"; if (o.locked) c += " lay-locked"; return c; }
+  // Technical mode: clean primitives (fast, blueprint-style) — the original look.
+  function techSymbol(o) {
+    var cls = stateCls(o, o.category === "chair" ? "lay-chair" : o.category === "equipment" ? "lay-equip" : "lay-tbl");
+    if (o.kind === "circle") return '<circle data-id="' + o.id + '" class="' + cls + '" cx="' + o.x + '" cy="' + o.y + '" r="' + (o.d / 2) + '"></circle>';
+    return rectSvg(o, cls, o.id);
+  }
+  // Furnished mode: recognizable furniture silhouettes (seat+back, linen rounds, stage, screen).
+  function furnSymbol(o) {
+    if (o.category === "chair") return chairSym(o);
+    if (o.category === "table") return tableSym(o);
+    return equipSym(o);
+  }
+  function chairSym(o) {
+    var w = o.w || 1.6, l = o.l || 1.6, id = o.id;
+    var rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
+    // seat body + backrest bar on the far edge (+y local → away from the table it serves)
+    var seat = '<rect data-id="' + id + '" class="' + stateCls(o, "lay-chair") + '" x="' + (o.x - w * 0.45) + '" y="' + (o.y - l * 0.42) + '" width="' + (w * 0.9) + '" height="' + (l * 0.72) + '" rx="' + (w * 0.14) + '"></rect>';
+    var back = '<rect data-id="' + id + '" class="' + stateCls(o, "lay-back") + '" x="' + (o.x - w * 0.45) + '" y="' + (o.y + l * 0.28) + '" width="' + (w * 0.9) + '" height="' + (l * 0.17) + '" rx="' + (l * 0.07) + '"></rect>';
+    return "<g" + rot + ">" + seat + back + "</g>";
+  }
+  function tableSym(o) {
+    var id = o.id;
+    if (o.kind === "circle") {
+      var rr = (o.d || 4) / 2;
+      return '<circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + rr + '"></circle>' +
+             '<circle data-id="' + id + '" class="' + stateCls(o, "lay-tbl-rim") + '" cx="' + o.x + '" cy="' + o.y + '" r="' + (rr * 0.72) + '"></circle>';
+    }
+    var rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
+    return "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" x="' + (o.x - o.w / 2) + '" y="' + (o.y - o.l / 2) + '" width="' + o.w + '" height="' + o.l + '" rx="0.25"></rect></g>';
+  }
+  function equipSym(o) {
+    var t = o.type || "", id = o.id, rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
+    var x = o.x - o.w / 2, y = o.y - o.l / 2;
+    if (t === "STAGE" || t === "RISER" || t === "STAGE_STAIRS") {
+      var fs = Math.max(1, Math.min(o.w, o.l) * 0.45);
+      return "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-stage") + '" x="' + x + '" y="' + y + '" width="' + o.w + '" height="' + o.l + '" rx="0.3"></rect>' +
+             '<text class="lay-eqlabel" x="' + o.x + '" y="' + (o.y + fs * 0.35) + '" font-size="' + fs + '" text-anchor="middle">' + esc(o.label || "STAGE") + "</text></g>";
+    }
+    if (t === "SCREEN" || t === "LED_WALL" || t === "TV_MONITOR" || t === "DRAPE" || t === "PARTITION") {
+      var hl = Math.max(o.l, 0.6);
+      return "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-screen") + '" x="' + x + '" y="' + (o.y - hl / 2) + '" width="' + o.w + '" height="' + hl + '" rx="0.2"></rect></g>';
+    }
+    var out = "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-equip") + '" x="' + x + '" y="' + y + '" width="' + o.w + '" height="' + o.l + '" rx="0.3"></rect>';
+    if (o.w >= 4 && o.l >= 1.6) { var fs2 = Math.max(0.9, Math.min(o.w, o.l) * 0.4); out += '<text class="lay-eqlabel" x="' + o.x + '" y="' + (o.y + fs2 * 0.35) + '" font-size="' + fs2 + '" text-anchor="middle">' + esc(o.label || "") + "</text>"; }
+    return out + "</g>";
+  }
+  function dimLines(r, vw) {
+    var x0 = vw.ox, y0 = vw.oy, x1 = vw.ox + r.width * vw.scale, y1 = vw.oy + r.length * vw.scale, o = 12, s = "";
+    s += '<line class="lay-dimline" x1="' + x0 + '" y1="' + (y0 - o) + '" x2="' + x1 + '" y2="' + (y0 - o) + '"></line>';
+    s += '<line class="lay-dimline" x1="' + x0 + '" y1="' + (y0 - o - 4) + '" x2="' + x0 + '" y2="' + (y0 - o + 4) + '"></line>';
+    s += '<line class="lay-dimline" x1="' + x1 + '" y1="' + (y0 - o - 4) + '" x2="' + x1 + '" y2="' + (y0 - o + 4) + '"></line>';
+    s += '<line class="lay-dimline" x1="' + (x0 - o) + '" y1="' + y0 + '" x2="' + (x0 - o) + '" y2="' + y1 + '"></line>';
+    s += '<line class="lay-dimline" x1="' + (x0 - o - 4) + '" y1="' + y0 + '" x2="' + (x0 - o + 4) + '" y2="' + y0 + '"></line>';
+    s += '<line class="lay-dimline" x1="' + (x0 - o - 4) + '" y1="' + y1 + '" x2="' + (x0 - o + 4) + '" y2="' + y1 + '"></line>';
+    return s;
   }
   function rectSvg(o, cls, id) {
     var idAttr = id ? ' data-id="' + id + '"' : "";
@@ -426,6 +486,7 @@
     $("layUndo").onclick = undo; $("layRedo").onclick = redo;
     $("layLock").onclick = function () { if (toggleLockSel()) { render(); recalc(); } };
     $("layEnv").onclick = function () { L.showEnv = !L.showEnv; $("layEnv").textContent = "Envelopes: " + (L.showEnv ? "on" : "off"); render(); };
+    var vm = $("layViewMode"); if (vm) { vm.value = L.viewMode || "furnished"; vm.onchange = function () { L.viewMode = vm.value; render(); }; }
     $("layPdf").onclick = exportPdf;
     $("layAutoFit").onclick = autoFit;
     $("layMaxCap").onclick = doMaxCap;
@@ -573,6 +634,12 @@
       ".lay-bad{fill:#e2574f;stroke:#a52a22}",
       ".lay-sel{stroke:#b8860b;stroke-width:2.5}",
       ".lay-dim{font-size:12px;fill:#6b7480}",
+      ".lay-back{fill:#4a6ea5;stroke:#2c4a73;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-tbl-rim{fill:none;stroke:#c9b27f;stroke-width:1;vector-effect:non-scaling-stroke}",
+      ".lay-stage{fill:#c3ccd6;stroke:#5b6472;stroke-width:1.5;vector-effect:non-scaling-stroke}",
+      ".lay-screen{fill:#2f6f8f;stroke:#1d4d66;stroke-width:1.4;vector-effect:non-scaling-stroke}",
+      ".lay-eqlabel{fill:#223042;font-weight:800}",
+      ".lay-dimline{stroke:#8a9199;stroke-width:1;vector-effect:non-scaling-stroke}",
       ".lay-env{fill:none;stroke:#b8860b;stroke-dasharray:3 3;stroke-width:1;vector-effect:non-scaling-stroke;opacity:.65}",
       ".lay-locked{stroke:#14263f;stroke-dasharray:4 2}"
     ].join("");
