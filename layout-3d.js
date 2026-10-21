@@ -381,11 +381,15 @@
     if (!webglOk()) { fallback("This device/browser can’t render 3D (no WebGL). The 2D planner remains fully usable."); return; }
     loadThree(function (ok) {
       if (!ok || !root.THREE) { fallback("Couldn’t load the 3D library (offline or blocked). The 2D planner remains fully usable."); return; }
-      function finish(){start(mode || "orbit",objects,room,params,opts);}
-      if(root.ACVPhotoHD){finish();return;}
-      var addon=document.createElement("script");addon.src="layout-photo-hd.js";addon.onload=finish;
-      addon.onerror=function(){fallback("The Photo HD module could not load.");};
-      document.head.appendChild(addon);
+      // Optional Photo HD must never prevent opening the standard 3D scene.
+      if(!root.ACVPhotoHD&&!document.getElementById("l3d-photo-js")){
+        var addon=document.createElement("script");addon.id="l3d-photo-js";addon.src="layout-photo-hd.js";
+        addon.onload=function(){if(V&&!V.photo)enablePhotoHD();};
+        addon.onerror=function(){if(V)showPhotoStatus("Photo HD failed to load; Standard is available.");};
+        document.head.appendChild(addon);
+      }
+      try{start(mode||"orbit",objects,room,params,opts);}
+      catch(err){fallback("3D startup error: "+(err.message||err));}
     });
   }
   function fallback(message) {
@@ -431,7 +435,7 @@
 
     var W = wrap.clientWidth, H = wrap.clientHeight;
     var cam = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
-    var renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    var renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) { try { renderer.outputColorSpace = THREE.SRGBColorSpace; } catch (e) {} }
@@ -490,7 +494,8 @@
       orbit: { az: 0.6, pol: 0.9, rad: Math.max(rm.W, rm.L) * 1.1, tx: 0, ty: 3, tz: 0 },
       walk: { x: 0, y: EYE_STAND, z: rm.L / 2 - 4, yaw: 0, pitch: -0.05 },
       keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED };
-    V.photo = root.ACVPhotoHD.init({THREE:THREE,renderer:renderer,scene:scene,key:key,fill:fill,hemi:hemi,amb:amb});
+    V.photoCtx={THREE:THREE,renderer:renderer,scene:scene,key:key,fill:fill,hemi:hemi,amb:amb};
+    V.photo=null; // enable after standard renderer has started
 
     buildSeatSelect();
     wireOverlay();
@@ -504,20 +509,40 @@
     var sel = V.wrap.querySelector("#l3d-seat");
     sel.innerHTML = V.seatMeshes.map(function (m, i) { return '<option value="' + i + '">Seat ' + (i + 1) + "</option>"; }).join("");
   }
+  function showPhotoStatus(message) {
+    if(V){var hint=V.wrap.querySelector("#l3d-hint");if(hint)hint.textContent=message;}
+  }
+  function enablePhotoHD(){
+    if(!V)return false;
+    if(V.photo)return true;
+    if(!root.ACVPhotoHD||typeof root.ACVPhotoHD.init!=="function"){
+      showPhotoStatus("Photo HD is loading; Standard 3D is available.");return false;
+    }
+    try{V.photo=root.ACVPhotoHD.init(V.photoCtx);return true;}
+    catch(err){showPhotoStatus("Photo HD unavailable: "+(err.message||err));return false;}
+  }
   function wireOverlay() {
     var wrap = V.wrap;
     wrap.querySelectorAll("[data-m]").forEach(function (b) { b.onclick = function () { setMode(b.getAttribute("data-m")); }; });
     wrap.querySelector("#l3d-close").onclick = close;
     var quality=wrap.querySelector("#l3d-photo-quality");
-    quality.onchange=function(){V.photo.qualityMode(quality.value);onResize();};
+    quality.onchange=function(){
+      if(!enablePhotoHD()){quality.value="standard";return;}
+      try{V.photo.qualityMode(quality.value);onResize();}
+      catch(err){quality.value="standard";showPhotoStatus("Photo quality error: "+(err.message||err));}
+    };
     var camera=wrap.querySelector("#l3d-photo-camera");
     camera.onchange=function(){
-      if(camera.value)V.photo.preset({orbit:V.orbit,rm:V.rm,setMode:setMode},camera.value);
+      if(camera.value&&enablePhotoHD()){
+        try{V.photo.preset({orbit:V.orbit,rm:V.rm,setMode:setMode},camera.value);}
+        catch(err){showPhotoStatus("Camera error: "+(err.message||err));}
+      }
       camera.value="";
     };
     wrap.querySelector("#l3d-photo-export").onclick=function(){
+      if(!enablePhotoHD())return;
       try{V.photo.exportPNG({cam:V.cam,updateCamera:updateCamera,updateWalls:updateWalls});}
-      catch(e){fallback("HD export failed: "+(e.message||e));}
+      catch(err){showPhotoStatus("Export error: "+(err.message||err));}
     };
     var sel = wrap.querySelector("#l3d-seat");
     sel.onchange = function () { V.seatIdx = +sel.value; applySeat(); };
@@ -669,7 +694,8 @@
     V.raf = requestAnimationFrame(loop);
     if (V.mode !== "seat") updateCamera();
     updateWalls();
-    V.renderer.render(V.scene, V.cam);
+    try{V.renderer.render(V.scene, V.cam);}
+    catch(err){cancelAnimationFrame(V.raf);showPhotoStatus("3D render error: "+(err.message||err));}
   }
   function close() {
     if (!V) { var f = document.getElementById("l3d-wrap"); if (f) f.remove(); return; }
