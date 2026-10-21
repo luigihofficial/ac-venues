@@ -179,6 +179,11 @@
             '<label class="lay-chk"><input type="checkbox" id="layStage"> Stage</label>' +
             '<label class="lay-chk"><input type="checkbox" id="layScreen"> Projection screen</label>' +
             '<label class="lay-chk"><input type="checkbox" id="layAv"> AV / control booth</label>' +
+            '<div style="border-top:1px solid var(--line,#e6ddca);margin:12px 0 8px;padding-top:10px"><b>Furniture &amp; Presentation Setup</b></div>' +
+            '<label class="lay-f">Chair type</label><select id="layChairType"><option value="CHAIR">Banquet upholstered (1.6 ft)</option><option value="CHAIR_FOLD">Folding (1.5 ft)</option><option value="CHAIR_EXEC">Executive / conference (2 ft)</option></select>' +
+            '<label class="lay-f">Table type</label><select id="layTableType"><option value="AUTO">Layout default</option><option value="TBL_6FT">Banquet rectangular 6 ft</option><option value="CLASSROOM_TBL">Classroom narrow 6 ft</option><option value="RND_60">Round banquet 60 in</option><option value="RND_72">Round banquet 72 in</option></select>' +
+            '<label class="lay-f">Backdrop / screen</label><select id="layBackdropType"><option value="AUTO">Layout default</option><option value="NONE">None</option><option value="SCREEN">Portable projection screen</option><option value="LED_WALL">LED wall</option><option value="DRAPE">Pipe &amp; drape backdrop</option></select>' +
+            '<div class="lay-note" id="layFurnitureHint" style="margin-top:7px">Selections apply when generating. Larger furniture may reduce capacity.</div>' +
           "</div>" +
           '<div class="lay-panel" style="margin-top:12px">' +
             "<h3>Spacing (ft)</h3>" +
@@ -253,6 +258,10 @@
     set("layZones", (r.reservedZones || []).map(function (o) { return [o.x, o.y, o.w, o.l].join(","); }).join(" ; "));
     set("layType", p.layout); set("layTarget", p.target); set("layHigh", p.highTops || 0);
     chk("layStage", p.stage); chk("layScreen", p.screen); chk("layAv", p.av);
+    set("layChairType",(p.furniture||{}).chairType||"CHAIR");
+    set("layTableType",(p.furniture||{}).tableType||"AUTO");
+    set("layBackdropType",(p.furniture||{}).backdropType||"AUTO");
+    updateFurnitureCompatibility();
     set("layAisle", p.aisle); set("layRowGap", p.rowGap); set("layChairClear", p.chairClear); set("layTableGap", p.tableGap);
   }
   // Gross rectangular area, always shown in square feet regardless of input unit.
@@ -272,6 +281,19 @@
     formula.textContent=w+" "+unit+" × "+l+" "+unit+
       (unit==="m"?" = "+(w*l).toLocaleString("en-US",{maximumFractionDigits:2})+" m²":"");
   }
+  function updateFurnitureCompatibility(){
+    var type=val("layType"),table=$("layTableType"),hint=$("layFurnitureHint");
+    if(!table||!hint)return;
+    var round=(type==="BANQUET"||type==="CABARET");
+    var noTable=(type==="THEATER"||type==="CHEVRON"||type==="SEMICIRCLE"||type==="RECEPTION");
+    [].forEach.call(table.options,function(opt){
+      opt.disabled=opt.value!=="AUTO" && (noTable ||
+        (round ? opt.value.indexOf("RND_")!==0 : opt.value.indexOf("RND_")===0));
+    });
+    if(table.selectedOptions.length&&table.selectedOptions[0].disabled)table.value="AUTO";
+    hint.textContent=noTable?"This layout does not place seated tables. Backdrop and chair selections still apply.":
+      "Selections are applied before fit checks. Oversized furniture may trigger conflicts.";
+  }
   function readFormToState() {
     var r = L.room, p = L.params;
     r.venue = val("layVenue"); r.name = val("layRoom");
@@ -283,6 +305,8 @@
     r.reservedZones = parseZones(val("layZones"));
     p.layout = val("layType"); p.target = num("layTarget", 40); p.highTops = num("layHigh", 0);
     p.stage = chkv("layStage"); p.screen = chkv("layScreen"); p.av = chkv("layAv");
+    p.furniture={chairType:val("layChairType")||"CHAIR",tableType:val("layTableType")||"AUTO",
+      backdropType:val("layBackdropType")||"AUTO"};
     p.aisle = num("layAisle", 3.5); p.rowGap = num("layRowGap", 2.2);
     p.chairClear = num("layChairClear", 2.0); p.tableGap = num("layTableGap", 1.0);
   }
@@ -616,6 +640,7 @@
   }
   function wire() {
     ["layW","layL"].forEach(function(id){$(id).addEventListener("input",updateRoomArea);});
+    $("layType").addEventListener("change",updateFurnitureCompatibility);
     $("layUnit").addEventListener("change",updateRoomArea);
     $("layGen").onclick = regenerate;
     $("laySave").onclick = doSave;
