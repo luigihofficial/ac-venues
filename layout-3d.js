@@ -494,7 +494,7 @@
       orbit: { az: 0.6, pol: 0.9, rad: Math.max(rm.W, rm.L) * 1.1, tx: 0, ty: 3, tz: 0 },
       walk: { x: 0, y: EYE_STAND, z: rm.L / 2 - 4, yaw: 0, pitch: -0.05 },
       keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED };
-    V.photoCtx={THREE:THREE,renderer:renderer,scene:scene,key:key,fill:fill,hemi:hemi,amb:amb};
+    V.photoCtx={THREE:THREE,renderer:renderer,scene:scene,rm:rm,key:key,fill:fill,hemi:hemi,amb:amb};
     V.photo=null; // enable after standard renderer has started
 
     buildSeatSelect();
@@ -705,6 +705,7 @@
     window.removeEventListener("pointerup", onPU);
     window.removeEventListener("keydown", onKey);
     window.removeEventListener("keyup", onKeyUp);
+    try { if(V.photo && V.photo.dispose) V.photo.dispose(); } catch(e) {}
     try { V.renderer.dispose(); } catch (e) {}
     if (V.wrap && V.wrap.parentNode) V.wrap.parentNode.removeChild(V.wrap);
     V = null;
