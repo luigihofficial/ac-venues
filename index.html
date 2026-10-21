@@ -2295,7 +2295,7 @@ function cityCard(c, disabled){
   const avg = dates.length? Math.round(dates.reduce((s,d)=>s+datePct(d.id),0)/dates.length):0;
   card.innerHTML=`
    ${datalist}
-   <div class="top"><h3>${esc(c.name)}</h3><div style="font-size:12px;color:#c8d2df;display:flex;align-items:center;gap:8px">${dates.length} fecha(s) · ${avg}%${(!disabled && isCustomCity(c.slug) && dates.length===0)?` <button class="btn sm ghost" data-delcity="${c.slug}" title="Eliminar ciudad" style="padding:1px 7px">✕</button>`:''}</div></div>
+   <div class="top"><h3>${esc(c.name)}</h3><div style="font-size:12px;color:#c8d2df;display:flex;align-items:center;gap:8px">${dates.length} fecha(s) · ${avg}%${(!disabled && isCustomCity(c.slug))?` <button class="btn sm ghost" data-editcity="${c.slug}" title="Editar / renombrar ciudad" style="padding:1px 7px">✎</button><button class="btn sm ghost" data-delcity="${c.slug}" title="Eliminar ciudad" style="padding:1px 7px">✕</button>`:''}</div></div>
    <div class="body">
      <div class="dates">${datesHtml}</div>
      ${disabled?'':`<button class="btn sm gold" data-adddate="${c.slug}" style="margin-top:4px">+ Agregar fecha</button>`}
@@ -3329,14 +3329,36 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const cs=$('ncySave'); if(cs) cs.addEventListener('click', saveCity);
   const ni=$('ncyName'); if(ni) ni.addEventListener('keydown', e=>{ if(e.key==='Enter') saveCity(); });
   const ov=$('cityModal'); if(ov) ov.addEventListener('click',(e)=>{ if(e.target===ov) closeCityModal(); });
-  // eliminar ciudad personalizada (solo si no tiene fechas)
+  // editar (renombrar) ciudad personalizada
+  document.addEventListener('click', async (e)=>{
+    const b=e.target.closest && e.target.closest('[data-editcity]'); if(!b) return;
+    if(!sb||!USER) return;
+    const slug=b.dataset.editcity; const cur=cityName(slug);
+    const nn=prompt('Nuevo nombre de la ciudad (incluye el estado, ej. "Austin, TX"):', cur);
+    if(nn==null) return;                       // canceló
+    const name=nn.trim(); if(!name || name===cur) return;
+    try{
+      const { error }=await sb.from('custom_cities').update({ name }).eq('slug',slug);
+      if(error){ alert('No se pudo renombrar: '+(error.message||error)); return; }
+      logChange('ciudad', name, 'renombró una ciudad'+(cur&&cur!==name?(' (antes '+cur+')'):'')); setTimeout(loadAll,300);
+    }catch(err){ alert('No se pudo renombrar: '+(err.message||err)); }
+  });
+  // eliminar ciudad personalizada (también si tiene fechas → borra sus eventos)
   document.addEventListener('click', async (e)=>{
     const b=e.target.closest && e.target.closest('[data-delcity]'); if(!b) return;
     if(!sb||!USER) return;
-    const slug=b.dataset.delcity;
-    if((state.dates[slug]||[]).length){ alert('Esta ciudad tiene fechas. Elimina las fechas antes de borrar la ciudad.'); return; }
-    if(!confirm('¿Eliminar la ciudad '+cityName(slug)+'?')) return;
-    try{ await sb.from('custom_cities').delete().eq('slug',slug); logChange('ciudad', cityName(slug), 'eliminó una ciudad'); setTimeout(loadAll,300); }
+    const slug=b.dataset.delcity; const nm=cityName(slug);
+    const n=(state.dates[slug]||[]).length;
+    const ok = n>0
+      ? confirm('¿Eliminar la ciudad "'+nm+'" y sus '+n+' evento(s)/fecha(s)?\n\nSe borrará también la información asociada de esos eventos (fases, pendientes, evaluación, ficha técnica, pagos, ofertas).\n\nEsta acción no se puede deshacer.')
+      : confirm('¿Eliminar la ciudad "'+nm+'"?');
+    if(!ok) return;
+    try{
+      if(n>0){ const { error:de }=await sb.from('event_dates').delete().eq('city_slug',slug); if(de){ alert('No se pudieron eliminar los eventos de la ciudad: '+de.message); return; } }
+      const { error }=await sb.from('custom_cities').delete().eq('slug',slug);
+      if(error){ alert('No se pudo eliminar: '+(error.message||error)); return; }
+      logChange('ciudad', nm, 'eliminó una ciudad'+(n>0?(' y sus '+n+' evento(s)'):'')); setTimeout(loadAll,300);
+    }
     catch(err){ alert('No se pudo eliminar: '+(err.message||err)); }
   });
 });
