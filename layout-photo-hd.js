@@ -106,7 +106,7 @@ function init(ctx){
   if(type==="corner"){o.az=0.72;o.pol=1;o.rad=d*1.08;}
   if(type==="photo"){o.az=0.56;o.pol=1.17;o.rad=d*0.93;}
  }
- function exportPNG(s){
+ function exportPNG(s,returnData){
   var old=R.getSize(new THREE.Vector2()),pixel=R.getPixelRatio(),aspect=s.cam.aspect;
   var w=2560,h=Math.round(w*old.y/Math.max(old.x,1));
   var max=Math.min(R.capabilities.maxTextureSize||4096,4096),f=Math.min(1,max/w,max/h);
@@ -116,6 +116,7 @@ function init(ctx){
    s.updateCamera();s.updateWalls();R.render(scene,s.cam);
    var data=R.domElement.toDataURL("image/png");
    if(!data||data.length<1000)throw Error("The browser did not capture the render.");
+   if(returnData)return data;
    var link=document.createElement("a");link.href=data;link.download="ac-venues-photo-hd.png";document.body.appendChild(link);link.click();link.remove();
   }finally{
    R.setPixelRatio(pixel);R.setSize(old.x,old.y,false);s.cam.aspect=aspect;s.cam.updateProjectionMatrix();
