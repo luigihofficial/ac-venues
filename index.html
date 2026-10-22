@@ -4480,6 +4480,20 @@ if(window.LayoutUI){
       return {ok:true};
     }catch(e){ return {ok:false, error:e.message||String(e)}; }
   };
+  // Paginated saved-layout catalog: no event filter, includes legacy records.
+  LayoutUI.onListSaved = async function(){
+    if(!sb || !USER)throw new Error("Please sign in to see saved diagrams.");
+    const results=[],pageSize=500,maxRows=5000;
+    for(let offset=0;offset<maxRows;offset+=pageSize){
+      const {data,error}=await sb.from("room_layouts")
+        .select("venue,room_name,layout_id,updated_at,data")
+        .order("updated_at",{ascending:false}).range(offset,offset+pageSize-1);
+      if(error)throw error;
+      results.push(...(data||[]));
+      if(!data || data.length<pageSize)break;
+    }
+    return results;
+  };
   LayoutUI.onLoad = async function(){
     try{
       if(!sb) return null;
