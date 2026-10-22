@@ -383,6 +383,7 @@
       '<button data-report="3d-pdf" class="l3d-b">3D + Report PDF</button>' +
       '<button data-report="all-png" class="l3d-b">One-Page PNG</button>' +
       '<button data-report="all-pdf" class="l3d-b">One-Page PDF</button>' +
+      '<button id="l3d-copy-readonly" class="l3d-b">Copy view-only link</button>' +
       '<span id="l3d-hint" style="font-size:12px;color:#cdd6e2;margin-left:4px"></span>' +
       '<button id="l3d-close" class="l3d-b" style="margin-left:auto;background:#b8860b">Close ✕</button>' +
       '</div>' +
@@ -606,6 +607,16 @@
     var wrap = V.wrap;
     wrap.querySelectorAll("[data-m]").forEach(function (b) { b.onclick = function () { setMode(b.getAttribute("data-m")); }; });
     wrap.querySelector("#l3d-close").onclick = close;
+    var shareButton=wrap.querySelector("#l3d-copy-readonly");
+    if(V.readOnly)shareButton.style.display="none";
+    else shareButton.onclick=function(){
+      buildShareUrl().then(function(url){
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          return navigator.clipboard.writeText(url).then(function(){showPhotoStatus("Read-only link copied. Anyone with this link can view the layout.");});
+        }
+        window.prompt("Copy the read-only viewing link",url);
+      }).catch(function(err){showPhotoStatus("Share link error: "+(err.message||err));});
+    };
     var quality=wrap.querySelector("#l3d-photo-quality");
     quality.onchange=function(){
       if(!enablePhotoHD()){quality.value="standard";return;}
