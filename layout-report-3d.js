@@ -53,6 +53,10 @@ function prepSheet(report,photo,plan,onePage){
  var dim=report.dimensions||{};
  g.fillText(value(report.layout)+"  |  "+value(dim.width)+" x "+value(dim.length)+" ft  |  "+value(dim.area)+" ft²  |  ceiling "+value(dim.ceiling)+" ft",M,169);
  g.fillText("AC VENUES  •  ROOM PLANNING REPORT  •  "+value(report.generatedAt),M,215);
+ if(report.event&&report.event.label){
+  g.fillStyle="#172b49";g.font="bold 21px Arial";
+  g.fillText("EVENT: "+value(report.event.city)+" • "+value(report.event.label)+" • "+value(report.event.start)+" — "+value(report.event.end),M,239);
+ }
  g.fillStyle="#a27b35";g.fillRect(M,244,W-2*M,4);
  var y=280;
  g.fillStyle="#162c49";g.font="bold 31px Arial";g.fillText("3D ROOM PERSPECTIVE",M,y);
