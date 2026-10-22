@@ -177,9 +177,21 @@ async function loadEventLayouts(){
   wrap.classList.add('hidden');list.textContent='';
   try{
     if(!window.ACVShare||!window.ACVShare.encode)throw new Error('Viewer unavailable');
-    const result=await sb.rpc('get_ficha_layouts',{p_token:token});
-    if(result.error)throw result.error;
-    const rows=Array.isArray(result.data)?result.data:[];
+    // Primary path: token-validated server endpoint; fallback: restricted SQL RPC.
+    // Neither path grants anonymous access to the private room_layouts table.
+    let rows=null;
+    try{
+      const response=await fetch('/api/ficha-layouts?t='+encodeURIComponent(token),{cache:'no-store'});
+      if(response.ok){
+        const payload=await response.json();
+        rows=Array.isArray(payload.layouts)?payload.layouts:[];
+      }
+    }catch(_networkError){}
+    if(rows===null){
+      const result=await sb.rpc('get_ficha_layouts',{p_token:token});
+      if(result.error)throw result.error;
+      rows=Array.isArray(result.data)?result.data:[];
+    }
     if(!rows.length)return;
     let shown=0;
     for(const row of rows){
