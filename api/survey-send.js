@@ -92,15 +92,28 @@ function emailHtml({ name, eventLabel, venue, link }){
   </div></body></html>`;
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Resend limita a 10 req/seg → reintenta en 429/5xx respetando Retry-After (sin costo extra).
 async function sendEmail({ to, subject, html }){
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: [to], reply_to: REPLYTO, subject, html })
-  });
-  const j = await r.json().catch(()=> ({}));
-  if (!r.ok) return { ok:false, err: (j && (j.message||JSON.stringify(j))) || ("HTTP "+r.status) };
-  return { ok:true, id: j.id };
+  for (let attempt = 0; attempt < 5; attempt++){
+    let r;
+    try {
+      r = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: FROM, to: [to], reply_to: REPLYTO, subject, html })
+      });
+    } catch(e){ await sleep(800 * (attempt + 1)); continue; }
+    if (r.status === 429 || r.status >= 500){
+      const ra = parseFloat(r.headers.get("retry-after") || r.headers.get("ratelimit-reset") || "");
+      await sleep((isFinite(ra) && ra > 0 ? Math.min(ra, 5) : 1.1) * 1000 + attempt * 300); continue;
+    }
+    const j = await r.json().catch(()=> ({}));
+    if (!r.ok) return { ok:false, err: (j && (j.message||JSON.stringify(j))) || ("HTTP "+r.status) };
+    return { ok:true, id: j.id };
+  }
+  return { ok:false, err: "límite de envío alcanzado tras varios reintentos" };
 }
 
 // Envía la encuesta de UN evento a su lista de destinatarios.
@@ -117,7 +130,9 @@ async function sendForEvent(dateId, { markSent = true } = {}){
   if (!valid.length) return { dateId, label: ev.label, sent:0, skipped:0, reason:"sin destinatarios con email válido" };
 
   let sent = 0, skipped = 0; const errors = [];
-  for (const r of valid){
+  for (let i = 0; i < valid.length; i++){
+    const r = valid[i];
+    if (i > 0) await sleep(120);   // ~8/seg: por debajo del límite de 10/seg de Resend
     const email = r.email.trim();
     try {
       // reutilizar token pendiente si existe (evita duplicar en re-envíos)
