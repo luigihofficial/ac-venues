@@ -4492,7 +4492,7 @@ if(window.LayoutUI){
       if(room.trim()) q = q.eq('room_name', room.trim());
       const { data, error } = await q;
       if(error || !data || !data.length) return null;
-      const selectedId=(window.LayoutUI&&LayoutUI._state.params.eventDateId)||null;
+      
       const record=selectedId?data.find(x=>x.data&&x.data.params&&x.data.params.eventDateId===selectedId):data[0];
       return record&&record.data||null;
     }catch(e){ return null; }
