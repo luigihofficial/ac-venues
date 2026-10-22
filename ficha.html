@@ -30,6 +30,12 @@
   .sub{font-size:12px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:22px 0 8px}
   .files a,.contract a{display:inline-block;margin:0 8px 8px 0;padding:11px 16px;background:#fff;border:1px solid var(--line);border-radius:11px;color:var(--navy);text-decoration:none;font-size:14px;font-weight:600}
   .files a:hover,.contract a:hover{border-color:var(--golds)}
+  .layout-card{border:1px solid var(--line);background:#fffdf8;border-radius:14px;padding:16px 18px;margin-top:18px;box-shadow:0 1px 3px rgba(20,38,63,.06)}
+  .layout-sub{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);font-weight:750}
+  .layout-link{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;text-decoration:none;background:#1e3a5f;color:#fff;border-radius:10px;padding:14px 16px;margin-top:10px;font-weight:750;font-size:14px}
+  .layout-link:hover,.layout-link:focus-visible{background:#31577b;color:#fff}
+  .layout-link small{display:block;font-weight:450;color:#d8e4f4;margin-top:3px}
+  .layout-hint{font-size:12px;color:var(--mut);margin:10px 0 0}
   .contract a{background:linear-gradient(135deg,var(--gold),#a9790a);color:#fff;border-color:#8a6208}
   .people{color:var(--ink);font-size:14.5px}
   .foot{margin-top:22px;text-align:center;color:var(--mut);font-size:12px}
@@ -63,6 +69,12 @@
     </div>
 
     <div class="card"><table id="fTable"></table></div>
+    <section id="layoutsWrap" class="layout-card hidden" aria-label="Diagramas interactivos">
+      <div class="layout-sub">Distribución del salón</div>
+      <h3 style="color:var(--navy);margin:5px 0 10px">Diagramas interactivos 2D y 3D</h3>
+      <div id="fLayouts"></div>
+      <p class="layout-hint">Puedes explorar el plano y recorrer el salón en 3D. Esta vista es de solo lectura y no permite modificar el montaje.</p>
+    </section>
 
     <div id="peopleWrap" class="hidden">
       <div class="sub">Líderes / speakers</div>
@@ -86,6 +98,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/layout-share.js"></script>
 <script>
 const SB_URL="https://dwhwbcplgcqvuvnzqmne.supabase.co";
 const SB_KEY="sb_publishable_t_vSbY1M8moq_BSNWKl5FA_5uSubgxa";
@@ -157,6 +170,40 @@ function rowsHtml(d){
   return rows.join('') || '<tr><td class="v" style="color:#8a9199;padding:16px">La ficha aún no tiene detalles cargados.</td></tr>';
 }
 
+async function loadEventLayouts(){
+  // Public RPC validates the SAME sheet token used by this live event fiche.
+  // Never query room_layouts directly: its RLS is team-only by design.
+  const wrap=$('layoutsWrap'),list=$('fLayouts');
+  wrap.classList.add('hidden');list.textContent='';
+  try{
+    if(!window.ACVShare||!window.ACVShare.encode)throw new Error('Viewer unavailable');
+    const result=await sb.rpc('get_ficha_layouts',{p_token:token});
+    if(result.error)throw result.error;
+    const rows=Array.isArray(result.data)?result.data:[];
+    if(!rows.length)return;
+    let shown=0;
+    for(const row of rows){
+      if(!row.snapshot||!Array.isArray(row.snapshot.objects))continue;
+      const url=await window.ACVShare.encode(row.snapshot);
+      const link=document.createElement('a');
+      link.className='layout-link';link.href=url;link.target='_blank';link.rel='noopener noreferrer';
+      const title=document.createElement('span');
+      const name=document.createElement('strong');
+      name.textContent=(row.room_name||'Salón')+' · '+(row.layout_name||'Layout');
+      const sub=document.createElement('small');
+      sub.textContent=(row.venue||'Venue')+' · '+row.snapshot.objects.filter(o=>o.category==='chair').length+' sillas';
+      title.appendChild(name);title.appendChild(sub);
+      const arrow=document.createElement('span');arrow.setAttribute('aria-hidden','true');arrow.textContent='Abrir 2D / 3D ↗';
+      link.appendChild(title);link.appendChild(arrow);list.appendChild(link);
+      shown++;
+    }
+    if(shown)wrap.classList.remove('hidden');
+  }catch(e){
+    // Fail closed: an absent SQL migration or revoked token cannot expose
+    // private layout records or break the rest of the event fiche.
+    console.warn('Diagrama interactivo aún no disponible:',e.message||e);
+  }
+}
 async function load(){
   if(!token){ show('invalid'); return; }
   try{
@@ -181,6 +228,7 @@ async function load(){
     // Título dinámico (pestaña + re-scrapes): incluye ciudad/hotel del evento
     try{ document.title = 'Ficha — ' + (city || d.hotel_name || 'evento') + ' · Amor Consciente'; }catch(e){}
     show('content');
+    loadEventLayouts();
   }catch(e){ show('invalid'); }
 }
 load();
