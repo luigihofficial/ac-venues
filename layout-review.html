@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AC Venues | Interactive Layout Review</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef1f5;color:#1c2d45;font:15px system-ui,-apple-system,Segoe UI,Arial}
+header{padding:17px 22px;background:#172b49;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+header strong{font-size:21px}header small{display:block;color:#cbd5e3;margin-top:3px}
+main{max-width:1300px;margin:24px auto;padding:0 18px}
+.banner{background:#fff8eb;border:1px solid #ecd8ad;border-radius:8px;color:#72551b;padding:9px 12px;margin:12px 0}
+.panel{background:#fff;border:1px solid #dde3eb;border-radius:14px;padding:16px;box-shadow:0 5px 22px #2439540b}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+button{border:0;background:#28486e;color:white;padding:10px 14px;border-radius:8px;font-weight:650;cursor:pointer}
+button:hover{background:#1a3656}button:focus-visible{outline:3px solid #c69d4f}
+.note{color:#627084;font-size:13px}#plan{width:100%;height:60vh;min-height:440px;background:white;display:block;border-radius:9px;border:1px solid #dbe1e9;touch-action:none;cursor:grab}
+#plan:active{cursor:grabbing}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.pill{background:#e8eef5;padding:8px 12px;border-radius:7px}
+#status{color:#aa322c;font-weight:600}.readonly{font-weight:750;color:#ffdfa3}
+</style>
+</head><body>
+<header><div><strong>AC VENUES · Interactive Layout Review</strong><small id="title">Shared floor plan</small></div><div class="readonly">VIEW ONLY · No editing access</div></header>
+<main>
+<div class="banner">Explore this shared snapshot in 2D or 3D. Furniture, measurements and positions cannot be changed. This link does not grant access to the original project.</div>
+<div id="status" role="status"></div>
+<div class="stats" id="stats"></div>
+<div class="panel">
+<div class="toolbar">
+<button type="button" id="fit">Fit room</button><button type="button" id="zin">Zoom +</button><button type="button" id="zout">Zoom −</button>
+<button type="button" id="orbit">3D Orbit</button><button type="button" id="walk">3D Walkthrough</button>
+<span class="note">Drag to pan; wheel or pinch to zoom. 3D allows camera navigation only.</span>
+</div>
+<svg id="plan" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Read-only venue floor plan"></svg>
+</div></main>
+<script src="layout-share.js"></script><script src="layout-engine.js"></script><script src="layout-3d.js"></script>
+<script>
+(function(){"use strict";
+var plan=document.getElementById("plan"),s=null,view={x:0,y:0,w:50,h:50},drag=null;
+var NS="http://www.w3.org/2000/svg";
+function node(tag,attrs,parent){var el=document.createElementNS(NS,tag);Object.keys(attrs||{}).forEach(function(k){el.setAttribute(k,attrs[k]);});(parent||plan).appendChild(el);return el;}
+function norm(v){return Math.round(v*100)/100;}
+function fit(){if(!s)return;var w=s.room.width||50,h=s.room.length||50;var margin=Math.max(w,h)*0.06;view={x:-margin,y:-margin,w:w+margin*2,h:h+margin*2};apply();}
+function apply(){plan.setAttribute("viewBox",[view.x,view.y,view.w,view.h].join(" "));}
+function zoom(f){var cx=view.x+view.w/2,cy=view.y+view.h/2;view.w*=f;view.h*=f;view.x=cx-view.w/2;view.y=cy-view.h/2;apply();}
+function draw(){
+ plan.textContent="";
+ var r=s.room,w=Number(r.width)||50,h=Number(r.length)||50;
+ node("rect",{x:0,y:0,width:w,height:h,fill:"#fafafa",stroke:"#506581","stroke-width":.25});
+ for(var x=5;x<w;x+=5)node("line",{x1:x,y1:0,x2:x,y2:h,stroke:"#e9edf1","stroke-width":.09});
+ for(var y=5;y<h;y+=5)node("line",{x1:0,y1:y,x2:w,y2:y,stroke:"#e9edf1","stroke-width":.09});
+ (r.obstructions||[]).forEach(function(o){node("rect",{x:o.x-o.w/2,y:o.y-o.l/2,width:o.w,height:o.l,fill:"#ce9090",stroke:"#944e4e"});});
+ s.objects.forEach(function(o){
+  var g=node("g",{transform:"rotate("+(Number(o.r)||0)+" "+o.x+" "+o.y+")"});
+  var color=o.category==="chair"?"#9badc5":o.category==="table"?"#e4d7c3":o.category==="equipment"?"#a6aec9":"#b7c4d2";
+  var sw=o.category==="chair"?.09:.12;
+  if(o.kind==="circle"){
+   node("circle",{cx:o.x,cy:o.y,r:(Number(o.d)||2)/2,fill:color,stroke:"#586a7e","stroke-width":sw},g);
+  }else{
+   var ow=Number(o.w)||1.5,ol=Number(o.l)||1.5;
+   node("rect",{x:o.x-ow/2,y:o.y-ol/2,width:ow,height:ol,rx:Math.min(.22,ow*.12,ol*.12),fill:color,stroke:"#586a7e","stroke-width":sw},g);
+   if(o.category==="chair")node("line",{x1:o.x-ow*.35,y1:o.y+ol*.27,x2:o.x+ow*.35,y2:o.y+ol*.27,stroke:"#40536d","stroke-width":.15},g);
+  }
+  var title=node("title",{},g);title.textContent=(o.label||o.type||"Item")+(o.w?" — "+norm(o.w)+" × "+norm(o.l)+" ft":"");
+ });
+ fit();
+}
+function point(ev){var rc=plan.getBoundingClientRect();return {x:(ev.clientX-rc.left)/rc.width*view.w,y:(ev.clientY-rc.top)/rc.height*view.h};}
+plan.addEventListener("pointerdown",function(e){if(e.button!==0)return;drag={clientX:e.clientX,clientY:e.clientY,viewX:view.x,viewY:view.y};plan.setPointerCapture(e.pointerId);});
+plan.addEventListener("pointermove",function(e){if(!drag)return;var rc=plan.getBoundingClientRect();view.x=drag.viewX-(e.clientX-drag.clientX)*view.w/rc.width;view.y=drag.viewY-(e.clientY-drag.clientY)*view.h/rc.height;apply();});
+plan.addEventListener("pointerup",function(){drag=null;});plan.addEventListener("pointercancel",function(){drag=null;});
+plan.addEventListener("wheel",function(e){e.preventDefault();var p=point(e);var prev={x:view.x+p.x,y:view.y+p.y};var f=e.deltaY>0?1.11:.90;view.w*=f;view.h*=f;var q=point(e);view.x=prev.x-q.x;view.y=prev.y-q.y;apply();},{passive:false});
+document.getElementById("fit").onclick=fit;document.getElementById("zin").onclick=function(){zoom(.8);};document.getElementById("zout").onclick=function(){zoom(1.25);};
+function open3d(mode){if(!s)return;try{window.Layout3D.open(mode,s.objects,s.room,s.params||{},{readOnly:true});}catch(e){document.getElementById("status").textContent=e.message;}}
+document.getElementById("orbit").onclick=function(){open3d("orbit");};document.getElementById("walk").onclick=function(){open3d("walk");};
+window.ACVShare.decode(location.hash).then(function(data){
+ s=data;
+ document.getElementById("title").textContent=(s.room.venue||"Venue")+" · "+(s.room.name||"Room");
+ document.getElementById("stats").textContent="";
+ [["Room",norm(s.room.width)+" × "+norm(s.room.length)+" ft"],["Area",norm(s.room.width*s.room.length)+" ft²"],["Chairs",s.objects.filter(function(o){return o.category==="chair";}).length],["Tables",s.objects.filter(function(o){return o.category==="table";}).length]].forEach(function(p){
+  var el=document.createElement("span");el.className="pill";el.textContent=p[0]+": "+p[1];document.getElementById("stats").appendChild(el);
+ });
+ draw();
+}).catch(function(e){document.getElementById("status").textContent="Unable to open this read-only layout: "+e.message;});
+})();
+</script></body></html>
