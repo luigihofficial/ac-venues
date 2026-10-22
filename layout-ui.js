@@ -197,6 +197,8 @@
               '<div><label class="lay-f">Table gap</label><input id="layTableGap" type="number" step="0.1"></div></div>' +
             '<button class="lay-btn" id="layGen">Generate layout</button>' +
             '<button class="lay-btn ghost" id="laySave">Save to venue</button>' +
+            '<button class="lay-btn ghost" id="layBrowseSaved" style="margin-top:8px">Browse all saved diagrams · City / Venue</button>' +
+            '<div id="laySavedLibrary" style="display:none;margin:10px 0;max-height:490px;overflow:auto;border:1px solid #e6ddca;border-radius:9px;padding:10px;background:#fff"></div>' +
             '<div class="lay-row" style="margin-top:8px"><button class="lay-btn ghost" id="layLoad" style="margin-top:0">Load saved</button>' +
               '<button class="lay-btn ghost" id="layJson" style="margin-top:0">Export JSON</button></div>' +
             '<button class="lay-btn ghost" id="layPng">Export PNG</button>' +
@@ -714,6 +716,7 @@
     $("layGen").onclick = regenerate;
     $("laySave").onclick = doSave;
     $("layLoad").onclick = doLoad;
+    $("layBrowseSaved").onclick = showSavedLibrary;
     $("layJson").onclick = exportJson;
     $("layPng").onclick = exportPng;
     $("layClearSelection").onclick=function(){L.selected=[];L.sel=null;hideInspector();render();};
@@ -1073,6 +1076,67 @@
       }).catch(function (e) { msg("Save failed: " + (e.message || e)); });
     } else { msg("Saving not wired in this context."); }
   }
+  // All saved layouts from Supabase, grouped by city and venue; older
+  // unlinked layouts remain visible under "Unassigned / legacy".
+  async function showSavedLibrary(){
+    var host=$("laySavedLibrary");
+    if(!host)return;
+    if(host.style.display!=="none"){host.style.display="none";return;}
+    host.style.display="block";
+    host.textContent="Loading saved diagrams…";
+    if(typeof LayoutUI.onListSaved!=="function"){host.textContent="The diagram library is not connected.";return;}
+    try{
+      var rows=await LayoutUI.onListSaved();
+      if(!rows.length){host.textContent="No saved diagrams found.";return;}
+      var events=(LayoutUI.getEvents&&LayoutUI.getEvents())||[];
+      var eventLookup={};
+      events.forEach(function(e){eventLookup[e.id]=e;});
+      var tree={},groups=[];
+      rows.forEach(function(row){
+        if(!row||!row.data||!Array.isArray(row.data.objects))return;
+        var p=row.data.params||{};
+        var event=eventLookup[p.eventDateId]||null;
+        var city=(event&&event.city)||p.eventCity||"Unassigned / legacy";
+        var venue=(row.venue||row.data.room&&row.data.room.venue||"Venue not specified").trim()||"Venue not specified";
+        if(!tree[city]){tree[city]={};groups.push(city);}
+        if(!tree[city][venue])tree[city][venue]=[];
+        tree[city][venue].push({row:row,event:event,p:p});
+      });
+      groups.sort(function(a,b){if(a==="Unassigned / legacy")return 1;if(b==="Unassigned / legacy")return -1;return a.localeCompare(b);});
+      var all=[];
+      var markup='<div style="display:flex;align-items:center;justify-content:space-between;gap:6px"><b>Saved diagrams ('+rows.length+')</b><button type="button" id="laySavedRefresh" style="border:0;background:none;color:#1e3a5f;cursor:pointer">Refresh</button></div>';
+      groups.forEach(function(city){
+        var venues=Object.keys(tree[city]).sort();
+        markup+='<details open style="border-top:1px solid #e9e0d2;margin-top:10px;padding-top:7px"><summary style="cursor:pointer;font-weight:800">'+esc(city)+'</summary>';
+        venues.forEach(function(venue){
+          var items=tree[city][venue];
+          markup+='<details open style="padding:6px 0 0 12px"><summary style="cursor:pointer;font-weight:700;color:#39516a">'+esc(venue)+' · '+items.length+'</summary>';
+          items.forEach(function(item){
+            var n=all.push(item.row)-1;
+            var updated=item.row.updated_at?new Date(item.row.updated_at).toLocaleDateString():"";
+            var desc=(E.LAYOUT_META[item.p.layout]||{}).name||item.p.layout||"Layout";
+            var event=item.event;
+            var when=event?(event.label+(event.start_date?" · "+event.start_date:"")+(event.end_date?" — "+event.end_date:"")):(item.p.eventName||"Not linked to event");
+            markup+='<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0ede5"><div style="min-width:0;font-size:12px"><b>'+esc(item.row.room_name||"Room")+' · '+esc(desc)+'</b><div style="color:#6b7480">'+esc(when)+' · '+esc(updated)+'</div></div><button type="button" data-savedidx="'+n+'" style="background:#1e3a5f;color:white;border:0;border-radius:6px;padding:7px 10px;cursor:pointer;flex-shrink:0">Open</button></div>';
+          });
+          markup+='</details>';
+        });
+        markup+='</details>';
+      });
+      host.innerHTML=markup;
+      var refresh=host.querySelector("#laySavedRefresh");
+      if(refresh)refresh.onclick=function(){host.style.display="none";showSavedLibrary();};
+      host.querySelectorAll("[data-savedidx]").forEach(function(btn){
+        btn.onclick=function(){
+          var row=all[+btn.getAttribute("data-savedidx")];
+          if(!row||!row.data)return;
+          deserialize(row.data);
+          host.style.display="none";
+          msg("Opened saved diagram: "+(row.room_name||row.venue||"Room")+".");
+        };
+      });
+    }catch(err){host.textContent="Could not load diagrams: "+(err.message||err);}
+  }
   function doLoad() {
     if (typeof LayoutUI.onLoad === "function") {
       Promise.resolve(LayoutUI.onLoad()).then(function (d) { if (d) { deserialize(d); msg("Loaded saved layout ✓"); } else msg("No saved layout found."); })
@@ -1101,7 +1165,7 @@
 
   /* ---------- public ---------- */
   var LayoutUI = {
-    onSave: null, onLoad: null, getEvents: null,
+    onSave: null, onLoad: null, onListSaved: null, getEvents: null,
     render: function (mount) {
       if (!E) { mount.innerHTML = '<p style="color:#a52a22">Layout engine not loaded.</p>'; return; }
       if (!L.built) { buildUI(mount); regenerate(); }
