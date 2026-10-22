@@ -1072,7 +1072,7 @@
     var payload = serialize();
     if (typeof LayoutUI.onSave === "function") {
       Promise.resolve(LayoutUI.onSave(payload)).then(function (r) {
-        msg(r && r.ok ? "Saved to venue ✓" : "Save failed: " + ((r && r.error) || "unknown"));
+        msg(r && r.ok ? (r.warning ? "Saved to venue ✓ — " + r.warning : "Saved to venue and event fiche ✓") : "Save failed: " + ((r && r.error) || "unknown"));
       }).catch(function (e) { msg("Save failed: " + (e.message || e)); });
     } else { msg("Saving not wired in this context."); }
   }
