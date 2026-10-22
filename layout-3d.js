@@ -513,12 +513,16 @@
       seatMeshes: seatMeshes, meshById: meshById, wallMeshes: wallMeshes, ceilMesh: ceilMesh, mode: null, raf: 0,
       orbit: { az: 0.6, pol: 0.9, rad: Math.max(rm.W, rm.L) * 1.1, tx: 0, ty: 3, tz: 0 },
       walk: { x: 0, y: EYE_STAND, z: rm.L / 2 - 4, yaw: 0, pitch: -0.05 },
-      keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED, report: opts && opts.report || null };
+      keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED, report: opts && opts.report || null, share: opts && opts.share || null, readOnly: !!(opts && opts.readOnly) };
     V.photoCtx={THREE:THREE,renderer:renderer,scene:scene,rm:rm,key:key,fill:fill,hemi:hemi,amb:amb};
     V.photo=null; // enable after standard renderer has started
 
     buildSeatSelect();
     wireOverlay();
+    if(V.readOnly){
+      V.wrap.querySelectorAll('[data-report],#l3d-photo-export').forEach(function(el){el.style.display="none";});
+      var heading=V.wrap.querySelector("#l3d-bar b");if(heading)heading.textContent="3D · View Only";
+    }
     onResize();
     window.addEventListener("resize", onResize);
     setMode(mode);
@@ -540,6 +544,20 @@
     }
     try{V.photo=root.ACVPhotoHD.init(V.photoCtx);return true;}
     catch(err){showPhotoStatus("Photo HD unavailable: "+(err.message||err));return false;}
+  }
+  function ensureShareModule(cb){
+    if(root.ACVShare){cb();return;}
+    var script=document.getElementById("l3d-share-js");
+    if(script){script.addEventListener("load",cb,{once:true});script.addEventListener("error",function(){showPhotoStatus("Could not load share module.");},{once:true});return;}
+    script=document.createElement("script");script.id="l3d-share-js";script.src="layout-share.js";
+    script.onload=cb;script.onerror=function(){showPhotoStatus("Could not load share module.");};
+    document.head.appendChild(script);
+  }
+  function buildShareUrl(){
+    return new Promise(function(resolve,reject){
+      if(!V||!V.share){reject(new Error("Share snapshot missing; open 3D from the planner."));return;}
+      ensureShareModule(function(){root.ACVShare.encode(V.share).then(resolve,reject);});
+    });
   }
   // Report scripts are loaded lazily; basic Orbit/Walkthrough never depend on them.
   function ensureReportModule(cb){
@@ -576,7 +594,7 @@
       var photo=captureReportPhoto(),onePage=kind.indexOf("all-")===0,format=kind.indexOf("pdf")>0?"pdf":"png";
       ensureReportModule(function(){
         if(!V)return;
-        root.ACVReport3D.exportReport({photo:photo,report:V.report,onePage:onePage,format:format,popup:popup})
+        root.ACVReport3D.exportReport({photo:photo,report:V.report,onePage:onePage,format:format,popup:popup,shareUrl:buildShareUrl()})
           .catch(function(err){showPhotoStatus("Report failed: "+(err.message||err));});
       });
     }catch(err){
