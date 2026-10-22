@@ -902,6 +902,7 @@
       checks:{feasible:v.feasible,violations:(v.violations||[]).map(function(x){return x.msg||"Collision or fit conflict";}),
       clearance:(v.clearance||[]).map(function(x){return x.msg||"Operational-clearance warning";})},
       assumptions:"Planning tool only. Nominal dimensions unless HOTEL-CONFIRMED or MANUFACTURER-VERIFIED. This is not an official fire, occupancy, or accessibility approval.",
+      planSvg:exportableSvgString(),
       generatedAt:new Date().toLocaleString()
     };
   }
