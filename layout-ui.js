@@ -317,8 +317,8 @@
     L.params.eventCitySlug=e.citySlug;L.params.eventDateId=e.id;
     L.params.eventCity=e.city;L.params.eventName=e.label;
     L.params.eventStartDate=e.start_date;L.params.eventEndDate=e.end_date;
-    if(e.venue&&!val("layVenue"))set("layVenue",e.venue);
-    if(e.room&&!val("layRoom"))set("layRoom",e.room);
+    if(e.venue){L.room.venue=e.venue;set("layVenue",e.venue);}
+    if(e.room){L.room.name=e.room;set("layRoom",e.room);}
     refreshEventChoices();
   }
   function updateFurnitureCompatibility(){
@@ -943,6 +943,7 @@
     return {
       venue:L.room.venue||"Venue",room:L.room.name||"Room",
       layout:(E.LAYOUT_META[L.params.layout]||{}).name||L.params.layout,
+      event:{city:L.params.eventCity||"",label:L.params.eventName||"",start:L.params.eventStartDate||"",end:L.params.eventEndDate||""},
       dimensions:{width:L.room.width,length:L.room.length,ceiling:L.room.ceilingHeight||null,area:L.room.width*L.room.length},
       capacities:{published:L.published,estimated:est,validated:reception?null:(v.feasible?seats:countGood),requested:L.params.target,fit:fit.status,fitReason:fit.reason},
       counts:Object.keys(counts).sort().map(function(k){return {name:k,qty:counts[k]};}),
@@ -1024,6 +1025,7 @@
         '<style>body{font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#22303f;margin:24px}h1{color:#1e3a5f;font-size:20px;margin:0}h2{color:#b8860b;font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 4px}table{border-collapse:collapse;font-size:13px}td,th{border-bottom:1px solid #e6ddca;padding:4px 12px;text-align:left}img{max-width:100%;border:1px solid #e6ddca;border-radius:8px;margin-top:4px}.muted{color:#6b7480;font-size:12px}</style></head><body>' +
         '<h1>' + esc(L.room.venue || "Venue") + " — " + esc(L.room.name || "Room") + "</h1>" +
         '<div class="muted">' + esc((E.LAYOUT_META[L.params.layout] || {}).name || L.params.layout) + " · " + L.room.width + "×" + L.room.length + " ft, ceiling " + (L.room.ceilingHeight || "?") + " ft · " + new Date().toLocaleString() + "</div>" +
+        (L.params.eventDateId?('<div class="muted">Event: '+esc(L.params.eventCity||"")+' · '+esc(L.params.eventName||"")+' · '+esc(L.params.eventStartDate||"")+' — '+esc(L.params.eventEndDate||"")+'</div>'):"") +
         "<h2>Capacity</h2><table><tr><td>Published</td><td>" + (L.published != null ? L.published : "—") + "</td></tr><tr><td>Estimated</td><td>" + est + "</td></tr><tr><td>Validated</td><td>" + (fit.validated != null ? fit.validated : "—") + "</td></tr><tr><td>Requested</td><td>" + L.params.target + "</td></tr><tr><td>Fit</td><td>" + fit.status.replace(/_/g, " ") + "</td></tr></table>" +
         '<h2>Floor plan (to scale)</h2><img src="' + png + '">' +
         "<h2>Furniture &amp; equipment</h2><table><tr><th>Item</th><th>Qty</th></tr>" + rowsC + "</table>" +
