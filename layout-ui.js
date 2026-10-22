@@ -910,10 +910,10 @@
     readFormToState();
     updateChairFacing();
     if (root.Layout3D && typeof root.Layout3D.open === "function") {
-      root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D(), floorPlanSvg: exportableSvgString(), onSeat: function (info) {} });
+      root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D(), floorPlanSvg: exportableSvgString(), share: { room: cloneObj(L.room), objects: L.objects.map(cloneObj), params: cloneObj(L.params) }, onSeat: function (info) {} });
     } else {
       msg("Loading 3D… if it doesn’t open, this device may not support WebGL — the 2D planner remains fully usable.");
-      ensure3D(function () { if (root.Layout3D) root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D(), floorPlanSvg: exportableSvgString() }); });
+      ensure3D(function () { if (root.Layout3D) root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D(), floorPlanSvg: exportableSvgString(), share: { room: cloneObj(L.room), objects: L.objects.map(cloneObj), params: cloneObj(L.params) } }); });
     }
   }
   function ensure3D(cb) {
