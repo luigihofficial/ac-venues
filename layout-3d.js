@@ -378,7 +378,11 @@
       '<label id="l3d-eyewrap" style="display:none;font-size:12px;gap:4px;align-items:center">eye <input id="l3d-eye" type="range" min="2.5" max="6.5" step="0.1" style="vertical-align:middle"></label>' +
       '<select id="l3d-photo-quality" class="l3d-b" aria-label="Render quality"><option value="standard">3D Standard</option><option value="photo">Photo HD Preview</option></select>' +
       '<select id="l3d-photo-camera" class="l3d-b" aria-label="Camera"><option value="">Camera presets</option><option value="top">Top</option><option value="front">Front</option><option value="corner">Corner</option><option value="photo">Photo angle</option></select>' +
-      '<button id="l3d-photo-export" class="l3d-b">Export HD PNG</button>' +
+      '<button id="l3d-photo-export" class="l3d-b">HD image</button>' +
+      '<button data-report="3d-png" class="l3d-b">3D + Report PNG</button>' +
+      '<button data-report="3d-pdf" class="l3d-b">3D + Report PDF</button>' +
+      '<button data-report="all-png" class="l3d-b">One-Page PNG</button>' +
+      '<button data-report="all-pdf" class="l3d-b">One-Page PDF</button>' +
       '<span id="l3d-hint" style="font-size:12px;color:#cdd6e2;margin-left:4px"></span>' +
       '<button id="l3d-close" class="l3d-b" style="margin-left:auto;background:#b8860b">Close ✕</button>' +
       '</div>' +
@@ -509,7 +513,7 @@
       seatMeshes: seatMeshes, meshById: meshById, wallMeshes: wallMeshes, ceilMesh: ceilMesh, mode: null, raf: 0,
       orbit: { az: 0.6, pol: 0.9, rad: Math.max(rm.W, rm.L) * 1.1, tx: 0, ty: 3, tz: 0 },
       walk: { x: 0, y: EYE_STAND, z: rm.L / 2 - 4, yaw: 0, pitch: -0.05 },
-      keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED };
+      keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED, report: opts && opts.report || null };
     V.photoCtx={THREE:THREE,renderer:renderer,scene:scene,rm:rm,key:key,fill:fill,hemi:hemi,amb:amb};
     V.photo=null; // enable after standard renderer has started
 
@@ -537,6 +541,49 @@
     try{V.photo=root.ACVPhotoHD.init(V.photoCtx);return true;}
     catch(err){showPhotoStatus("Photo HD unavailable: "+(err.message||err));return false;}
   }
+  // Report scripts are loaded lazily; basic Orbit/Walkthrough never depend on them.
+  function ensureReportModule(cb){
+    if(root.ACVReport3D){cb();return;}
+    var script=document.getElementById("l3d-report-js");
+    if(script){script.addEventListener("load",cb,{once:true});script.addEventListener("error",function(){showPhotoStatus("Could not load report module.");},{once:true});return;}
+    script=document.createElement("script");script.id="l3d-report-js";script.src="layout-report-3d.js";
+    script.onload=cb;script.onerror=function(){showPhotoStatus("Could not load report module.");};
+    document.head.appendChild(script);
+  }
+  // A full-room, three-quarter perspective, independent of user's active seat or walk.
+  function captureReportPhoto(){
+    if(!V || !enablePhotoHD())throw new Error("Photo HD renderer is not ready.");
+    var previousCamera=V.cam,previousMode=V.mode,rm=V.rm,THREE=V.THREE;
+    var shot=new THREE.PerspectiveCamera(58,previousCamera.aspect,0.1,Math.max(1200,Math.max(rm.W,rm.L)*15));
+    var span=Math.max(rm.W,rm.L);
+    shot.position.set(span*0.92,Math.max(rm.ceil*1.6,span*0.85),span*1.05);
+    shot.lookAt(0,Math.min(4,rm.ceil*.36),0);
+    try{
+      V.cam=shot;V.mode="orbit";updateWalls();
+      return V.photo.exportPNG({cam:shot,updateCamera:function(){},updateWalls:updateWalls},true);
+    }finally{
+      V.cam=previousCamera;V.mode=previousMode;updateWalls();
+    }
+  }
+  function export3DReport(kind){
+    if(!V)return;
+    if(!V.report){showPhotoStatus("The room report is missing. Close 3D and reopen from the planner.");return;}
+    // Open PDF window in the click handler, before any asynchronous loading.
+    var popup=kind.indexOf("pdf")>0?window.open("","_blank"):null;
+    if(kind.indexOf("pdf")>0&&!popup){showPhotoStatus("Allow pop-ups to export the PDF report.");return;}
+    if(popup)popup.document.write('<p style="font:16px Arial;padding:24px">Preparing room report…</p>');
+    try{
+      var photo=captureReportPhoto(),onePage=kind.indexOf("all-")===0,format=kind.indexOf("pdf")>0?"pdf":"png";
+      ensureReportModule(function(){
+        if(!V)return;
+        root.ACVReport3D.exportReport({photo:photo,report:V.report,onePage:onePage,format:format,popup:popup})
+          .catch(function(err){showPhotoStatus("Report failed: "+(err.message||err));});
+      });
+    }catch(err){
+      if(popup)popup.close();
+      showPhotoStatus("Report export failed: "+(err.message||err));
+    }
+  }
   function wireOverlay() {
     var wrap = V.wrap;
     wrap.querySelectorAll("[data-m]").forEach(function (b) { b.onclick = function () { setMode(b.getAttribute("data-m")); }; });
@@ -560,6 +607,9 @@
       try{V.photo.exportPNG({cam:V.cam,updateCamera:updateCamera,updateWalls:updateWalls});}
       catch(err){showPhotoStatus("Export error: "+(err.message||err));}
     };
+    wrap.querySelectorAll("[data-report]").forEach(function(b){
+      b.onclick=function(){export3DReport(b.getAttribute("data-report"));};
+    });
     var sel = wrap.querySelector("#l3d-seat");
     sel.onchange = function () { V.seatIdx = +sel.value; applySeat(); };
     var eye = wrap.querySelector("#l3d-eye");
