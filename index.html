@@ -2133,6 +2133,14 @@ function dateBlock(d, citySlug){
         <label class="dtlab">Inicio <input type="date" class="cell dt" data-dfield="start_date" data-did="${d.id}" value="${esc(d.start_date||'')}"></label>
         <label class="dtlab">Fin <input type="date" class="cell dt" data-dfield="end_date" data-did="${d.id}" value="${esc(d.end_date||'')}"></label>
       </div>
+      <div style="padding:10px 12px;margin:10px 0;border:1px solid #e6ddca;border-radius:9px;background:#faf9f5">
+        <b>Diagramas de sala vinculados</b>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn sm gold" data-layoutnew="${d.id}" type="button">+ Crear diagrama para este evento</button>
+          <button class="btn sm ghost" data-layoutlist="${d.id}" type="button">Ver diagramas guardados</button>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:5px">Los diagramas se guardan con la ciudad, este evento y la fecha correspondiente.</div>
+      </div>
       <h5 class="dsub">Fases del evento</h5>
       <ul class="chk">${fases}</ul>
       <h5 class="dsub">Pendientes del evento <span class="dsubn">${pc}/${PEND_EVENTO.length}</span></h5>
@@ -4396,23 +4404,79 @@ function lpInit(){
 }
 lpInit();
 
+/* ---- Venue layouts: event association via existing room_layouts schema ---- */
+function acEventChoices(){
+  return allDates().map(({city,d})=>{
+    const sheet=state.sheets&&state.sheets[d.id]||{};
+    const meta=state.dmeta&&state.dmeta[d.id]||{};
+    return {id:d.id,citySlug:city.slug,city:city.name,label:d.label||"Event",
+      start_date:d.start_date||"",end_date:d.end_date||"",
+      venue:sheet.hotel_name||meta.chosen_venue||"",room:sheet.room_name||""};
+  });
+}
+// Use the event ID in the existing unique layout_id key, so diagrams for different
+// event dates cannot overwrite one another. The layout ID remains in data.params.
+function acEventLayoutKey(layoutId,eventId){
+  return eventId ? layoutId+"__"+eventId : layoutId;
+}
+async function acListEventLayouts(eventId){
+  if(!sb)return [];
+  const {data,error}=await sb.from("room_layouts").select("venue,room_name,layout_id,updated_at,data")
+    .like("layout_id","%__"+eventId).order("updated_at",{ascending:false}).limit(500);
+  if(error)throw error;
+  return (data||[]).filter(row=>row.data&&row.data.params&&row.data.params.eventDateId===eventId);
+}
+async function acShowEventLayouts(eventId){
+  try{
+    const rows=await acListEventLayouts(eventId);
+    if(!rows.length){alert("No hay diagramas guardados para este evento. Usa Crear diagrama para comenzar.");return;}
+    const overlay=document.createElement("div");
+    overlay.style.cssText="position:fixed;inset:0;z-index:9995;background:#152840a8;display:flex;align-items:center;justify-content:center;padding:18px";
+    const card=document.createElement("section");card.style.cssText="background:white;border-radius:13px;padding:20px;width:min(640px,96vw);max-height:80vh;overflow:auto";
+    const title=document.createElement("h3");title.textContent="Diagramas guardados · "+(dateLabelById(eventId)||"Evento");card.appendChild(title);
+    rows.forEach(function(row){
+      const line=document.createElement("div");
+      line.style.cssText="border-top:1px solid #e6ddca;padding:12px 0;display:flex;justify-content:space-between;gap:12px;align-items:center";
+      const summary=document.createElement("div");
+      const name=document.createElement("b");name.textContent=(row.venue||"Venue")+" — "+(row.room_name||"Room");summary.appendChild(name);
+      const info=document.createElement("div");info.style.cssText="font-size:12px;color:#6b7480;margin-top:4px";
+      info.textContent=(row.data.params.layout||"Layout")+" · "+new Date(row.updated_at).toLocaleString();summary.appendChild(info);
+      const open=document.createElement("button");open.className="btn sm gold";open.type="button";open.textContent="Abrir diagrama";
+      open.onclick=function(){overlay.remove();location.hash="#layout";setTimeout(function(){LayoutUI.loadEventLayout(row.data);},0);};
+      line.appendChild(summary);line.appendChild(open);card.appendChild(line);
+    });
+    const close=document.createElement("button");close.className="btn sm ghost";close.type="button";close.textContent="Cerrar";
+    close.onclick=function(){overlay.remove();};card.appendChild(close);overlay.appendChild(card);
+    overlay.onclick=function(e){if(e.target===overlay)overlay.remove();};
+    document.body.appendChild(overlay);
+  }catch(err){alert("No se pudieron cargar los diagramas: "+(err.message||err));}
+}
+document.addEventListener("click",function(e){
+  const add=e.target.closest("[data-layoutnew]");
+  if(add){const id=add.dataset.layoutnew;location.hash="#layout";setTimeout(function(){if(window.LayoutUI)LayoutUI.openForEvent(id);},0);return;}
+  const list=e.target.closest("[data-layoutlist]");
+  if(list){acShowEventLayouts(list.dataset.layoutlist);}
+});
 /* ---- Layout engine: persistencia (Supabase room_layouts) ---- */
 if(window.LayoutUI){
+  LayoutUI.getEvents=acEventChoices;
   LayoutUI.onSave = async function(payload){
     try{
       if(!sb) return {ok:false, error:'Sin sesión'};
       if(USER && !['global@amorconsciente.com','noris@amorconsciente.com'].includes((USER.email||'').toLowerCase()))
         return {ok:false, error:'Correo no autorizado'};
       const r=payload.room||{}, p=payload.params||{};
+      if(p.eventDateId && !acEventChoices().some(e=>e.id===p.eventDateId && e.citySlug===p.eventCitySlug))
+        return {ok:false,error:"Selecciona un evento válido de la ciudad indicada."};
       const row={ venue:(r.venue||'').trim(), room_name:(r.name||'').trim(),
-        event_name:(p.eventName||''), layout_id:p.layout||'',
+        event_name:(p.eventName||''), layout_id:acEventLayoutKey(p.layout||'',p.eventDateId),
         unit:r.unit||'ft', width:r.width, length:r.length, published:payload.published,
         data:payload, capacities:payload.capacities||{},
         created_by:(USER&&USER.email)||'', updated_at:new Date().toISOString() };
       if(!row.venue && !row.room_name) return {ok:false, error:'Indica venue y/o nombre de sala para guardar'};
       const { error } = await sb.from('room_layouts').upsert(row, { onConflict:'venue,room_name,layout_id' });
       if(error) return {ok:false, error:error.message};
-      logChange('layout', row.room_name||row.venue||'sala', 'guardó un montaje '+(row.layout_id||''));
+      logChange('layout', row.room_name||row.venue||'sala', 'guardó un montaje '+(p.layout||'')+(p.eventName?' para '+p.eventName:''));
       return {ok:true};
     }catch(e){ return {ok:false, error:e.message||String(e)}; }
   };
@@ -4421,12 +4485,16 @@ if(window.LayoutUI){
       if(!sb) return null;
       const venue=(document.getElementById('layVenue')||{}).value||'';
       const room=(document.getElementById('layRoom')||{}).value||'';
-      let q = sb.from('room_layouts').select('*').order('updated_at',{ascending:false}).limit(1);
+      const selectedId=(window.LayoutUI&&LayoutUI._state.params.eventDateId)||null;
+      let q = sb.from('room_layouts').select('*').order('updated_at',{ascending:false}).limit(selectedId?50:1);
+      if(selectedId)q=q.like('layout_id','%__'+selectedId);
       if(venue.trim()) q = q.eq('venue', venue.trim());
       if(room.trim()) q = q.eq('room_name', room.trim());
       const { data, error } = await q;
       if(error || !data || !data.length) return null;
-      return data[0].data || null;
+      const selectedId=(window.LayoutUI&&LayoutUI._state.params.eventDateId)||null;
+      const record=selectedId?data.find(x=>x.data&&x.data.params&&x.data.params.eventDateId===selectedId):data[0];
+      return record&&record.data||null;
     }catch(e){ return null; }
   };
 }
