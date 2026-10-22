@@ -109,7 +109,7 @@ async function build(view,report,format,onePage,popup){
  else saveCanvas(canvas,onePage?"ac-venues-one-page-report.png":"ac-venues-3d-report.png");
 }
 function exportReport(args){
- var popup=args.format==="pdf"?root.open("","_blank"):null;
+ var popup=args.format==="pdf"?(args.popup||root.open("","_blank")):null;
  if(args.format==="pdf"&&!popup)throw new Error("Allow pop-ups to save the report as PDF.");
  if(popup){popup.document.write("<p style='font:16px Arial;padding:24px'>Generating AC Venues report…</p>");}
  return build({photo:args.photo},args.report,args.format,args.onePage,popup).catch(function(err){
