@@ -909,10 +909,10 @@
     readFormToState();
     updateChairFacing();
     if (root.Layout3D && typeof root.Layout3D.open === "function") {
-      root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D(), onSeat: function (info) {} });
+      root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D(), floorPlanSvg: exportableSvgString(), onSeat: function (info) {} });
     } else {
       msg("Loading 3D… if it doesn’t open, this device may not support WebGL — the 2D planner remains fully usable.");
-      ensure3D(function () { if (root.Layout3D) root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D() }); });
+      ensure3D(function () { if (root.Layout3D) root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D(), floorPlanSvg: exportableSvgString() }); });
     }
   }
   function ensure3D(cb) {
