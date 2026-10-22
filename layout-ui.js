@@ -882,14 +882,37 @@
     var html = fs.candidates.length ? ("<table><tr><th>Room (ft)</th><th>Area</th><th>Seats</th></tr>" + fs.candidates.map(function (c) { return "<tr><td>" + c.width + "×" + c.length + "</td><td>" + c.area + " ft²</td><td>" + c.validated + "</td></tr>"; }).join("") + "</table>") : "";
     actOut("<b>Required room size</b> for " + fs.target + " in " + esc((E.LAYOUT_META[L.params.layout] || {}).name) + ":" + html + "<span class='lay-note'>" + esc(fs.note) + "</span>");
   }
+  // A frozen report snapshot from the same engine used by the existing 2D PDF.
+  // Manual edits are included; the image and its report represent one layout.
+  function reportSnapshot3D(){
+    var v=E.validate(L.objects,L.room,{});
+    var reception=L.params.layout==="RECEPTION";
+    var est=reception?E.validatedCapacity("RECEPTION",L.room,L.params).standingEstimate:E.estimatedCapacity(L.params.layout,L.room);
+    var fit=E.assessFit(L.params.layout,L.room,L.params.target,L.params);
+    var counts={};
+    L.objects.forEach(function(o){var k=o.label||o.type;counts[k]=(counts[k]||0)+1;});
+    var seats=L.objects.filter(function(o){return o.category==="chair";}).length;
+    var countGood=(typeof countNonViolatingChairs==="function")?countNonViolatingChairs(v):seats;
+    return {
+      venue:L.room.venue||"Venue",room:L.room.name||"Room",
+      layout:(E.LAYOUT_META[L.params.layout]||{}).name||L.params.layout,
+      dimensions:{width:L.room.width,length:L.room.length,ceiling:L.room.ceilingHeight||null,area:L.room.width*L.room.length},
+      capacities:{published:L.published,estimated:est,validated:reception?null:(v.feasible?seats:countGood),requested:L.params.target,fit:fit.status,fitReason:fit.reason},
+      counts:Object.keys(counts).sort().map(function(k){return {name:k,qty:counts[k]};}),
+      checks:{feasible:v.feasible,violations:(v.violations||[]).map(function(x){return x.msg||"Collision or fit conflict";}),
+      clearance:(v.clearance||[]).map(function(x){return x.msg||"Operational-clearance warning";})},
+      assumptions:"Planning tool only. Nominal dimensions unless HOTEL-CONFIRMED or MANUFACTURER-VERIFIED. This is not an official fire, occupancy, or accessibility approval.",
+      generatedAt:new Date().toLocaleString()
+    };
+  }
   function open3D(mode) {
     readFormToState();
     updateChairFacing();
     if (root.Layout3D && typeof root.Layout3D.open === "function") {
-      root.Layout3D.open(mode, L.objects, L.room, L.params, { onSeat: function (info) {} });
+      root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D(), onSeat: function (info) {} });
     } else {
       msg("Loading 3D… if it doesn’t open, this device may not support WebGL — the 2D planner remains fully usable.");
-      ensure3D(function () { if (root.Layout3D) root.Layout3D.open(mode, L.objects, L.room, L.params, {}); });
+      ensure3D(function () { if (root.Layout3D) root.Layout3D.open(mode, L.objects, L.room, L.params, { report: reportSnapshot3D() }); });
     }
   }
   function ensure3D(cb) {
