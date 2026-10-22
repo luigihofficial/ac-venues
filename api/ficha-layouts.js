@@ -9,7 +9,7 @@ async function query(table,params,key){
  if(!response.ok)throw new Error("Supabase query failed ("+response.status+")");
  return response.json();
 }
-export default async function handler(req,res){
+module.exports=async function handler(req,res){
  res.setHeader("Cache-Control","private, no-store, max-age=0");
  res.setHeader("X-Content-Type-Options","nosniff");
  if(req.method!=="GET"){res.setHeader("Allow","GET");return res.status(405).json({error:"Method not allowed"});}
