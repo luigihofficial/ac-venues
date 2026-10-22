@@ -102,7 +102,7 @@ function printCanvas(canvas,windowRef,filename,link){
  var action=href?'<a class="share" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">OPEN INTERACTIVE 2D + 3D VIEW (READ ONLY) ↗</a>':"";
  var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(filename)+'</title>'+
   '<style>@page{size:letter portrait;margin:0}html,body{padding:0;margin:0;background:white}img{width:100%;height:100vh;object-fit:contain;display:block}.share{position:absolute;left:6%;bottom:1.2%;background:#172b49;color:#fff;text-decoration:underline;font:700 10pt Arial;padding:8pt 14pt;border-radius:5pt}@media print{.share{position:fixed;bottom:1.2%;left:6%}}</style></head><body>'+
-  '<img id="sheet" src="'+src+'">'+action+'<script>document.getElementById("sheet").onload=function(){setTimeout(function(){window.print();},450)};<\\/script></body></html>';
+  '<img id="sheet" src="'+src+'">'+action+'<script>document.getElementById("sheet").onload=function(){setTimeout(function(){window.print();},450)};</scr'+'ipt></body></html>';
  windowRef.document.open();windowRef.document.write(html);windowRef.document.close();
 }
 async function build(view,report,format,onePage,popup,shareUrl){
