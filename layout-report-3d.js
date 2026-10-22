@@ -93,26 +93,38 @@ function prepSheet(report,photo,plan,onePage){
 function saveCanvas(canvas,name){
  var a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download=name;document.body.appendChild(a);a.click();a.remove();
 }
-function printCanvas(canvas,windowRef,filename){
- if(!windowRef)throw new Error("Please allow pop-up windows to export a PDF.");
+function printCanvas(canvas,windowRef,filename,link){
+ if(!windowRef)throw new Error("Please allow pop-ups to export a PDF.");
  var src=canvas.toDataURL("image/png");
+ var href=link||"";
+ // Text and hyperlink are real HTML, not just pixels, so printing to PDF
+ // creates an actual clickable annotation in compatible browsers.
+ var action=href?'<a class="share" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">OPEN INTERACTIVE 2D + 3D VIEW (READ ONLY) ↗</a>':"";
  var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(filename)+'</title>'+
-  '<style>@page{size:letter portrait;margin:0}html,body{padding:0;margin:0;background:white}img{width:100vw;height:100vh;object-fit:contain;display:block}@media print{img{width:100%;height:100vh;object-fit:contain}}</style></head><body>'+
-  '<img id="sheet" src="'+src+'"><script>document.getElementById("sheet").onload=function(){setTimeout(function(){window.print();},300)};<\/script></body></html>';
+  '<style>@page{size:letter portrait;margin:0}html,body{padding:0;margin:0;background:white}img{width:100%;height:100vh;object-fit:contain;display:block}.share{position:absolute;left:6%;bottom:1.2%;background:#172b49;color:#fff;text-decoration:underline;font:700 10pt Arial;padding:8pt 14pt;border-radius:5pt}@media print{.share{position:fixed;bottom:1.2%;left:6%}}</style></head><body>'+
+  '<img id="sheet" src="'+src+'">'+action+'<script>document.getElementById("sheet").onload=function(){setTimeout(function(){window.print();},450)};<\\/script></body></html>';
  windowRef.document.open();windowRef.document.write(html);windowRef.document.close();
 }
-async function build(view,report,format,onePage,popup){
+async function build(view,report,format,onePage,popup,shareUrl){
  if(!report)throw new Error("Report details unavailable; reopen this viewer from the layout designer.");
  var pictures=await Promise.all([image(view.photo),onePage?planImage(report.planSvg):Promise.resolve(null)]);
  var canvas=prepSheet(report,pictures[0],pictures[1],onePage);
- if(format==="pdf")printCanvas(canvas,popup,"AC Venues room report");
+ // PNG files do not support clickable links. Include a caption; the PDF
+ // version embeds a real hyperlink to the interactive read-only viewer.
+ if(shareUrl){
+  var g=canvas.getContext("2d");
+  g.fillStyle="#ffffff";g.fillRect(60,canvas.height-100,canvas.width-120,90);
+  g.fillStyle="#172b49";g.font="bold 24px Arial";
+  g.fillText("INTERACTIVE 2D + 3D · Read-only viewing link available in PDF version",68,canvas.height-55);
+ }
+ if(format==="pdf")printCanvas(canvas,popup,"AC Venues room report",shareUrl);
  else saveCanvas(canvas,onePage?"ac-venues-one-page-report.png":"ac-venues-3d-report.png");
 }
 function exportReport(args){
  var popup=args.format==="pdf"?(args.popup||root.open("","_blank")):null;
  if(args.format==="pdf"&&!popup)throw new Error("Allow pop-ups to save the report as PDF.");
  if(popup){popup.document.write("<p style='font:16px Arial;padding:24px'>Generating AC Venues report…</p>");}
- return build({photo:args.photo},args.report,args.format,args.onePage,popup).catch(function(err){
+ return Promise.resolve(args.shareUrl).catch(function(){return null;}).then(function(link){return build({photo:args.photo},args.report,args.format,args.onePage,popup,link);}).catch(function(err){
   if(popup){popup.document.body.innerHTML="<p style='font:16px Arial;padding:24px'>"+esc(err.message||err)+"</p>";}
   throw err;
  });
