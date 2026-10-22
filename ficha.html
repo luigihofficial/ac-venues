@@ -170,15 +170,30 @@ function rowsHtml(d){
   return rows.join('') || '<tr><td class="v" style="color:#8a9199;padding:16px">La ficha aún no tiene detalles cargados.</td></tr>';
 }
 
-async function loadEventLayouts(){
-  // Public RPC validates the SAME sheet token used by this live event fiche.
-  // Never query room_layouts directly: its RLS is team-only by design.
+async function loadEventLayouts(sharedFiles){
   const wrap=$('layoutsWrap'),list=$('fLayouts');
   wrap.classList.add('hidden');list.textContent='';
+  const links=new Set();
+  function append(url,label,detail){
+    if(!url||links.has(url))return;
+    if(!/^https:\/\//i.test(url))return;
+    links.add(url);
+    const link=document.createElement('a');
+    link.className='layout-link';link.href=url;link.target='_blank';link.rel='noopener noreferrer';
+    const title=document.createElement('span');
+    const name=document.createElement('strong');name.textContent=label;
+    const sub=document.createElement('small');sub.textContent=detail||'Modo de consulta; sin cambios.';
+    title.appendChild(name);title.appendChild(sub);
+    const arrow=document.createElement('span');arrow.setAttribute('aria-hidden','true');arrow.textContent='Abrir 2D / 3D ↗';
+    link.appendChild(title);link.appendChild(arrow);list.appendChild(link);
+    wrap.classList.remove('hidden');
+  }
+  // This already exists in get_sheet: shared event_files are available to
+  // the recipient with the sheet token, even on Vercel Preview.
+  (sharedFiles||[]).filter(f=>(f.name||'').startsWith('Diagrama interactivo 2D/3D · '))
+    .forEach(f=>append(f.url,f.name,'Explorar y recorrer el salón, sin posibilidad de editar.'));
   try{
-    if(!window.ACVShare||!window.ACVShare.encode)throw new Error('Viewer unavailable');
-    // Primary path: token-validated server endpoint; fallback: restricted SQL RPC.
-    // Neither path grants anonymous access to the private room_layouts table.
+    if(!window.ACVShare||!window.ACVShare.encode)return;
     let rows=null;
     try{
       const response=await fetch('/api/ficha-layouts?t='+encodeURIComponent(token),{cache:'no-store'});
@@ -192,28 +207,15 @@ async function loadEventLayouts(){
       if(result.error)throw result.error;
       rows=Array.isArray(result.data)?result.data:[];
     }
-    if(!rows.length)return;
-    let shown=0;
     for(const row of rows){
       if(!row.snapshot||!Array.isArray(row.snapshot.objects))continue;
       const url=await window.ACVShare.encode(row.snapshot);
-      const link=document.createElement('a');
-      link.className='layout-link';link.href=url;link.target='_blank';link.rel='noopener noreferrer';
-      const title=document.createElement('span');
-      const name=document.createElement('strong');
-      name.textContent=(row.room_name||'Salón')+' · '+(row.layout_name||'Layout');
-      const sub=document.createElement('small');
-      sub.textContent=(row.venue||'Venue')+' · '+row.snapshot.objects.filter(o=>o.category==='chair').length+' sillas';
-      title.appendChild(name);title.appendChild(sub);
-      const arrow=document.createElement('span');arrow.setAttribute('aria-hidden','true');arrow.textContent='Abrir 2D / 3D ↗';
-      link.appendChild(title);link.appendChild(arrow);list.appendChild(link);
-      shown++;
+      append(url,(row.room_name||'Salón')+' · '+(row.layout_name||'Layout'),
+        (row.venue||'Venue')+' · '+row.snapshot.objects.filter(o=>o.category==='chair').length+' sillas');
     }
-    if(shown)wrap.classList.remove('hidden');
   }catch(e){
-    // Fail closed: an absent SQL migration or revoked token cannot expose
-    // private layout records or break the rest of the event fiche.
-    console.warn('Diagrama interactivo aún no disponible:',e.message||e);
+    // The existing shared-file links still work if the optional RPC is absent.
+    console.warn('Consulta adicional de diagramas no disponible:',e.message||e);
   }
 }
 async function load(){
@@ -234,13 +236,13 @@ async function load(){
     // contrato
     if(d.contract_url){ $('fContract').innerHTML = `<a href="${esc(d.contract_url)}" target="_blank" rel="noopener">Descargar contrato</a>`; $('contractWrap').classList.remove('hidden'); }
     // archivos
-    const files=(d.files||[]).filter(f=>f.url);
+    const files=(d.files||[]).filter(f=>f.url && !(f.name||'').startsWith('Diagrama interactivo 2D/3D · '));
     if(files.length){ $('fFiles').innerHTML = files.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name||'archivo')}</a>`).join(''); $('filesWrap').classList.remove('hidden'); }
     if(d.updated_at) $('fUpd').textContent = 'Actualizada: '+fmtDT(d.updated_at);
     // Título dinámico (pestaña + re-scrapes): incluye ciudad/hotel del evento
     try{ document.title = 'Ficha — ' + (city || d.hotel_name || 'evento') + ' · Amor Consciente'; }catch(e){}
     show('content');
-    loadEventLayouts();
+    loadEventLayouts(d.files||[]);
   }catch(e){ show('invalid'); }
 }
 load();
