@@ -1217,6 +1217,7 @@ window.AC_CONFIG = {
 <!-- Meeting Room Layout & Capacity Engine (vanilla + SVG, no build) -->
 <script src="layout-engine.js"></script>
 <script src="layout-ui.js"></script>
+<script src="layout-share.js"></script>
 <script src="layout-3d.js"></script>
 <script>
 /* ============================================================
@@ -4476,6 +4477,28 @@ if(window.LayoutUI){
       if(!row.venue && !row.room_name) return {ok:false, error:'Indica venue y/o nombre de sala para guardar'};
       const { error } = await sb.from('room_layouts').upsert(row, { onConflict:'venue,room_name,layout_id' });
       if(error) return {ok:false, error:error.message};
+      // Publish a view-only snapshot through the existing event_files shared
+      // links. The public get_sheet token RPC already exposes share=true files,
+      // so this works in Preview without service-role secrets or schema changes.
+      let publicLinkWarning='';
+      if(p.eventDateId){
+        try{
+          if(!window.ACVShare)throw new Error('Módulo para compartir no disponible');
+          const url=await window.ACVShare.encode({room:payload.room,objects:payload.objects,
+            params:{layout:p.layout}});
+          const marker='acv-layout:'+String(p.layout||'layout')+':'+row.venue+':'+row.room_name;
+          const name='Diagrama interactivo 2D/3D · '+(row.room_name||row.venue||'Sala')+' · '+(p.layout||'Layout');
+          const {data:oldFiles,error:listErr}=await sb.from('event_files').select('id')
+            .eq('date_id',p.eventDateId).eq('path',marker).limit(1);
+          if(listErr)throw listErr;
+          const attachment={date_id:p.eventDateId,name,path:marker,url,share:true,
+            mime:'application/x-acvenues-layout-link',uploaded_by:(USER&&USER.email)||''};
+          const outcome=(oldFiles&&oldFiles.length)
+            ? await sb.from('event_files').update(attachment).eq('id',oldFiles[0].id)
+            : await sb.from('event_files').insert(attachment);
+          if(outcome.error)throw outcome.error;
+        }catch(err){publicLinkWarning='El layout se guardó, pero no se pudo publicar en la ficha: '+(err.message||err);}
+      }
       logChange('layout', row.room_name||row.venue||'sala', 'guardó un montaje '+(p.layout||'')+(p.eventName?' para '+p.eventName:''));
       return {ok:true};
     }catch(e){ return {ok:false, error:e.message||String(e)}; }
