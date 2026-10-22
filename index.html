@@ -4500,7 +4500,7 @@ if(window.LayoutUI){
         }catch(err){publicLinkWarning='El layout se guardó, pero no se pudo publicar en la ficha: '+(err.message||err);}
       }
       logChange('layout', row.room_name||row.venue||'sala', 'guardó un montaje '+(p.layout||'')+(p.eventName?' para '+p.eventName:''));
-      return {ok:true};
+      return {ok:true, warning:publicLinkWarning};
     }catch(e){ return {ok:false, error:e.message||String(e)}; }
   };
   // Paginated saved-layout catalog: no event filter, includes legacy records.
