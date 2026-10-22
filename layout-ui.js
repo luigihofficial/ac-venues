@@ -174,6 +174,9 @@
           "</div>" +
           '<div class="lay-panel" style="margin-top:12px">' +
             "<h3>Event &amp; layout</h3>" +
+            '<label class="lay-f">City</label><select id="layEventCity"><option value="">Select a city</option></select>' +
+            '<label class="lay-f">Event / dates</label><select id="layEventDate"><option value="">Select an event</option></select>' +
+            '<div class="lay-note" id="layEventNote">Link this diagram to a registered event before saving.</div>' +
             '<label class="lay-f">Layout</label><select id="layType">' + opts + "</select>" +
             '<div class="lay-row"><div><label class="lay-f">Attendees</label><input id="layTarget" type="number" step="1"></div>' +
               '<div><label class="lay-f">High-tops (reception)</label><input id="layHigh" type="number" step="1" value="0"></div></div>' +
@@ -258,6 +261,7 @@
     set("layObst", (r.obstructions || []).map(function (o) { return [o.x, o.y, o.w, o.l].join(","); }).join(" ; "));
     set("layDoors", (r.doors || []).map(function (o) { return [o.x, o.y, o.w].join(","); }).join(" ; "));
     set("layZones", (r.reservedZones || []).map(function (o) { return [o.x, o.y, o.w, o.l].join(","); }).join(" ; "));
+    refreshEventChoices();
     set("layType", p.layout); set("layTarget", p.target); set("layHigh", p.highTops || 0);
     chk("layStage", p.stage); chk("layScreen", p.screen); chk("layAv", p.av);
     set("layChairType",(p.furniture||{}).chairType||"CHAIR");
@@ -283,6 +287,40 @@
     formula.textContent=w+" "+unit+" × "+l+" "+unit+
       (unit==="m"?" = "+(w*l).toLocaleString("en-US",{maximumFractionDigits:2})+" m²":"");
   }
+  function refreshEventChoices(){
+    var list=(LayoutUI.getEvents&&LayoutUI.getEvents())||[];
+    var cities={},p=L.params||{},city=$("layEventCity"),date=$("layEventDate");
+    if(!city||!date)return;
+    list.forEach(function(e){cities[e.citySlug]=e.city;});
+    var cityValue=p.eventCitySlug||"",dateValue=p.eventDateId||"";
+    city.innerHTML='<option value="">Select a city</option>'+Object.keys(cities).sort(function(a,b){return cities[a].localeCompare(cities[b]);}).map(function(k){return '<option value="'+esc(k)+'">'+esc(cities[k])+'</option>';}).join("");
+    city.value=cityValue;
+    if(city.value!==cityValue)city.value="";
+    refreshEventDates(dateValue);
+  }
+  function refreshEventDates(chosenId){
+    var city=val("layEventCity"),date=$("layEventDate");
+    if(!date)return;
+    var events=((LayoutUI.getEvents&&LayoutUI.getEvents())||[]).filter(function(e){return e.citySlug===city;});
+    date.innerHTML='<option value="">Select an event / dates</option>'+events.map(function(e){
+      return '<option value="'+esc(e.id)+'">'+esc(e.label+(e.start_date?" · "+e.start_date:"")+(e.end_date?" — "+e.end_date:""))+'</option>';
+    }).join("");
+    date.value=chosenId||"";
+    if(date.value!==(chosenId||""))date.value="";
+    var note=$("layEventNote");
+    if(note)note.textContent=date.value?"This layout will be saved under the selected city and event.":"Choose an event to link this layout to its date and city.";
+  }
+  function applyEventSelection(id){
+    var events=(LayoutUI.getEvents&&LayoutUI.getEvents())||[];
+    var e=events.find(function(x){return x.id===id;});
+    if(!e)return;
+    L.params.eventCitySlug=e.citySlug;L.params.eventDateId=e.id;
+    L.params.eventCity=e.city;L.params.eventName=e.label;
+    L.params.eventStartDate=e.start_date;L.params.eventEndDate=e.end_date;
+    if(e.venue&&!val("layVenue"))set("layVenue",e.venue);
+    if(e.room&&!val("layRoom"))set("layRoom",e.room);
+    refreshEventChoices();
+  }
   function updateFurnitureCompatibility(){
     var type=val("layType"),table=$("layTableType"),hint=$("layFurnitureHint");
     if(!table||!hint)return;
@@ -305,6 +343,13 @@
     r.obstructions = parseObst(val("layObst"), r.unit);
     r.doors = parseDoors(val("layDoors"));
     r.reservedZones = parseZones(val("layZones"));
+    p.eventDateId=val("layEventDate")||null;
+    p.eventCitySlug=val("layEventCity")||null;
+    var info=(LayoutUI.getEvents?LayoutUI.getEvents():[]).find(function(e){return e.id===p.eventDateId;});
+    p.eventName=info?info.label:"";
+    p.eventStartDate=info?info.start_date:"";
+    p.eventEndDate=info?info.end_date:"";
+    p.eventCity=info?info.city:"";
     p.layout = val("layType"); p.target = num("layTarget", 40); p.highTops = num("layHigh", 0);
     p.stage = chkv("layStage"); p.screen = chkv("layScreen"); p.av = chkv("layAv");
     p.furniture={chairType:val("layChairType")||"CHAIR",tableType:val("layTableType")||"AUTO",
@@ -663,6 +708,8 @@
   function wire() {
     ["layW","layL"].forEach(function(id){$(id).addEventListener("input",updateRoomArea);});
     $("layType").addEventListener("change",updateFurnitureCompatibility);
+    $("layEventCity").addEventListener("change",function(){L.params.eventCitySlug=val("layEventCity");L.params.eventDateId=null;refreshEventDates("");});
+    $("layEventDate").addEventListener("change",function(){applyEventSelection(val("layEventDate"));});
     $("layUnit").addEventListener("change",updateRoomArea);
     $("layGen").onclick = regenerate;
     $("laySave").onclick = doSave;
@@ -1052,11 +1099,20 @@
 
   /* ---------- public ---------- */
   var LayoutUI = {
-    onSave: null, onLoad: null,
+    onSave: null, onLoad: null, getEvents: null,
     render: function (mount) {
       if (!E) { mount.innerHTML = '<p style="color:#a52a22">Layout engine not loaded.</p>'; return; }
       if (!L.built) { buildUI(mount); regenerate(); }
       else { fitView(); render(); recalc(); }
+    },
+    openForEvent: function(id){
+      if(!L.built)buildUI(document.getElementById("layout"));
+      var e=((LayoutUI.getEvents&&LayoutUI.getEvents())||[]).find(function(x){return x.id===id;});
+      if(e){applyEventSelection(id);L.params.eventDateId=id;syncFormFromState();}
+    },
+    loadEventLayout: function(data){
+      if(!L.built)buildUI(document.getElementById("layout"));
+      deserialize(data);
     },
     _state: L, _engine: E, serialize: serialize, deserialize: deserialize, _regen: regenerate
   };
