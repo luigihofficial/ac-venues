@@ -33,7 +33,7 @@ for(const path of ['layout-engine.js','layout-ui.js','layout-3d.js','layout-phot
 }
 for(const html of ['index.html','ficha.html','layout-review.html']){
  const source=read(html);
- for(const [i,m] of [...source.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].entries()){
+ for(const [i,m] of [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
   if(!m[1].trim())continue;
   try{new vm.Script(m[1],{filename:html+':inline'+i});}
   catch(e){failed++;console.error('FAIL syntax',html,i,e.message);}
