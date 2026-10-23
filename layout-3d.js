@@ -38,7 +38,7 @@
       var h = o.h != null ? o.h : 2.5;
       var color = o.category === "chair" ? 0x6f94c4 : o.category === "equipment" ? 0xb9a7e0 : 0xd8c79a;
       var base = { id: o.id, x: o.x - cx, z: o.y - cz, h: h, color: color, role: o.category,
-        type: o.type, label: o.label || o.type, rot: (o.r || 0) };
+        type: o.type, label: o.label || o.type, rot: (o.category === "chair" && o.visualRotation != null ? o.visualRotation : (o.r || 0)) };
       if (o.kind === "circle") {
         base.kind = "cyl"; base.d = o.d; base.y = h / 2;
       } else {
@@ -163,26 +163,80 @@
     var m = new THREE.Mesh(H.cylGeo(rt, rb, h, seg), H.mat(color, rough, metal));
     m.castShadow = true; m.receiveShadow = true; return m;
   }
+  // Premium upholstered event chair. All geometry stays inside the engine footprint.
   function chairMesh(THREE, H, s, g) {
     var w = s.w || 1.6, l = s.l || 1.6;
     if (s.type === "BARSTOOL") {
       var sh = s.h || 2.5, rad = (s.d || 1.4) / 2 * 0.82;
-      var seat = partCyl(THREE, H, rad, rad, 0.18, 0x5b7bb0, 0.6, 0.1, 18); seat.position.y = sh; g.add(seat);
-      var pole = partCyl(THREE, H, 0.09, 0.09, sh, 0x2e3b4e, 0.4, 0.6, 10); pole.position.y = sh / 2; g.add(pole);
-      var base = partCyl(THREE, H, rad * 0.9, rad * 0.95, 0.08, 0x2e3b4e, 0.4, 0.6, 18); base.position.y = 0.04; g.add(base);
-      return { obj: g, seatMesh: seat, floorAnchor: true };
+      var seat = partCyl(THREE,H,rad,rad,0.2,0x475d76,0.85,0,32);
+      seat.position.y=sh;g.add(seat);
+      var pole=partCyl(THREE,H,0.065,0.065,sh,0xb2a188,0.25,0.72,16);
+      pole.position.y=sh/2;g.add(pole);
+      var base=partCyl(THREE,H,rad*0.72,rad*0.78,0.07,0x414b58,0.3,0.4,32);
+      base.position.y=0.04;g.add(base);
+      var ring=new THREE.Mesh(new THREE.TorusGeometry(rad*0.64,0.035,8,32),H.mat(0xb2a188,0.35,0.6));
+      ring.rotation.x=Math.PI/2;ring.position.y=sh*0.36;g.add(ring);
+      return {obj:g,seatMesh:seat,floorAnchor:true};
     }
-    var seatH = 1.45, seatT = 0.16, legT = 0.09, fabric = 0x6f94c4, frame = 0x2e3b4e;
-    var seat2 = partBox(THREE, H, w * 0.9, seatT, l * 0.82, fabric, 0.75, 0); seat2.position.set(0, seatH, 0.03 * l); g.add(seat2);
-    var back = partBox(THREE, H, w * 0.9, 1.15, 0.14, fabric, 0.75, 0); back.position.set(0, seatH + 0.6, l * 0.40); g.add(back);
-    var lx = w * 0.38, lz = l * 0.36;
-    [[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].forEach(function (p) {
-      var lg = partBox(THREE, H, legT, seatH, legT, frame, 0.5, 0.2); lg.position.set(p[0], seatH / 2, p[1]); g.add(lg);
+    // Folding chairs: slim metal tubing, rigid seat, open back.
+    if(s.type==="CHAIR_FOLD"){
+      var fw=w*0.84,fl=l*0.72,fh=Math.min(1.36,(s.h||1.5)*0.82);
+      var pad=partBox(THREE,H,fw,0.10,fl,0x536875,0.80,0);
+      pad.position.set(0,fh,-l*0.07);g.add(pad);
+      var rear=partBox(THREE,H,fw*0.93,0.13,0.15,0x344958,0.67,0.12);
+      rear.position.set(0,fh+0.38,l*0.32);g.add(rear);
+      [-1,1].forEach(function(sign){
+        var side=partBox(THREE,H,0.045,fh+0.48,0.045,0x929ba5,0.27,0.72);
+        side.position.set(sign*fw*.45,(fh+0.48)/2,l*.31);g.add(side);
+        var front=partBox(THREE,H,0.045,fh,0.045,0x929ba5,0.27,0.72);
+        front.position.set(sign*fw*.45,fh/2,-l*.35);g.add(front);
+      });
+      return {obj:g,seatMesh:pad,floorAnchor:true};
+    }
+    var isExec=s.type==="CHAIR_EXEC";
+    var seatH=Math.min(1.5,(s.h||3)*0.52), upholstery=isExec?0x344452:0x647a8c, piping=isExec?0x738797:0xc4b49a, frame=isExec?0x282e34:0x454a50;
+    // Rounded cushions with physically separated piping and stitching.
+    var cushion=new THREE.Mesh(new THREE.BoxGeometry(w*0.87,0.22,l*0.76),H.mat(upholstery,0.94,0));
+    cushion.position.set(0,seatH, -l*0.055);
+    cushion.castShadow=true;cushion.receiveShadow=true;g.add(cushion);
+    var cushionEdge=partBox(THREE,H,w*0.88,0.035,l*0.78,piping,0.8,0);
+    cushionEdge.position.set(0,seatH-0.11,-l*0.055);g.add(cushionEdge);
+    // Rounded oval chair back, vertically framed; unlike the original rectangular slab.
+    var backW=w*0.87,backH=Math.min(1.02,(s.h||3)-seatH-0.15);
+    var backShape=new THREE.Shape();
+    var bw=backW/2,bh=backH/2,round=Math.min(0.26,bw*0.6,bh*0.6);
+    backShape.moveTo(-bw+round,-bh);
+    backShape.lineTo(bw-round,-bh);
+    backShape.quadraticCurveTo(bw,-bh,bw,-bh+round);
+    backShape.lineTo(bw,bh-round);
+    backShape.quadraticCurveTo(bw,bh,bw-round,bh);
+    backShape.lineTo(-bw+round,bh);
+    backShape.quadraticCurveTo(-bw,bh,-bw,bh-round);
+    backShape.lineTo(-bw,-bh+round);
+    backShape.quadraticCurveTo(-bw,-bh,-bw+round,-bh);
+    var backGeo=new THREE.ExtrudeGeometry(backShape,{depth:0.13,bevelEnabled:true,bevelThickness:0.045,bevelSize:0.045,bevelSegments:2,steps:1,curveSegments:8});
+    var back=new THREE.Mesh(backGeo,H.mat(upholstery,0.92,0));
+    back.position.set(0,seatH+backH*0.51,l*0.34);
+    back.rotation.x=-0.08;back.castShadow=true;g.add(back);
+    var edging=new THREE.Mesh(new THREE.TorusGeometry(Math.min(backW,backH)*0.4,0.018,6,32),H.mat(piping,0.6,0.15));
+    edging.scale.set(backW/Math.min(backW,backH),backH/Math.min(backW,backH),1);
+    edging.position.set(0,seatH+backH*0.51,l*0.34+0.18);
+    g.add(edging);
+    var lx=w*0.35,lz=l*0.34,legH=seatH;
+    [[-lx,-lz],[lx,-lz],[-lx,lz],[lx,lz]].forEach(function(p){
+      var leg=partCyl(THREE,H,0.047,0.057,legH,frame,0.3,0.56,10);
+      leg.position.set(p[0],legH/2,p[1]);g.add(leg);
+      var foot=partCyl(THREE,H,0.066,0.07,0.065,0x1e242b,0.75,0,10);
+      foot.position.set(p[0],0.035,p[1]);g.add(foot);
     });
-    return { obj: g, seatMesh: seat2, floorAnchor: true };
+    [-lx,lx].forEach(function(x){
+      var support=partBox(THREE,H,0.075,backH*0.82,0.075,frame,0.38,0.5);
+      support.position.set(x,seatH+backH*0.39,l*0.36);support.rotation.x=-0.08;g.add(support);
+    });
+    return {obj:g,seatMesh:cushion,floorAnchor:true};
   }
   function tableMesh(THREE, H, s, g) {
-    var topH = s.h || 2.5, linen = 0xf3efe6, wood = 0xb98a52, woodDark = 0x6f5436;
+    var topH = s.h || 2.5, linen = 0xe6dacc, wood = 0xae8356, woodDark = 0x624c34;
     if (s.kind === "cyl") {
       var d = s.d || 5, r = d / 2;
       if (s.type === "HIGHTOP") {
@@ -191,8 +245,28 @@
         var base = partCyl(THREE, H, r * 0.55, r * 0.62, 0.1, 0x3a3f47, 0.4, 0.6, 20); base.position.y = 0.05; g.add(base);
         return { obj: g, floorAnchor: true };
       }
-      var cloth = partCyl(THREE, H, r * 0.98, r * 1.02, topH, linen, 0.9, 0, 26); cloth.position.y = topH / 2; g.add(cloth);
-      var topr = partCyl(THREE, H, r * 1.02, r * 1.02, 0.08, linen, 0.85, 0, 28); topr.position.y = topH + 0.02; g.add(topr);
+      var basePole=partCyl(THREE,H,0.12,0.12,topH,0x5d6265,0.48,0.3,12);basePole.position.y=topH/2;g.add(basePole);
+      var baseDisc=partCyl(THREE,H,r*0.32,r*0.34,0.09,0x606366,0.5,0.2,28);baseDisc.position.y=0.045;g.add(baseDisc);
+      var drapeH=Math.min(topH*0.52,1.3);
+      // Drapery silhouette uses alternating radial folds rather than a smooth cylinder.
+      var foldCount=64,verts=[],indices=[];
+      for(var yi=0;yi<=5;yi++){var yy=yi/5;
+        for(var fi=0;fi<=foldCount;fi++){var a=fi/foldCount*Math.PI*2;
+          var fold=1+0.017*Math.sin(a*16)*(0.2+yy*0.8);
+          var rad=r*(0.987+yy*0.025)*fold;
+          verts.push(Math.cos(a)*rad,topH-yy*drapeH,Math.sin(a)*rad);
+        }
+      }
+      for(var fy=0;fy<5;fy++)for(var fx=0;fx<foldCount;fx++){
+        var ix=fy*(foldCount+1)+fx;indices.push(ix,ix+foldCount+1,ix+1,ix+1,ix+foldCount+1,ix+foldCount+2);
+      }
+      var clothGeo=new THREE.BufferGeometry();
+      clothGeo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
+      clothGeo.setIndex(indices);clothGeo.computeVertexNormals();
+      var cloth=new THREE.Mesh(clothGeo,new THREE.MeshStandardMaterial({color:linen,roughness:1,side:THREE.DoubleSide}));
+      cloth.castShadow=true;cloth.receiveShadow=true;g.add(cloth);
+      var topr = partCyl(THREE,H,r,r,0.08,0xf6f0e7,0.88,0,48);topr.position.y=topH+0.02;g.add(topr);
+      var edge=new THREE.Mesh(new THREE.TorusGeometry(r*0.995,0.025,7,48),H.mat(0xc3ad92,0.85,0));edge.rotation.x=Math.PI/2;edge.position.y=topH+0.055;g.add(edge);
       // simple floral centerpiece → realism cue on banquet rounds
       var vase = partCyl(THREE, H, 0.22, 0.28, 0.55, 0xeef2f4, 0.25, 0.1, 12); vase.position.y = topH + 0.3; g.add(vase);
       try {
@@ -204,7 +278,19 @@
     var w = s.w || 6, l = s.l || 2.5;
     var skirted = /^TBL_|DISPLAY_TBL|REG_TABLE|BUFFET|COFFEE|CATERING|CRESCENT|HALFRND/.test(s.type || "");
     if (skirted) {
-      var clothb = partBox(THREE, H, w, topH, l, linen, 0.9, 0); clothb.position.y = topH / 2; g.add(clothb);
+      var skirtH=Math.min(1.1,topH*0.44);
+      [[-w*.43,-l*.39],[w*.43,-l*.39],[-w*.43,l*.39],[w*.43,l*.39]].forEach(function(p){var leg=partBox(THREE,H,0.11,topH,0.11,0x515b64,0.5,0.2);leg.position.set(p[0],topH/2,p[1]);g.add(leg);});
+      // Individually pleated drape panels make meeting tables read as fabric.
+      [-1,1].forEach(function(sign){
+        var side=partBox(THREE,H,w,skirtH,0.055,linen,0.98,0);
+        side.position.set(0,topH-skirtH/2,sign*l/2);g.add(side);
+        var end=partBox(THREE,H,0.055,skirtH,l,linen,0.98,0);
+        end.position.set(sign*w/2,topH-skirtH/2,0);g.add(end);
+        for(var j=1;j<Math.ceil(w/0.6);j++){
+          var pleat=partBox(THREE,H,0.025,skirtH*0.97,0.047,0xc6b7a7,1,0);
+          pleat.position.set(-w/2+j*w/Math.ceil(w/0.6),topH-skirtH/2,sign*(l/2+0.038));g.add(pleat);
+        }
+      });
       var topb = partBox(THREE, H, w + 0.06, 0.08, l + 0.06, linen, 0.85, 0); topb.position.y = topH + 0.02; g.add(topb);
       return { obj: g, floorAnchor: true };
     }
@@ -290,6 +376,14 @@
       '<button data-m="seat" class="l3d-b">View from seat</button>' +
       '<select id="l3d-seat" class="l3d-b" style="display:none"></select>' +
       '<label id="l3d-eyewrap" style="display:none;font-size:12px;gap:4px;align-items:center">eye <input id="l3d-eye" type="range" min="2.5" max="6.5" step="0.1" style="vertical-align:middle"></label>' +
+      '<select id="l3d-photo-quality" class="l3d-b" aria-label="Render quality"><option value="standard">3D Standard</option><option value="photo">Photo HD Preview</option></select>' +
+      '<select id="l3d-photo-camera" class="l3d-b" aria-label="Camera"><option value="">Camera presets</option><option value="top">Top</option><option value="front">Front</option><option value="corner">Corner</option><option value="photo">Photo angle</option></select>' +
+      '<button id="l3d-photo-export" class="l3d-b">HD image</button>' +
+      '<button data-report="3d-png" class="l3d-b">3D + Report PNG</button>' +
+      '<button data-report="3d-pdf" class="l3d-b">3D + Report PDF</button>' +
+      '<button data-report="all-png" class="l3d-b">One-Page PNG</button>' +
+      '<button data-report="all-pdf" class="l3d-b">One-Page PDF</button>' +
+      '<button id="l3d-copy-readonly" class="l3d-b">Copy view-only link</button>' +
       '<span id="l3d-hint" style="font-size:12px;color:#cdd6e2;margin-left:4px"></span>' +
       '<button id="l3d-close" class="l3d-b" style="margin-left:auto;background:#b8860b">Close ✕</button>' +
       '</div>' +
@@ -308,7 +402,15 @@
     if (!webglOk()) { fallback("This device/browser can’t render 3D (no WebGL). The 2D planner remains fully usable."); return; }
     loadThree(function (ok) {
       if (!ok || !root.THREE) { fallback("Couldn’t load the 3D library (offline or blocked). The 2D planner remains fully usable."); return; }
-      start(mode || "orbit", objects, room, params, opts);
+      // Optional Photo HD must never prevent opening the standard 3D scene.
+      if(!root.ACVPhotoHD&&!document.getElementById("l3d-photo-js")){
+        var addon=document.createElement("script");addon.id="l3d-photo-js";addon.src="layout-photo-hd.js";
+        addon.onload=function(){if(V&&!V.photo)enablePhotoHD();};
+        addon.onerror=function(){if(V)showPhotoStatus("Photo HD failed to load; Standard is available.");};
+        document.head.appendChild(addon);
+      }
+      try{start(mode||"orbit",objects,room,params,opts);}
+      catch(err){fallback("3D startup error: "+(err.message||err));}
     });
   }
   function fallback(message) {
@@ -334,13 +436,13 @@
     var rm = specs._room;
 
     var scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x101c2e);
+    scene.background = new THREE.Color(0xdde3e8);
     var farD = Math.max(rm.W, rm.L);
-    scene.fog = new THREE.Fog(0x101c2e, farD * 1.3, farD * 3.4);
+    scene.fog = new THREE.Fog(0xdde3e8, farD * 1.8, farD * 4);
     // Lighting: soft ambient + hemisphere sky/ground + warm key with shadows + cool fill
-    var hemi = new THREE.HemisphereLight(0xfdfbf5, 0x39414f, 0.55); scene.add(hemi);
-    var amb = new THREE.AmbientLight(0xffffff, 0.32); scene.add(amb);
-    var key = new THREE.DirectionalLight(0xfff3df, 0.95);
+    var hemi = new THREE.HemisphereLight(0xfff7ea, 0x808a96, 0.85); scene.add(hemi);
+    var amb = new THREE.AmbientLight(0xffffff, 0.45); scene.add(amb);
+    var key = new THREE.DirectionalLight(0xfff3df, 1.25);
     key.position.set(rm.W * 0.5, rm.ceil * 2.4, rm.L * 0.38);
     key.castShadow = true;
     key.shadow.mapSize.width = key.shadow.mapSize.height = 2048;
@@ -350,7 +452,7 @@
     key.shadow.camera.near = 1; key.shadow.camera.far = rm.ceil * 6;
     key.shadow.bias = -0.0004; key.shadow.radius = 3;
     scene.add(key);
-    var fill = new THREE.DirectionalLight(0xdbe4f2, 0.28); fill.position.set(-rm.W * 0.45, rm.ceil * 1.6, -rm.L * 0.45); scene.add(fill);
+    var fill = new THREE.DirectionalLight(0xdbe4f2, 0.45); fill.position.set(-rm.W * 0.45, rm.ceil * 1.6, -rm.L * 0.45); scene.add(fill);
 
     var W = wrap.clientWidth, H = wrap.clientHeight;
     var cam = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
@@ -359,7 +461,7 @@
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) { try { renderer.outputColorSpace = THREE.SRGBColorSpace; } catch (e) {} }
     // photographic tone mapping → warmer, more realistic gradients (Prismm-like)
-    if (THREE.ACESFilmicToneMapping != null) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; }
+    if (THREE.ACESFilmicToneMapping != null) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.17; }
     renderer.domElement.style.cssText = "position:absolute;inset:0";
     wrap.insertBefore(renderer.domElement, wrap.firstChild);
 
@@ -384,6 +486,12 @@
     // ceiling (visual only — kept out of pure specs so engine/tests are unchanged)
     var ceilMesh = new THREE.Mesh(H3.boxGeo(rm.W, 0.2, rm.L), H3.mat(0xf6f3ec, 0.95, 0));
     ceilMesh.position.set(0, rm.ceil, 0); ceilMesh.receiveShadow = true; scene.add(ceilMesh);
+    // Ceiling light panels match the architectural environment during walk/seat modes.
+    ceilMesh.userData.panels=[];
+    for(var px=-rm.W/2+4;px<rm.W/2;px+=8){for(var pz=-rm.L/2+4;pz<rm.L/2;pz+=8){
+      var panel=new THREE.Mesh(H3.boxGeo(2.8,0.06,1.0),H3.mat(0xfff4df,0.85,0,0xffe4a9));
+      panel.position.set(px,rm.ceil-0.16,pz);scene.add(panel);ceilMesh.userData.panels.push(panel);
+    }}
 
     // build meshes via furniture factory
     var seatMeshes = [];
@@ -406,10 +514,16 @@
       seatMeshes: seatMeshes, meshById: meshById, wallMeshes: wallMeshes, ceilMesh: ceilMesh, mode: null, raf: 0,
       orbit: { az: 0.6, pol: 0.9, rad: Math.max(rm.W, rm.L) * 1.1, tx: 0, ty: 3, tz: 0 },
       walk: { x: 0, y: EYE_STAND, z: rm.L / 2 - 4, yaw: 0, pitch: -0.05 },
-      keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED };
+      keys: {}, seatIdx: (opts && opts.seatIndex) || 0, eye: EYE_SEATED, report: opts && opts.report || null, share: opts && opts.share || null, readOnly: !!(opts && opts.readOnly) };
+    V.photoCtx={THREE:THREE,renderer:renderer,scene:scene,rm:rm,key:key,fill:fill,hemi:hemi,amb:amb};
+    V.photo=null; // enable after standard renderer has started
 
     buildSeatSelect();
     wireOverlay();
+    if(V.readOnly){
+      V.wrap.querySelectorAll('[data-report],#l3d-photo-export').forEach(function(el){el.style.display="none";});
+      var heading=V.wrap.querySelector("#l3d-bar b");if(heading)heading.textContent="3D · View Only";
+    }
     onResize();
     window.addEventListener("resize", onResize);
     setMode(mode);
@@ -420,10 +534,111 @@
     var sel = V.wrap.querySelector("#l3d-seat");
     sel.innerHTML = V.seatMeshes.map(function (m, i) { return '<option value="' + i + '">Seat ' + (i + 1) + "</option>"; }).join("");
   }
+  function showPhotoStatus(message) {
+    if(V){var hint=V.wrap.querySelector("#l3d-hint");if(hint)hint.textContent=message;}
+  }
+  function enablePhotoHD(){
+    if(!V)return false;
+    if(V.photo)return true;
+    if(!root.ACVPhotoHD||typeof root.ACVPhotoHD.init!=="function"){
+      showPhotoStatus("Photo HD is loading; Standard 3D is available.");return false;
+    }
+    try{V.photo=root.ACVPhotoHD.init(V.photoCtx);return true;}
+    catch(err){showPhotoStatus("Photo HD unavailable: "+(err.message||err));return false;}
+  }
+  function ensureShareModule(cb){
+    if(root.ACVShare){cb();return;}
+    var script=document.getElementById("l3d-share-js");
+    if(script){script.addEventListener("load",cb,{once:true});script.addEventListener("error",function(){showPhotoStatus("Could not load share module.");},{once:true});return;}
+    script=document.createElement("script");script.id="l3d-share-js";script.src="layout-share.js";
+    script.onload=cb;script.onerror=function(){showPhotoStatus("Could not load share module.");};
+    document.head.appendChild(script);
+  }
+  function buildShareUrl(){
+    return new Promise(function(resolve,reject){
+      if(!V||!V.share){reject(new Error("Share snapshot missing; open 3D from the planner."));return;}
+      ensureShareModule(function(){root.ACVShare.encode(V.share).then(resolve,reject);});
+    });
+  }
+  // Report scripts are loaded lazily; basic Orbit/Walkthrough never depend on them.
+  function ensureReportModule(cb){
+    if(root.ACVReport3D){cb();return;}
+    var script=document.getElementById("l3d-report-js");
+    if(script){script.addEventListener("load",cb,{once:true});script.addEventListener("error",function(){showPhotoStatus("Could not load report module.");},{once:true});return;}
+    script=document.createElement("script");script.id="l3d-report-js";script.src="layout-report-3d.js";
+    script.onload=cb;script.onerror=function(){showPhotoStatus("Could not load report module.");};
+    document.head.appendChild(script);
+  }
+  // A full-room, three-quarter perspective, independent of user's active seat or walk.
+  function captureReportPhoto(){
+    if(!V || !enablePhotoHD())throw new Error("Photo HD renderer is not ready.");
+    var previousCamera=V.cam,previousMode=V.mode,rm=V.rm,THREE=V.THREE;
+    var shot=new THREE.PerspectiveCamera(58,previousCamera.aspect,0.1,Math.max(1200,Math.max(rm.W,rm.L)*15));
+    var span=Math.max(rm.W,rm.L);
+    shot.position.set(span*0.92,Math.max(rm.ceil*1.6,span*0.85),span*1.05);
+    shot.lookAt(0,Math.min(4,rm.ceil*.36),0);
+    try{
+      V.cam=shot;V.mode="orbit";updateWalls();
+      return V.photo.exportPNG({cam:shot,updateCamera:function(){},updateWalls:updateWalls},true);
+    }finally{
+      V.cam=previousCamera;V.mode=previousMode;updateWalls();
+    }
+  }
+  function export3DReport(kind){
+    if(!V)return;
+    if(!V.report){showPhotoStatus("The room report is missing. Close 3D and reopen from the planner.");return;}
+    // Open PDF window in the click handler, before any asynchronous loading.
+    var popup=kind.indexOf("pdf")>0?window.open("","_blank"):null;
+    if(kind.indexOf("pdf")>0&&!popup){showPhotoStatus("Allow pop-ups to export the PDF report.");return;}
+    if(popup)popup.document.write('<p style="font:16px Arial;padding:24px">Preparing room report…</p>');
+    try{
+      var photo=captureReportPhoto(),onePage=kind.indexOf("all-")===0,format=kind.indexOf("pdf")>0?"pdf":"png";
+      ensureReportModule(function(){
+        if(!V)return;
+        root.ACVReport3D.exportReport({photo:photo,report:V.report,onePage:onePage,format:format,popup:popup,shareUrl:buildShareUrl()})
+          .catch(function(err){showPhotoStatus("Report failed: "+(err.message||err));});
+      });
+    }catch(err){
+      if(popup)popup.close();
+      showPhotoStatus("Report export failed: "+(err.message||err));
+    }
+  }
   function wireOverlay() {
     var wrap = V.wrap;
     wrap.querySelectorAll("[data-m]").forEach(function (b) { b.onclick = function () { setMode(b.getAttribute("data-m")); }; });
     wrap.querySelector("#l3d-close").onclick = close;
+    var shareButton=wrap.querySelector("#l3d-copy-readonly");
+    if(V.readOnly)shareButton.style.display="none";
+    else shareButton.onclick=function(){
+      buildShareUrl().then(function(url){
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          return navigator.clipboard.writeText(url).then(function(){showPhotoStatus("Read-only link copied. Anyone with this link can view the layout.");});
+        }
+        window.prompt("Copy the read-only viewing link",url);
+      }).catch(function(err){showPhotoStatus("Share link error: "+(err.message||err));});
+    };
+    var quality=wrap.querySelector("#l3d-photo-quality");
+    quality.onchange=function(){
+      if(!enablePhotoHD()){quality.value="standard";return;}
+      try{V.photo.qualityMode(quality.value);onResize();}
+      catch(err){quality.value="standard";showPhotoStatus("Photo quality error: "+(err.message||err));}
+    };
+    var camera=wrap.querySelector("#l3d-photo-camera");
+    camera.onchange=function(){
+      if(camera.value&&enablePhotoHD()){
+        try{V.photo.preset({orbit:V.orbit,rm:V.rm,setMode:setMode},camera.value);}
+        catch(err){showPhotoStatus("Camera error: "+(err.message||err));}
+      }
+      camera.value="";
+    };
+    wrap.querySelector("#l3d-photo-export").onclick=function(){
+      if(!enablePhotoHD())return;
+      try{V.photo.exportPNG({cam:V.cam,updateCamera:updateCamera,updateWalls:updateWalls});}
+      catch(err){showPhotoStatus("Export error: "+(err.message||err));}
+    };
+    wrap.querySelectorAll("[data-report]").forEach(function(b){
+      b.onclick=function(){export3DReport(b.getAttribute("data-report"));};
+    });
     var sel = wrap.querySelector("#l3d-seat");
     sel.onchange = function () { V.seatIdx = +sel.value; applySeat(); };
     var eye = wrap.querySelector("#l3d-eye");
@@ -567,14 +782,15 @@
       else if (Math.abs(s.z) > 0.1) m.visible = !(Math.sign(s.z) === Math.sign(cz));
       else m.visible = true;
     });
-    if (V.ceilMesh) V.ceilMesh.visible = inside;
+    if (V.ceilMesh) { V.ceilMesh.visible = inside; (V.ceilMesh.userData.panels||[]).forEach(function(p){p.visible=inside;}); }
   }
   function loop() {
     if (!V) return;
     V.raf = requestAnimationFrame(loop);
     if (V.mode !== "seat") updateCamera();
     updateWalls();
-    V.renderer.render(V.scene, V.cam);
+    try{V.renderer.render(V.scene, V.cam);}
+    catch(err){cancelAnimationFrame(V.raf);showPhotoStatus("3D render error: "+(err.message||err));}
   }
   function close() {
     if (!V) { var f = document.getElementById("l3d-wrap"); if (f) f.remove(); return; }
@@ -584,6 +800,7 @@
     window.removeEventListener("pointerup", onPU);
     window.removeEventListener("keydown", onKey);
     window.removeEventListener("keyup", onKeyUp);
+    try { if(V.photo && V.photo.dispose) V.photo.dispose(); } catch(e) {}
     try { V.renderer.dispose(); } catch (e) {}
     if (V.wrap && V.wrap.parentNode) V.wrap.parentNode.removeChild(V.wrap);
     V = null;

@@ -140,9 +140,9 @@
     RND_72: { category: "table", sub: "72\" round", kind: "circle", d: 6.0, h: 2.5, clear: 0, seats: 10, label: "72\" round" },
     HIGHTOP: { category: "table", sub: "Cocktail high-top", kind: "circle", d: 2.5, h: 3.5, clear: 0, label: "High-top" },
     // Chairs (footprint = seated occupant zone)
-    CHAIR: { category: "chair", sub: "Banquet chair", kind: "rect", w: 1.6, l: 1.6, h: 1.5, clear: 0, label: "Chair" },
-    CHAIR_FOLD: { category: "chair", sub: "Folding chair", kind: "rect", w: 1.5, l: 1.5, h: 1.5, clear: 0, label: "Folding chair" },
-    CHAIR_EXEC: { category: "chair", sub: "Executive chair", kind: "rect", w: 2.0, l: 2.0, h: 1.6, clear: 0, label: "Executive chair" },
+    CHAIR: { category: "chair", sub: "Banquet chair", kind: "rect", w: 1.6, l: 1.6, h: 3, clear: 0, label: "Chair" },
+    CHAIR_FOLD: { category: "chair", sub: "Folding chair", kind: "rect", w: 1.5, l: 1.5, h: 3, clear: 0, label: "Folding chair" },
+    CHAIR_EXEC: { category: "chair", sub: "Executive chair", kind: "rect", w: 2.0, l: 2.0, h: 3.35, clear: 0, label: "Executive chair" },
     BARSTOOL: { category: "chair", sub: "Bar stool", kind: "circle", d: 1.4, h: 2.5, clear: 0, label: "Bar stool" },
     LOUNGE: { category: "chair", sub: "Lounge chair", kind: "rect", w: 2.6, l: 2.6, h: 2.4, clear: 0, label: "Lounge chair" },
     WHEELCHAIR: { category: "chair", sub: "Accessible space (ADA)", kind: "rect", w: 3.0, l: 4.0, h: 3.2, clear: 0, label: "Accessible seat" },
@@ -398,7 +398,15 @@
   function frontEquipment(cfg) {
     var r = cfg.room, objs = [], cx = r.width / 2, p = cfg.params, g = r.wallClearance;
     if (p.stage) objs.push(makeObj("STAGE", cx, g + 4, 0, { isReserved: true }));
-    if (p.screen) objs.push(makeObj("SCREEN", cx, g + 0.6, 0, { isReserved: true }));
+    var selected=p.furniture && p.furniture.backdropType || "AUTO";
+    if(selected==="NONE") {
+      // Explicitly disable any front screen/backdrop, regardless of screen toggle.
+    } else if(selected==="LED_WALL" || selected==="DRAPE" || selected==="SCREEN") {
+      var item=makeObj(selected,cx,g+0.6,0,{isReserved:true});
+      if(selected==="SCREEN")item.label="Portable projection screen";
+      if(selected==="DRAPE")item.label="Pipe & drape backdrop";
+      objs.push(item);
+    } else if(p.screen) objs.push(makeObj("SCREEN", cx, g + 0.6, 0, { isReserved: true }));
     else if (!p.stage) objs.push(makeObj("PODIUM", cx, g + 1.2, 0, { isReserved: true }));
     // AV/control booth placed in the front band at the right, clear of seating.
     if (p.av) objs.push(makeObj("AV_BOOTH", r.width - g - 3, g + 2.2, 0, { isReserved: true, category: "equipment" }));
@@ -594,7 +602,9 @@
   function rounds(room, params, name, cabaret) {
     var cfg = defaults(room, params), r = cfg.room, g = r.wallClearance;
     var objs = frontEquipment(cfg);
-    var TT = params && params.round ? FURNITURE[params.round] : FURNITURE.RND_60;
+    var roundKey=(params && params.furniture && /^RND_(60|72)$/.test(params.furniture.tableType||""))
+      ? params.furniture.tableType : (params && params.round ? params.round : "RND_60");
+    var TT = FURNITURE[roundKey] || FURNITURE.RND_60;
     var d = TT.d, seatsFull = TT.seats || 8;
     var chairClear = cfg.chairClear;
     var cell = d + 2 * chairClear + cfg.tableGap;       // table + seated ring + gap
@@ -606,7 +616,7 @@
       for (var ci = 0; ci < cols; ci++) {
         var cx = g + (ci + 0.5) * (usableW / cols);
         var cy = g + cfg.front + (ri + 0.5) * (usableL / rowsN);
-        objs.push(makeObj(params && params.round ? params.round : "RND_60", cx, cy, 0));
+        objs.push(makeObj(roundKey, cx, cy, 0));
         var nSeat = cabaret ? Math.round(seatsFull * 0.66) : seatsFull;
         var startA = cabaret ? Math.PI * 0.2 : 0;       // leave the front arc open for cabaret
         var sweep = cabaret ? Math.PI * 1.6 : Math.PI * 2;
@@ -732,6 +742,30 @@
     RECEPTION: { name: "Reception / Cocktail", tables: false }
   };
 
+  // Selections become genuine catalog objects BEFORE boundary/collision
+  // validation; the engine therefore uses their real published footprints.
+  function applyFurnitureSelections(objects,cfg){
+    var chosen=cfg.params && cfg.params.furniture || {};
+    var chair=FURNITURE[chosen.chairType];
+    var table=FURNITURE[chosen.tableType];
+    return objects.map(function(o){
+      if(o.category==="chair" && chair && chair.category==="chair" && o.type!=="WHEELCHAIR"){
+        // Generated 2D/3D representation and clearance use selected dimensions.
+        o.type=chosen.chairType;o.label=chair.label;
+        o.kind=chair.kind;o.w=chair.w;o.l=chair.l;o.h=chair.h;
+        if(chair.d)o.d=chair.d;
+      }else if(o.category==="table" && table && table.category==="table" &&
+               table.kind===o.kind && o.type!=="HIGHTOP"){
+        // A new table must preserve the generator's shape. Layout positions are
+        // not auto-stretched: overlap/clearance validators flag any bigger size.
+        o.type=chosen.tableType;o.label=table.label;o.h=table.h;
+        if(table.kind==="circle"){o.d=table.d;o.seats=table.seats;}
+        else{o.w=table.w;o.l=table.l;}
+      }
+      return o;
+    });
+  }
+
   function finalize(objects, room, cfg, meta) {
     // Honest trim: drop seatable objects (tables/chairs) that fall outside the
     // usable boundary, overlap a structural obstruction, a reserved zone, or a
@@ -739,6 +773,7 @@
     // Object-to-object seating collisions are NOT trimmed — they must surface as
     // violations so a generator bug is caught rather than silently hidden.
     var r = normalizeRoom(room);
+    objects=applyFurnitureSelections(objects,cfg);
     var blockers = r.obstructions.concat(r.reservedZones);
     var equip = objects.filter(function (o) { return o.isReserved || o.category === "equipment"; });
     var doorAccess = r.doors.map(function (d) {
