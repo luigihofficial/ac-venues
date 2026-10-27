@@ -173,60 +173,69 @@ function rowsHtml(d){
 async function loadEventLayouts(sharedFiles){
   const wrap=$('layoutsWrap'),list=$('fLayouts');
   wrap.classList.add('hidden');list.textContent='';
-  const links=new Set();
+  const links=new Set(),diagrams=new Set();
+  function cleanName(label){
+    return String(label||'').replace(/^Diagrama interactivo 2D\/3D\s*·\s*/i,'').trim();
+  }
+  function diagramKey(label){
+    // Same room + layout may arrive from both event_files and the public
+    // layout endpoint, often with different snapshot URLs. Show it only once.
+    return cleanName(label).replace(/\s*·\s*/g,' · ').replace(/\s+/g,' ').toLocaleLowerCase();
+  }
   function append(url,label,detail){
     if(!url)return;
-    // Old records may point to Vercel Preview deployments, where visitors are
-    // prompted to log in. Rewrite only our own viewer route to the public domain.
     try{
       const original=new URL(url,location.href);
+      // Public viewer only; never expose a Vercel Preview login.
       if(original.pathname==='/layout-review.html' &&
          /^#[ug][A-Za-z0-9_-]+$/.test(original.hash)){
         url='https://ac-venues.luigihernandez.com/layout-review.html'+original.hash;
       }
     }catch(_err){return;}
-    if(links.has(url))return;
+    const name=cleanName(label),key=diagramKey(name);
+    if(!key||links.has(url)||diagrams.has(key))return;
     if(!/^https:\/\//i.test(url))return;
-    links.add(url);
+    links.add(url);diagrams.add(key);
     const link=document.createElement('a');
     link.className='layout-link';link.href=url;link.target='_blank';link.rel='noopener noreferrer';
     const title=document.createElement('span');
-    const name=document.createElement('strong');name.textContent=label;
-    const sub=document.createElement('small');sub.textContent=detail||'Modo de consulta; sin cambios.';
-    title.appendChild(name);title.appendChild(sub);
+    const heading=document.createElement('strong');heading.textContent=name;
+    const sub=document.createElement('small');sub.textContent=detail||'Explorar en modo de solo lectura.';
+    title.appendChild(heading);title.appendChild(sub);
     const arrow=document.createElement('span');arrow.setAttribute('aria-hidden','true');arrow.textContent='Abrir 2D / 3D ↗';
     link.appendChild(title);link.appendChild(arrow);list.appendChild(link);
     wrap.classList.remove('hidden');
   }
-  // This already exists in get_sheet: shared event_files are available to
-  // the recipient with the sheet token, even on Vercel Preview.
-  (sharedFiles||[]).filter(f=>(f.name||'').startsWith('Diagrama interactivo 2D/3D · '))
-    .forEach(f=>append(f.url,f.name,'Explorar y recorrer el salón, sin posibilidad de editar.'));
+  // Prefer saved diagram records: they provide proper room names and seating
+  // details. Then add shared-file links only when that diagram is not listed.
   try{
-    if(!window.ACVShare||!window.ACVShare.encode)return;
-    let rows=null;
-    try{
-      const response=await fetch('/api/ficha-layouts?t='+encodeURIComponent(token),{cache:'no-store'});
-      if(response.ok){
-        const payload=await response.json();
-        rows=Array.isArray(payload.layouts)?payload.layouts:[];
+    if(window.ACVShare&&window.ACVShare.encode){
+      let rows=null;
+      try{
+        const response=await fetch('/api/ficha-layouts?t='+encodeURIComponent(token),{cache:'no-store'});
+        if(response.ok){
+          const payload=await response.json();
+          rows=Array.isArray(payload.layouts)?payload.layouts:[];
+        }
+      }catch(_networkError){}
+      if(rows===null){
+        const result=await sb.rpc('get_ficha_layouts',{p_token:token});
+        if(result.error)throw result.error;
+        rows=Array.isArray(result.data)?result.data:[];
       }
-    }catch(_networkError){}
-    if(rows===null){
-      const result=await sb.rpc('get_ficha_layouts',{p_token:token});
-      if(result.error)throw result.error;
-      rows=Array.isArray(result.data)?result.data:[];
-    }
-    for(const row of rows){
-      if(!row.snapshot||!Array.isArray(row.snapshot.objects))continue;
-      const url=await window.ACVShare.encode(row.snapshot);
-      append(url,(row.room_name||'Salón')+' · '+(row.layout_name||'Layout'),
-        (row.venue||'Venue')+' · '+row.snapshot.objects.filter(o=>o.category==='chair').length+' sillas');
+      for(const row of rows){
+        if(!row.snapshot||!Array.isArray(row.snapshot.objects))continue;
+        const url=await window.ACVShare.encode(row.snapshot);
+        append(url,(row.room_name||'Salón')+' · '+(row.layout_name||'Layout'),
+          (row.venue||'Venue')+' · '+row.snapshot.objects.filter(o=>o.category==='chair').length+' sillas');
+      }
     }
   }catch(e){
-    // The existing shared-file links still work if the optional RPC is absent.
     console.warn('Consulta adicional de diagramas no disponible:',e.message||e);
   }
+  // Existing event-file links also work when the optional endpoint is down.
+  (sharedFiles||[]).filter(f=>(f.name||'').startsWith('Diagrama interactivo 2D/3D · '))
+    .forEach(f=>append(f.url,f.name,'Explorar y recorrer el salón, sin posibilidad de editar.'));
 }
 async function load(){
   if(!token){ show('invalid'); return; }
