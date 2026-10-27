@@ -39,5 +39,37 @@ for(const html of ['index.html','ficha.html','layout-review.html']){
   catch(e){failed++;console.error('FAIL syntax',html,i,e.message);}
  }
 }
+
+// Public links must NEVER inherit the Vercel Preview hostname of the editor.
+// Execute the actual sharing codec in a sandbox to prevent string-only false positives.
+try{
+ const shareSource=read('layout-share.js');
+ const mockRoot={location:{origin:'https://ac-venues-protected-preview.vercel.app'}};
+ const context={
+  window:mockRoot, TextEncoder,TextDecoder,Uint8Array,
+  btoa:s=>Buffer.from(s,'binary').toString('base64'),
+  atob:s=>Buffer.from(s,'base64').toString('binary'),
+  console
+ };
+ vm.runInNewContext(shareSource,context,{filename:'layout-share.js'});
+ assert.ok(mockRoot.ACVShare&&typeof mockRoot.ACVShare.encode==='function');
+ const sample={room:{width:50,length:45},objects:[{id:'chair-1',category:'chair',x:12,y:13}],params:{layout:'CLASSROOM'}};
+ // No CompressionStream in mock: exercises universally supported legacy encoding.
+ const pending=mockRoot.ACVShare.encode(sample);
+ pending.then(url=>{
+  assert.ok(url.startsWith('https://ac-venues.luigihernandez.com/layout-review.html#'), 'Share link must use public production domain');
+  assert.ok(!url.includes('vercel.app'), 'Preview hostname leaked into public link');
+  return mockRoot.ACVShare.decode(url.split('#')[1]);
+ }).then(snapshot=>{
+  assert.equal(snapshot.objects[0].id,'chair-1');
+  console.log('PASS public viewer URL and snapshot round-trip');
+ }).catch(err=>{console.error('FAIL public viewer URL',err.message);process.exitCode=1;});
+ const fiche=read('ficha.html');
+ assert.ok(fiche.includes("original.pathname==='/layout-review.html'"),'Live event fiche must normalize legacy viewer paths');
+ assert.ok(fiche.includes('url=\'https://ac-venues.luigihernandez.com/layout-review.html\'+original.hash'), 'Live fiche must redirect legacy Preview links to public production domain');
+ assert.ok(fiche.includes('loadEventLayouts(d.files||[])'), 'Live fiche must show links from shared event files');
+ console.log('PASS legacy Preview URLs corrected in live fiche');
+}catch(e){failed++;console.error('FAIL public viewer regression guard',e.message);}
+
 if(failed){console.error(`${failed} regression checks failed`);process.exit(1);}
 console.log('All critical-module regression checks passed');
