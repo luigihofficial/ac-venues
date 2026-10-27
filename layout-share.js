@@ -11,7 +11,7 @@ async function encode(layout){
  }
  var token=prefix+bytesToB64(bytes);
  if(token.length>125000)throw new Error("This layout is too large for a self-contained sharing link.");
- return root.location.origin+"/layout-review.html#"+token;
+ return "https://ac-venues.luigihernandez.com/layout-review.html#"+token;
 }
 async function decode(hash){
  var token=String(hash||"").replace(/^#/,"");
