@@ -175,7 +175,17 @@ async function loadEventLayouts(sharedFiles){
   wrap.classList.add('hidden');list.textContent='';
   const links=new Set();
   function append(url,label,detail){
-    if(!url||links.has(url))return;
+    if(!url)return;
+    // Old records may point to Vercel Preview deployments, where visitors are
+    // prompted to log in. Rewrite only our own viewer route to the public domain.
+    try{
+      const original=new URL(url,location.href);
+      if(original.pathname==='/layout-review.html' &&
+         /^#[ug][A-Za-z0-9_-]+$/.test(original.hash)){
+        url='https://ac-venues.luigihernandez.com/layout-review.html'+original.hash;
+      }
+    }catch(_err){return;}
+    if(links.has(url))return;
     if(!/^https:\/\//i.test(url))return;
     links.add(url);
     const link=document.createElement('a');
