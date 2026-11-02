@@ -206,36 +206,13 @@ async function loadEventLayouts(sharedFiles){
     link.appendChild(title);link.appendChild(arrow);list.appendChild(link);
     wrap.classList.remove('hidden');
   }
-  // Prefer saved diagram records: they provide proper room names and seating
-  // details. Then add shared-file links only when that diagram is not listed.
-  try{
-    if(window.ACVShare&&window.ACVShare.encode){
-      let rows=null;
-      try{
-        const response=await fetch('/api/ficha-layouts?t='+encodeURIComponent(token),{cache:'no-store'});
-        if(response.ok){
-          const payload=await response.json();
-          rows=Array.isArray(payload.layouts)?payload.layouts:[];
-        }
-      }catch(_networkError){}
-      if(rows===null){
-        const result=await sb.rpc('get_ficha_layouts',{p_token:token});
-        if(result.error)throw result.error;
-        rows=Array.isArray(result.data)?result.data:[];
-      }
-      for(const row of rows){
-        if(!row.snapshot||!Array.isArray(row.snapshot.objects))continue;
-        const url=await window.ACVShare.encode(row.snapshot);
-        append(url,(row.room_name||'Salón')+' · '+(row.layout_name||'Layout'),
-          (row.venue||'Venue')+' · '+row.snapshot.objects.filter(o=>o.category==='chair').length+' sillas');
-      }
-    }
-  }catch(e){
-    console.warn('Consulta adicional de diagramas no disponible:',e.message||e);
-  }
-  // Existing event-file links also work when the optional endpoint is down.
-  (sharedFiles||[]).filter(f=>(f.name||'').startsWith('Diagrama interactivo 2D/3D · '))
+  // Visibility is governed exclusively by event_files.share, set in
+  // Ficha técnica del evento. Never auto-publish every room_layouts row:
+  // that exposed unrelated rooms from the same event.
+  (sharedFiles||[]).filter(f=>(f.mime==='application/x-acvenues-layout-link' ||
+    (f.name||'').startsWith('Diagrama interactivo 2D/3D · ')) && f.url)
     .forEach(f=>append(f.url,f.name,'Explorar y recorrer el salón, sin posibilidad de editar.'));
+
 }
 async function load(){
   if(!token){ show('invalid'); return; }
@@ -255,7 +232,7 @@ async function load(){
     // contrato
     if(d.contract_url){ $('fContract').innerHTML = `<a href="${esc(d.contract_url)}" target="_blank" rel="noopener">Descargar contrato</a>`; $('contractWrap').classList.remove('hidden'); }
     // archivos
-    const files=(d.files||[]).filter(f=>f.url && !(f.name||'').startsWith('Diagrama interactivo 2D/3D · '));
+    const files=(d.files||[]).filter(f=>f.url && f.mime!=='application/x-acvenues-layout-link' && !(f.name||'').startsWith('Diagrama interactivo 2D/3D · '));
     if(files.length){ $('fFiles').innerHTML = files.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name||'archivo')}</a>`).join(''); $('filesWrap').classList.remove('hidden'); }
     if(d.updated_at) $('fUpd').textContent = 'Actualizada: '+fmtDT(d.updated_at);
     // Título dinámico (pestaña + re-scrapes): incluye ciudad/hotel del evento
