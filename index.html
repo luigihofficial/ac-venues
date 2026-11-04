@@ -506,6 +506,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
     <input id="gatePass" type="password" placeholder="contraseña" autocomplete="current-password">
     <button class="btn" id="gateBtn">Entrar</button>
     <div class="msg muted" id="gateMsg"></div>
+    <a id="forgotBtn" style="display:inline-block;margin-top:10px;font-size:13px;color:var(--navy);cursor:pointer;text-decoration:underline">¿Olvidaste tu contraseña?</a>
   </div>
 </div>
 
@@ -1766,6 +1767,7 @@ function wireAuthUI(){
   $('gateEmail').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
   $('gatePass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
   $('logoutBtn').addEventListener('click', async()=>{await sb.auth.signOut();location.reload();});
+  const fb=$('forgotBtn'); if(fb) fb.addEventListener('click', doForgot);
   const prBtn=$('prBtn'); if(prBtn) prBtn.addEventListener('click', savePwReset);
   const pr2=$('prPass2'); if(pr2) pr2.addEventListener('keydown',e=>{if(e.key==='Enter')savePwReset();});
 }
@@ -1779,6 +1781,18 @@ async function doLogin(){
   $('gateBtn').disabled=false;
   if(error){ msg.style.color='#b23b3b'; msg.textContent='Correo o contraseña incorrectos.'; }
   else{ msg.textContent=''; }
+}
+// "Olvidé mi contraseña": envía el correo de recuperación (Supabase Auth nativo).
+async function doForgot(){
+  const email=($('gateEmail').value||'').trim().toLowerCase();
+  const msg=$('gateMsg');
+  if(!email||!email.includes('@')){ msg.style.color='#b23b3b'; msg.textContent='Escribe tu correo arriba y vuelve a tocar “¿Olvidaste tu contraseña?”.'; return; }
+  msg.style.color='#5b6472'; msg.textContent='Enviando enlace de recuperación…';
+  try{
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if(error){ msg.style.color='#b23b3b'; msg.textContent='No se pudo enviar: '+(error.message||error); }
+    else { msg.style.color='#2e7d5b'; msg.textContent='Si ese correo tiene una cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa tu correo (y la carpeta de spam).'; }
+  }catch(e){ msg.style.color='#b23b3b'; msg.textContent='No se pudo enviar: '+(e.message||e); }
 }
 async function handleSession(session){
   if(!session){$('app').classList.add('hidden');$('gate').classList.remove('hidden');return;}
