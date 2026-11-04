@@ -3965,6 +3965,15 @@ function rfpMarkAllSeen(){
   (state.rfpInvites||[]).forEach(i=>{ if(i&&i.id&&i.status==='declined') m[i.id]='declined:'+(i.decline_notes||''); });
   rfpSaveSeen(m); updateRfpBadges();
 }
+// Marca como visto SOLO las ofertas/rechazos del evento que se está mirando,
+// para que las novedades de OTROS eventos sigan avisando (y se vea cuál es nueva).
+function rfpMarkSeenForEvent(dateId){
+  if(!dateId) { updateRfpBadges(); return; }
+  const m=rfpSeenMap();
+  (state.rfpOffers||[]).forEach(o=>{ if(o&&o.id&&o.date_id===dateId) m[o.id]=o.updated_at; });
+  (state.rfpInvites||[]).forEach(i=>{ if(i&&i.id&&i.date_id===dateId&&i.status==='declined') m[i.id]='declined:'+(i.decline_notes||''); });
+  rfpSaveSeen(m); updateRfpBadges();
+}
 function updateRfpBadges(){
   const n=rfpUnseenCount();
   document.querySelectorAll('[data-rfpcount]').forEach(el=>{ el.textContent=n; el.classList.toggle('on', n>0); });
@@ -3979,9 +3988,8 @@ function renderRfpCompare(){
   if(!_rcEvent && opts.length) _rcEvent=opts[0].id;
   if(_rcEvent && !opts.some(o=>o.id===_rcEvent)) _rcEvent = opts.length?opts[0].id:'';
   sel.innerHTML = opts.length ? opts.map(o=>`<option value="${esc(o.id)}"${o.id===_rcEvent?' selected':''}>${esc(o.label)}</option>`).join('') : '<option value="">(aún no hay RFP enviados)</option>';
-  rcRenderMatrix();
-  // si el usuario está viendo esta sección, marca todo como visto; si no, solo refresca los puntos
-  if((location.hash||'').replace(/^#/,'')==='rfpcompare') rfpMarkAllSeen(); else updateRfpBadges();
+  rcRenderMatrix();   // marca como visto solo el evento mirado (dentro de rcRenderMatrix)
+  updateRfpBadges();
 }
 function rcRenderMatrix(){
   const wrap=$('rcMatrix'); const sum=$('rcSummary'); if(!wrap) return;
@@ -3992,6 +4000,9 @@ function rcRenderMatrix(){
   const declined=invites.filter(i=> i.status==='declined');
   const cols=invites.filter(i=> i.status!=='declined' && offerByInvite[i.id]).map(i=>({inv:i, off:offerByInvite[i.id]}));
   const pending=invites.filter(i=> i.status!=='declined' && !offerByInvite[i.id]);
+  // ¿cuál oferta es nueva / sin ver? (comparado con lo ya visto en este dispositivo)
+  const _seen=rfpSeenMap();
+  const isNew=(o)=> !!(o && o.id && _seen[o.id]!==o.updated_at);
   if(sum) sum.textContent = `${invites.length} invitado(s) · ${cols.length} respondieron${declined.length?(' · '+declined.length+' rechazaron'):''} · ${pending.length} pendiente(s)`;
   const declinedHtml = declined.length ? `<div class="muted" style="font-size:12.5px;margin-top:10px">🚫 Rechazaron la invitación: ${declined.map(i=>esc(i.venue||i.to_email)+(i.decline_notes?(' — “'+esc(i.decline_notes)+'”'):'')).join('; ')}</div>` : '';
   if(!cols.length){ wrap.innerHTML=`<div class="muted" style="padding:16px">Aún no hay respuestas. ${invites.length?('Invitados que faltan por responder: '+(pending.length?pending.map(i=>esc(i.venue||i.to_email)).join(', '):'—')):'No hay invitaciones para este evento.'}</div>`+declinedHtml; return; }
@@ -4000,9 +4011,16 @@ function rcRenderMatrix(){
   const bestOf=(key)=>{ const vals=cols.map(c=>n(c.off[key])).filter(v=>v!=null&&!isNaN(v)); return vals.length?Math.min(...vals):null; };
   const bRoom=bestOf('room_rental'), bFb=bestOf('fb_minimum'), bTot=bestOf('total_estimate');
   const money=v=>{ v=n(v); return v==null||isNaN(v)?'—':fmtMoney(v); };
-  const headcells=cols.map(c=>`<th class="${c.inv.status==='won'?'wincol':''}">${esc(c.off.venue||c.inv.venue||c.off.contact_name||'Hotel')}${c.inv.status==='won'?' <span class="rcwon">GANADOR</span>':''}</th>`).join('');
+  const headcells=cols.map(c=>`<th class="${c.inv.status==='won'?'wincol':''}${isNew(c.off)?' newcol':''}">${isNew(c.off)?'<span class="rcnew">NUEVA</span> ':''}${esc(c.off.venue||c.inv.venue||c.off.contact_name||'Hotel')}${c.inv.status==='won'?' <span class="rcwon">GANADOR</span>':''}</th>`).join('');
   const mkrow=(label, fn, cls)=> `<tr><td class="rk">${esc(label)}</td>${cols.map(c=>`<td class="${(c.inv.status==='won'?'wincol ':'')+(cls?cls(c):'')}">${fn(c)}</td>`).join('')}</tr>`;
   const rowsHtml=[];
+  rowsHtml.push(mkrow('Recibida', c=>{
+    const recv=c.off.created_at||c.off.updated_at;
+    let s = recv ? esc(fmtDate(recv)) : '—';
+    if(c.off.updated_at && c.off.created_at && (new Date(c.off.updated_at)-new Date(c.off.created_at))>60000)
+      s += ' <span class="muted" style="font-size:11px">· act. '+esc(fmtDate(c.off.updated_at))+'</span>';
+    return (isNew(c.off)?'<span class="rcnew">NUEVA</span> ':'')+s;
+  }, c=> isNew(c.off)?'rcnewcell':''));
   rowsHtml.push(mkrow('Contacto', c=>{ const o=c.off; return [esc(o.contact_name||''),esc(o.contact_email||''),esc(o.contact_phone||'')].filter(Boolean).join('<br>')||'—'; }));
   rowsHtml.push(mkrow('Disponible en fechas', c=> esc(c.off.available||'—')));
   rowsHtml.push(mkrow('Salón / capacidad', c=> esc([c.off.room_name,c.off.capacity].filter(Boolean).join(' · ')||'—')));
@@ -4027,6 +4045,8 @@ function rcRenderMatrix(){
   wrap.innerHTML = `<table><thead><tr><th>Criterio</th>${headcells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table>`
     + (pending.length?`<div class="muted" style="font-size:12.5px;margin-top:10px">⏳ Pendientes por responder: ${pending.map(i=>esc(i.venue||i.to_email)).join(', ')}</div>`:'')
     + declinedHtml;
+  // ya se mostró la(s) oferta(s) NUEVA(s) de este evento → márcalas como vistas
+  if((location.hash||'').replace(/^#/,'')==='rfpcompare') rfpMarkSeenForEvent(_rcEvent);
 }
 
 /* ---- Correo de aprobación del ganador ---- */
@@ -4752,7 +4772,11 @@ if(window.LayoutUI){
 #rcMatrix .wincol{background:#fff7e6}
 #rcMatrix .mxfile{display:block;color:var(--navy);font-weight:600;text-decoration:none;font-size:12px}
 #rcMatrix .winbtn{margin-top:6px}
+#rcMatrix th.newcol{box-shadow:inset 0 3px 0 #e2574f}
+#rcMatrix td.rcnewcell{background:#fff4f2;font-weight:700;color:#a52a22}
 .rcwon{display:inline-block;font-size:11px;font-weight:800;color:#fff;background:var(--ok);border-radius:999px;padding:2px 9px}
+.rcnew{display:inline-block;font-size:10px;font-weight:800;color:#fff;background:#e2574f;border-radius:999px;padding:1px 7px;letter-spacing:.03em;vertical-align:middle;animation:rcNewPulse 1.6s ease-in-out infinite}
+@keyframes rcNewPulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media(max-width:640px){ .rfpmanrow{grid-template-columns:1fr 1fr} }
 </style>
 
