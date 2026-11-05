@@ -37,11 +37,29 @@ const validEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Versión en texto plano del correo (deliverability: HTML-solo es señal de spam).
+// Conserva los enlaces como "texto ( url )" para que el portal siga siendo clicable.
+function htmlToText(html){
+  if (!html) return "";
+  let t = String(html);
+  t = t.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<head[\s\S]*?<\/head>/gi, "").replace(/<!--[\s\S]*?-->/g, "");
+  t = t.replace(/<a\s[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (m, href, txt) => {
+    const inner = txt.replace(/<[^>]+>/g, "").trim();
+    return inner && !/^https?:/i.test(inner) ? (inner + " ( " + href + " )") : href;
+  });
+  t = t.replace(/<li[^>]*>/gi, "\n• ").replace(/<(br|\/p|\/div|\/tr|\/h[1-6])\s*\/?>/gi, "\n");
+  t = t.replace(/<[^>]+>/g, "");
+  t = t.replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+       .replace(/&quot;/gi, '"').replace(/&#39;/gi, "'").replace(/&mdash;/gi, "—").replace(/&middot;/gi, "·");
+  return t.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/[ \t]{2,}/g, " ").trim();
+}
+
 // Resend limita a 10 req/seg. Enviamos uno por uno (link de portal único por hotel);
 // si nos topamos con el límite (429) o un error transitorio (5xx), esperamos y
 // reintentamos, respetando Retry-After. Así NINGÚN RFP se queda sin enviar y sin costo extra.
 async function sendEmail({ to, subject, html, bcc }){
-  const payload = { from: FROM, to: [to], reply_to: REPLYTO, subject, html };
+  const payload = { from: FROM, to: [to], reply_to: REPLYTO, subject, html, text: htmlToText(html),
+    headers: { "List-Unsubscribe": "<mailto:" + REPLYTO + "?subject=unsubscribe>", "X-Entity-Ref-ID": "ac-venues-rfp" } };
   if (bcc && bcc.length) payload.bcc = bcc;
   for (let attempt = 0; attempt < 5; attempt++){
     let r;

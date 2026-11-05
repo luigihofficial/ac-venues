@@ -94,6 +94,22 @@ function emailHtml({ name, eventLabel, venue, link }){
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Versión en texto plano (deliverability: HTML-solo es señal de spam).
+function htmlToText(html){
+  if (!html) return "";
+  let t = String(html);
+  t = t.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<head[\s\S]*?<\/head>/gi, "").replace(/<!--[\s\S]*?-->/g, "");
+  t = t.replace(/<a\s[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (m, href, txt) => {
+    const inner = txt.replace(/<[^>]+>/g, "").trim();
+    return inner && !/^https?:/i.test(inner) ? (inner + " ( " + href + " )") : href;
+  });
+  t = t.replace(/<li[^>]*>/gi, "\n• ").replace(/<(br|\/p|\/div|\/tr|\/h[1-6])\s*\/?>/gi, "\n");
+  t = t.replace(/<[^>]+>/g, "");
+  t = t.replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+       .replace(/&quot;/gi, '"').replace(/&#39;/gi, "'").replace(/&mdash;/gi, "—").replace(/&middot;/gi, "·");
+  return t.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/[ \t]{2,}/g, " ").trim();
+}
+
 // Resend limita a 10 req/seg → reintenta en 429/5xx respetando Retry-After (sin costo extra).
 async function sendEmail({ to, subject, html }){
   for (let attempt = 0; attempt < 5; attempt++){
@@ -102,7 +118,8 @@ async function sendEmail({ to, subject, html }){
       r = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: FROM, to: [to], reply_to: REPLYTO, subject, html })
+        body: JSON.stringify({ from: FROM, to: [to], reply_to: REPLYTO, subject, html, text: htmlToText(html),
+          headers: { "List-Unsubscribe": "<mailto:" + REPLYTO + "?subject=unsubscribe>", "X-Entity-Ref-ID": "ac-venues-survey" } })
       });
     } catch(e){ await sleep(800 * (attempt + 1)); continue; }
     if (r.status === 429 || r.status >= 500){
