@@ -359,6 +359,14 @@ footer{margin-top:34px;padding:22px 0 40px;color:var(--muted);font-size:12.5px;t
 .avrow.av-avail{background:#e9f4ee;border-color:#bfe0cf}
 .avrow.av-msg{background:#fbf4e2;border-color:#e6d6bb}
 @media(max-width:640px){.avrow{flex-wrap:wrap}.avrow .avname,.avrow .avsel,.avrow .avnote{flex:1 1 100%}}
+.rfpstatsec{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.rfplist{display:flex;flex-direction:column;gap:4px;margin-top:4px;max-height:220px;overflow:auto}
+.rfpirow{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:4px 9px;background:#fffdf8;font-size:13px}
+.rfpirow.pending{background:#fbf4e2;border-color:#e6d6bb}
+.rfpirow.responded{background:#e9f4ee;border-color:#bfe0cf}
+.rfpirow.declined{background:#fbe9e7;border-color:#e9c4c0}
+.rfpirow .rfpiv{flex:1;font-weight:700;color:var(--navy);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rfpirow .rfpid{flex:0 0 auto;font-size:11px;color:var(--muted);white-space:nowrap}
 .evalcard{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:#fffdf8}
 .evalhead{display:flex;align-items:center;gap:8px}
 .evalhead .cell{flex:1}
@@ -2127,6 +2135,83 @@ function evalCard(ev){
     <textarea data-evalnotes="${ev.id}" rows="2" placeholder="Comentarios / ¿regresamos a este venue?..." style="margin-top:6px">${esc(ev.notes||'')}</textarea>
   </div>`;
 }
+// --- Estado de RFP por evento (quién respondió / quién no) + follow-up ---
+function rfpStatusForDate(dId){
+  const invites=(state.rfpInvites||[]).filter(i=>i.date_id===dId);
+  const offByInv={}; (state.rfpOffers||[]).filter(o=>o.date_id===dId).forEach(o=>{ offByInv[o.invite_id]=o; });
+  const rows=invites.map(i=>{
+    let st='pending';
+    if(i.status==='declined') st='declined';
+    else if(offByInv[i.id] || i.status==='won' || i.status==='responded') st='responded';
+    return { id:i.id, venue:(i.venue||'').trim(), email:(i.to_email||'').trim(), name:(i.to_name||'').trim(), token:i.token, status:st, sent:i.created_at||i.sent_at||null };
+  }).sort((a,b)=>({pending:0,responded:1,declined:2}[a.status]-{pending:0,responded:1,declined:2}[b.status]) || (a.venue||a.email).localeCompare(b.venue||b.email));
+  return { rows, total:rows.length,
+    responded:rows.filter(r=>r.status==='responded').length,
+    pending:rows.filter(r=>r.status==='pending').length,
+    declined:rows.filter(r=>r.status==='declined').length };
+}
+function rfpLangForDate(dId){
+  const reqs=Object.values(state.rfpReq||{}).filter(r=>r.date_id===dId).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  return (reqs[0]&&reqs[0].lang)||'en';
+}
+function rfpStatusHtml(d){
+  const s=rfpStatusForDate(d.id);
+  if(!s.total) return `<div class="muted" style="font-size:12.5px;padding:2px 0">Aún no has enviado RFP para este evento. Usa “Procesar RFP de este evento”.</div>`;
+  const badge=st=> st==='responded'?'<span class="rcst ok">✓ respondió</span>': st==='declined'?'<span class="rcst" style="color:#a52a22">🚫 rechazó</span>':'<span class="rcst sent">✉ sin responder</span>';
+  const rows=s.rows.map(r=>`<div class="rfpirow ${r.status}">
+      <span class="rfpiv">${esc(r.venue||r.email||'Vendor')}</span>
+      ${badge(r.status)}
+      <span class="rfpid">${r.sent?esc(fmtDay(String(r.sent).slice(0,10))):''}</span>
+    </div>`).join('');
+  const follow = s.pending>0 ? `<button class="btn sm navy" data-rfpfollow="${d.id}" style="margin-top:8px">✉ Follow-up a los ${s.pending} que no respondieron</button>` : '';
+  return `<div class="rfplist">${rows}</div>${follow}`;
+}
+function buildFollowupEmail(lang, ctx){
+  const T = lang==='es'
+    ? { tag:'Seguimiento', hi:'Hola'+(ctx.name?(' '+ctx.name):'')+',', p1:`Queríamos dar seguimiento a nuestra solicitud de cotización para el evento de <b>Amor Consciente</b>${ctx.event?(' — '+esc(ctx.event)):''}${ctx.city?(' en '+esc(ctx.city)):''}. Nos encantaría contar con la propuesta de <b>${esc(ctx.venue||'su hotel')}</b>.`, p2:'Pueden enviarnos su propuesta de forma rápida desde su enlace personalizado:', btn:'Enviar mi propuesta', p3:'Si ya la enviaron, ¡mil gracias! Y si prefieren no participar, también pueden indicarlo en el mismo enlace. Cualquier duda, respondan a este correo.', close:'Gracias,' }
+    : { tag:'Following up', hi:'Hello'+(ctx.name?(' '+ctx.name):'')+',', p1:`We wanted to follow up on our request for proposal for the <b>Amor Consciente</b> event${ctx.event?(' — '+esc(ctx.event)):''}${ctx.city?(' in '+esc(ctx.city)):''}. We'd love to receive a proposal from <b>${esc(ctx.venue||'your hotel')}</b>.`, p2:'You can submit your proposal quickly through your personal link:', btn:'Submit my proposal', p3:'If you already sent it, thank you! And if you’d prefer not to participate, you can let us know at the same link. Any questions, just reply to this email.', close:'Thank you,' };
+  return `<!doctype html><html><body style="margin:0;background:#f5f1e8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22303f">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px">
+    <div style="border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(20,38,63,.10)">
+      <div style="background:#14263f;padding:22px;text-align:center;border-bottom:3px solid #b8860b">
+        <div style="color:#fff;font-size:19px;font-weight:800;font-family:Georgia,serif">Amor Consciente</div>
+        <div style="color:#e3b23c;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:5px">${T.tag}</div>
+      </div>
+      <div style="background:#fffdf8;padding:24px">
+        <p style="margin:0 0 12px;font-size:15px">${T.hi}</p>
+        <p style="margin:0 0 12px;font-size:14px;line-height:1.6">${T.p1}</p>
+        <p style="margin:0 0 14px;font-size:14px;line-height:1.6">${T.p2}</p>
+        <p style="text-align:center;margin:0 0 16px"><a href="${esc(ctx.portalUrl)}" style="display:inline-block;background:#1e3a5f;color:#fff;text-decoration:none;font-weight:700;padding:13px 28px;border-radius:12px">${T.btn}</a></p>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#6b7480">${T.p3}</p>
+        <p style="margin:14px 0 0;font-size:14px">${T.close}<br><b>Amor Consciente</b></p>
+      </div>
+    </div>
+  </div></body></html>`;
+}
+async function sendRfpFollowup(dateId, btn){
+  if(!sb||!USER) return;
+  const s=rfpStatusForDate(dateId);
+  const pend=s.rows.filter(r=>r.status==='pending' && r.email && r.token);
+  if(!pend.length){ alert('No hay vendors pendientes por responder en este evento.'); return; }
+  if(!confirm(`¿Enviar un recordatorio (follow-up) a ${pend.length} vendor(es) que aún no responden?\n\nSe envía a su mismo enlace de portal, sin duplicar invitaciones.`)) return;
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Enviando…';
+  try{
+    const { data:sdata }=await sb.auth.getSession(); const tkn=sdata.session&&sdata.session.access_token;
+    if(!tkn){ alert('Sesión no válida. Vuelve a entrar.'); btn.disabled=false; btn.textContent=old; return; }
+    const base=location.origin; const lang=rfpLangForDate(dateId);
+    const evLabel=dateLabelById(dateId)||''; const slug=citySlugOfDate(dateId); const city=slug?cityName(slug).split(',')[0]:'';
+    const recipients=pend.map(r=>({ email:r.email, name:r.name, venue:r.venue,
+      html: buildFollowupEmail(lang, { name:r.name, venue:r.venue, event:evLabel, city, portalUrl:base+'/rfp-portal.html?t='+r.token }) }));
+    const subject = lang==='es' ? ('Seguimiento — propuesta para '+(evLabel||'nuestro evento')) : ('Following up — proposal for '+(evLabel||'our event'));
+    const resp=await fetch('/api/rfp-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tkn},
+      body:JSON.stringify({ subject, meta:{date_id:dateId, city_slug:slug, lang}, recipients })});
+    const j=await resp.json().catch(()=>({}));
+    btn.disabled=false; btn.textContent=old;
+    if(!resp.ok||j.error){ alert('No se pudo enviar: '+(j.error||('HTTP '+resp.status))); return; }
+    alert('✅ Follow-up enviado a '+j.sent+' vendor(es)'+(j.skipped?(' · '+j.skipped+' con error'):'')+'.');
+    logChange('rfp', city||'RFP', 'envió follow-up a '+j.sent+' vendor(es) sin responder ('+(evLabel||'')+')');
+  }catch(e){ btn.disabled=false; btn.textContent=old; alert('No se pudo enviar: '+(e.message||e)); }
+}
 function dateBlock(d, citySlug){
   const pct=datePct(d.id); const st=dateStatus(d.id); const meta=state.dmeta[d.id]||{};
   const fases=FASES.map((s,i)=>`<li class="${dateDone(d.id,i)?'done':''}"><input type="checkbox" ${dateDone(d.id,i)?'checked':''} data-dstep="${d.id}:${i}"><span>${esc(s)}</span></li>`).join('');
@@ -2213,6 +2298,10 @@ function dateBlock(d, citySlug){
       <input class="cell" list="dl-${citySlug}" data-dmeta="${d.id}:chosen_venue" placeholder="— elige o escribe —" value="${esc(meta.chosen_venue||'')}">
       <textarea data-dmeta="${d.id}:notes" rows="2" placeholder="Notas de esta fecha..." style="margin-top:6px">${esc(meta.notes||'')}</textarea>
       <button class="btn sm gold" data-rfpevent="${d.id}" style="margin-top:6px" title="Procesar el RFP para este evento con sus datos ya cargados">✉ Procesar RFP de este evento</button>
+      <div class="rfpstatsec">
+        <h5 class="dsub">RFP enviados ${(()=>{const s=rfpStatusForDate(d.id);return s.total?`<span class="dsubn">${s.responded}/${s.total} respondieron${s.declined?(' · '+s.declined+' rechazó'):''}${s.pending?(' · '+s.pending+' sin responder'):''}</span>`:'<span class="dsubn">quién respondió y quién no</span>';})()}</h5>
+        ${rfpStatusHtml(d)}
+      </div>
       <div class="availsec">
         <h5 class="dsub">Disponibilidad de hoteles ${(()=>{const vs=(state.venueStatus&&state.venueStatus[d.id])||{};const n=Object.values(vs).filter(r=>r.status==='unavail').length;return n?`<span class="dsubn" style="color:#a52a22;font-weight:700">${n} sin disponibilidad</span>`:'<span class="dsubn">marca sin disponibilidad para que el equipo no repita llamadas</span>';})()}</h5>
         <div class="avlist">${availHotelsHtml(d, citySlug)}</div>
@@ -2906,6 +2995,7 @@ document.addEventListener('click', async (e)=>{
   if(t.dataset.notifysheet){ await notifySheet(t.dataset.notifysheet, t); return; }
   if(t.dataset.fillsheet){ await fillSheetFromWinner(t.dataset.fillsheet); return; }
   if(t.dataset.rfpevent){ openRfpForDate(t.dataset.rfpevent); return; }
+  if(t.dataset.rfpfollow){ await sendRfpFollowup(t.dataset.rfpfollow, t); return; }
   if(t.dataset.delfile){ await deleteEventFile(t.dataset.delfile); return; }
   if(t.dataset.addrc){
     const dateId=t.dataset.addrc;
