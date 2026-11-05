@@ -4131,7 +4131,7 @@ function rcRenderMatrix(){
   });
   rowsHtml.push(mkrow('Archivos', c=>{ const fs=Array.isArray(c.off.files)?c.off.files:[]; return fs.length?fs.map(f=>`<a class="mxfile" href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name||'archivo')}</a>`).join(''):'—'; }));
   rowsHtml.push(mkrow('Notas', c=> c.off.notes?esc(c.off.notes).replace(/\n/g,'<br>'):'—'));
-  rowsHtml.push(`<tr><td class="rk">Decisión</td>${cols.map(c=>`<td class="${c.inv.status==='won'?'wincol':''}">${c.inv.status==='won'?'<span class="rcwon">Elegido ✓</span><div class="winbtn"><button class="btn sm ghost" data-rcwin="${esc(c.inv.id)}">Reenviar aprobación</button></div>':`<button class="btn sm gold winbtn" data-rcwin="${esc(c.inv.id)}">Elegir y aprobar</button>`}</td>`).join('')}</tr>`);
+  rowsHtml.push(`<tr><td class="rk">Decisión</td>${cols.map(c=>`<td class="${c.inv.status==='won'?'wincol':''}">${c.inv.status==='won'?'<span class="rcwon">Elegido ✓</span><div class="winbtn"><button class="btn sm ghost" data-rcwin="${esc(c.inv.id)}">Reenviar aprobación</button></div><div class="winbtn"><button class="btn sm ghost" data-rcunwin="${esc(c.inv.id)}" style="color:#a52a22">Quitar ganador</button></div>':`<button class="btn sm gold winbtn" data-rcwin="${esc(c.inv.id)}">Elegir y aprobar</button>`}</td>`).join('')}</tr>`);
   wrap.innerHTML = `<table><thead><tr><th>Criterio</th>${headcells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table>`
     + (pending.length?`<div class="muted" style="font-size:12.5px;margin-top:10px">⏳ Pendientes por responder: ${pending.map(i=>esc(i.venue||i.to_email)).join(', ')}</div>`:'')
     + declinedHtml;
@@ -4302,6 +4302,8 @@ async function rapDoSend(){
     const j=await resp.json().catch(()=>({}));
     if(!resp.ok || j.error){ msg.style.color='#b23b3b'; msg.textContent='No se pudo enviar: '+(j.error||('HTTP '+resp.status)); btn.disabled=false; btn.textContent=old; return; }
     try{
+      // Solo un ganador por evento: quita el estado 'won' a cualquier otro de esta fecha
+      if(inv.date_id){ await sb.from('rfp_invites').update({status:'responded'}).eq('date_id', inv.date_id).eq('status','won'); }
       await sb.from('rfp_invites').update({status:'won'}).eq('id', inv.id);
       if(inv.date_id){
         const nowIso=new Date().toISOString();
@@ -4333,9 +4335,25 @@ async function rapDoSend(){
     setTimeout(()=>{ closeRfpApprove(); loadAll(); }, 1300);
   }catch(e){ if(msg){ msg.style.color='#b23b3b'; msg.textContent='No se pudo completar: '+(e.message||e); } btn.disabled=false; btn.textContent=old; }
 }
+// Quitar la etiqueta de GANADOR a un vendor (vuelve la oferta a "respondida").
+async function rcRemoveWinner(inviteId){
+  if(!sb||!USER) return;
+  const inv=(state.rfpInvites||[]).find(i=>i.id===inviteId); if(!inv) return;
+  const nm=inv.venue||inv.to_email||'este vendor';
+  if(!confirm('¿Quitar la etiqueta de GANADOR a '+nm+'?\n\nLa oferta sigue en la comparación como respondida; no se notifica nada al hotel.')) return;
+  try{
+    const { error }=await sb.from('rfp_invites').update({status:'responded'}).eq('id', inviteId);
+    if(error){ alert('No se pudo quitar: '+(error.message||error)); return; }
+    logChange('rfp', nm, 'quitó la etiqueta de ganador');
+    setTimeout(loadAll, 300);
+  }catch(e){ alert('No se pudo quitar: '+(e.message||e)); }
+}
 document.addEventListener('DOMContentLoaded', ()=>{
   const rc=$('rcEvent'); if(rc) rc.addEventListener('change', ()=>{ _rcEvent=rc.value; rcRenderMatrix(); });
-  const mx=$('rcMatrix'); if(mx) mx.addEventListener('click', (e)=>{ const b=e.target.closest&&e.target.closest('[data-rcwin]'); if(b) openRfpApprove(b.dataset.rcwin); });
+  const mx=$('rcMatrix'); if(mx) mx.addEventListener('click', (e)=>{
+    const un=e.target.closest&&e.target.closest('[data-rcunwin]'); if(un){ rcRemoveWinner(un.dataset.rcunwin); return; }
+    const b=e.target.closest&&e.target.closest('[data-rcwin]'); if(b) openRfpApprove(b.dataset.rcwin);
+  });
   const rl=$('rapLang'); if(rl) rl.addEventListener('change', rapUpdatePreview);
   ['rapDeadline','rapPay','rapNote'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', rapUpdatePreview); });
   const rcc=$('rapCancel'); if(rcc) rcc.addEventListener('click', closeRfpApprove);
