@@ -891,7 +891,22 @@
     msg("Duplicated "+ids.length+" object(s). Copies selected—drag the group to reposition.");
     return true;
   }
-  function delSel() { var o = cur(); if (!o) return false; pushHist(); L.objects = L.objects.filter(function (x) { return x.id !== L.sel; }); L.sel = null;L.selected=[]; return true; }
+  function delSel() {
+    // Borra TODA la selección (no solo la pieza activa). Respeta las piezas bloqueadas.
+    var ids = (L.selected && L.selected.length) ? L.selected.slice() : (L.sel ? [L.sel] : []);
+    if (!ids.length) return false;
+    var del = {}; var locked = 0;
+    L.objects.forEach(function (o) {
+      if (ids.indexOf(o.id) !== -1) { if (o.locked) locked++; else del[o.id] = 1; }
+    });
+    var n = Object.keys(del).length;
+    if (!n) { if (locked) msg("The selected object(s) are locked — unlock them to delete."); return false; }
+    pushHist();
+    L.objects = L.objects.filter(function (x) { return !del[x.id]; });
+    L.sel = null; L.selected = [];
+    if (locked) msg("Deleted " + n + " object(s). " + locked + " locked object(s) were kept.");
+    return true;
+  }
   function cur() { return L.sel ? L.objects.find(function (x) { return x.id === L.sel; }) : null; }
   function undo() { if (!L.hist.length) return; L.redo.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.hist.pop()); L.sel = null;L.selected=[]; render(); recalc(); }
   function redo() { if (!L.redo.length) return; L.hist.push(JSON.stringify(L.objects)); L.objects = JSON.parse(L.redo.pop()); L.sel = null;L.selected=[]; render(); recalc(); }
