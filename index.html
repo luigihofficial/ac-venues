@@ -62,6 +62,8 @@ header.hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#f
 .who a{color:#fff;text-decoration:underline;cursor:pointer}
 .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#bfe6d2}
 .live .dot{width:8px;height:8px;border-radius:50%;background:#37d09a;box-shadow:0 0 0 0 rgba(55,208,154,.6);animation:pulse 2s infinite}
+.live.off{color:#f0d49a}
+.live.off .dot{background:#e0a23c;box-shadow:none;animation:none}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(55,208,154,.5)}70%{box-shadow:0 0 0 7px rgba(55,208,154,0)}100%{box-shadow:0 0 0 0 rgba(55,208,154,0)}}
 
 /* ---------- Nav ---------- */
@@ -538,7 +540,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <div class="wrap">
     <div class="brand-wrap"><span class="hero-logo brandimg" role="img" aria-label="Amor Consciente"></span><div class="brand"><small>Sourcing de Venues · Panel del equipo</small><h1 id="appTitle">Amor Consciente — Venues</h1></div></div>
     <div class="right">
-      <span class="live"><span class="dot"></span> En vivo</span>
+      <span class="live" id="liveBadge"><span class="dot"></span> <span id="liveTxt">En vivo</span></span>
       <div class="kpi"><div class="n" id="kpiConf">0/0</div><div class="l">Fechas cerradas</div></div>
       <div class="kpi"><div class="n" id="kpiProg">0%</div><div class="l">Avance promedio</div></div>
       <div class="who">Conectado: <span id="whoEmail">—</span><br><a id="pwBtn">Cambiar contraseña</a> · <a id="logoutBtn">Salir</a></div>
@@ -1917,13 +1919,50 @@ document.addEventListener('focusout', ()=>{
   // esperar más que el guardado por campo (700ms) para no perder lo recién escrito
   setTimeout(()=>{ if(_pendingReload && !isEditing()){ _pendingReload=false; loadAll(); } }, 1000);
 });
-let RT_CH=null;
+let RT_CH=null, _rtRetry=0, _rtTimer=null, _pollTimer=null, _rtEver=false;
+function setLive(ok){
+  const b=$('liveBadge'), t=$('liveTxt');
+  if(b) b.classList.toggle('off', !ok);
+  if(t) t.textContent = ok ? 'En vivo' : 'Reconectando…';
+}
+// Suscripción en tiempo real con reconexión automática. Si el socket se cae
+// (dormir el equipo, cambio de red, segundo plano en el móvil) se vuelve a
+// conectar solo y recarga los datos, para que todos los dispositivos queden iguales.
 function subscribeRealtime(){
-  if(RT_CH) return;                       // ya suscrito: evita re-agregar callbacks tras subscribe()
+  if(!(sb&&USER)) return;
+  if(RT_CH){ try{ sb.removeChannel(RT_CH); }catch(e){} RT_CH=null; }
   RT_CH = sb.channel('ac-venues-live')
     .on('postgres_changes',{event:'*',schema:'public'},reload)
-    .subscribe();
+    .subscribe((status)=>{
+      if(status==='SUBSCRIBED'){ _rtRetry=0; setLive(true); if(_rtEver && !isEditing()) loadAll(); _rtEver=true; }
+      else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT' || status==='CLOSED'){ setLive(false); scheduleReconnect(); }
+    });
+  startSafetyPoll();
 }
+function scheduleReconnect(){
+  if(_rtTimer) return;
+  const delay=Math.min(1000*Math.pow(2,_rtRetry), 15000); _rtRetry++;
+  _rtTimer=setTimeout(()=>{ _rtTimer=null; subscribeRealtime(); }, delay);
+}
+// Si el canal no está conectado (p.ej. al volver de segundo plano), reconecta.
+function ensureRealtime(){
+  if(!(sb&&USER)) return;
+  const st=RT_CH && RT_CH.state;
+  if(!RT_CH || (st && st!=='joined')){ _rtRetry=0; if(_rtTimer){ clearTimeout(_rtTimer); _rtTimer=null; } subscribeRealtime(); }
+}
+// Red de seguridad: aunque el realtime falle en silencio, refresca cada 60s
+// mientras la pestaña esté visible y no se esté escribiendo.
+function startSafetyPoll(){
+  if(_pollTimer) return;
+  _pollTimer=setInterval(()=>{
+    if(sb&&USER && document.visibilityState==='visible' && !isEditing()) loadAll();
+  }, 60000);
+}
+function refreshNow(){ if(sb&&USER && !isEditing()) loadAll(); }
+// Al volver a la pestaña / recuperar conexión: reconecta y refresca al instante.
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ ensureRealtime(); refreshNow(); } });
+window.addEventListener('online', ()=>{ setLive(false); ensureRealtime(); refreshNow(); });
+window.addEventListener('focus', refreshNow);
 
 // ---------- Render ----------
 function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); if(typeof renderSpeakers==='function') renderSpeakers(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); if(typeof renderRfp==='function') renderRfp(); if(typeof renderRfpCompare==='function') renderRfpCompare(); }
