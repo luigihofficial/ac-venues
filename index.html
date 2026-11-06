@@ -4030,6 +4030,14 @@ function rcEventOptions(){
   (state.rfpOffers||[]).forEach(o=>{ if(o.date_id) ids.add(o.date_id); });
   return allDates().filter(({d})=>ids.has(d.id)).map(({city,d})=>({id:d.id, label:(cityName(city.slug)||'').split(',')[0]+' · '+(d.label||'Evento')}));
 }
+// ¿este evento tiene alguna respuesta/rechazo de RFP sin ver? (para pintarlo en rojo)
+function rcEventHasNew(dateId){
+  if(!dateId) return false;
+  const seen=rfpSeenMap();
+  const hasOffer=(state.rfpOffers||[]).some(o=> o&&o.id&&o.date_id===dateId && seen[o.id]!==o.updated_at);
+  const hasDecl=(state.rfpInvites||[]).some(i=> i&&i.id&&i.date_id===dateId && i.status==='declined' && seen[i.id]!==('declined:'+(i.decline_notes||'')));
+  return hasOffer||hasDecl;
+}
 function rcLatestReq(dateId){
   return Object.values(state.rfpReq||{}).filter(r=>r.date_id===dateId)
     .sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''))[0]||null;
@@ -4077,7 +4085,7 @@ function renderRfpCompare(){
   const opts=rcEventOptions();
   if(!_rcEvent && opts.length) _rcEvent=opts[0].id;
   if(_rcEvent && !opts.some(o=>o.id===_rcEvent)) _rcEvent = opts.length?opts[0].id:'';
-  sel.innerHTML = opts.length ? opts.map(o=>`<option value="${esc(o.id)}"${o.id===_rcEvent?' selected':''}>${esc(o.label)}</option>`).join('') : '<option value="">(aún no hay RFP enviados)</option>';
+  sel.innerHTML = opts.length ? opts.map(o=>{ const nw=rcEventHasNew(o.id); return `<option value="${esc(o.id)}"${o.id===_rcEvent?' selected':''}${nw?' style="color:#c62828;font-weight:600"':''}>${nw?'● ':''}${esc(o.label)}${nw?'  — RFP nuevo':''}</option>`; }).join('') : '<option value="">(aún no hay RFP enviados)</option>';
   rcRenderMatrix();   // marca como visto solo el evento mirado (dentro de rcRenderMatrix)
   updateRfpBadges();
 }
