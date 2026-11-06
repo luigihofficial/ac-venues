@@ -675,9 +675,10 @@
       var out = '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "") + '" x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + bh + '" rx="0.12" fill="' + navy + '" stroke="' + gold + '" stroke-width="0.16" vector-effect="non-scaling-stroke"></rect>';
       out += '<rect pointer-events="none" x="' + (bx + ins) + '" y="' + (by + ins) + '" width="' + (bw - 2 * ins) + '" height="' + (bh - 2 * ins) + '" rx="0.08" fill="none" stroke="' + gold + '" stroke-width="0.07" opacity="0.92" vector-effect="non-scaling-stroke"></rect>';
       if (brand === "logo") {
-        var url = brandLogoUrl(), ls = Math.min(bh * 0.66, bw * 0.4);
-        if (url) out += '<image pointer-events="none" href="' + url + '" x="' + (o.x - ls / 2) + '" y="' + (o.y - ls / 2) + '" width="' + ls + '" height="' + ls + '" preserveAspectRatio="xMidYMid meet"></image>';
-        else out += '<text pointer-events="none" x="' + o.x + '" y="' + (o.y + bh * 0.16) + '" font-size="' + (bh * 0.5) + '" text-anchor="middle" fill="' + gold + '">&#9829;</text>';
+        // Corazón dorado como vector (trazo no escalable): se mantiene nítido a cualquier
+        // zoom y no se ve como una "mancha" como el logo en PNG al alejar la vista.
+        var hs = Math.min(bh * 0.6, bw * 0.12), sc = hs / 24, tx = o.x - hs / 2, ty = o.y - hs / 2;
+        out += '<g pointer-events="none" transform="translate(' + tx + ',' + ty + ') scale(' + sc + ')"><path d="M12 21s-7.5-5.2-10-9.3C.3 8.3 2.3 4.5 6 4.5c2 0 3.3 1 4 2.1.7-1.1 2-2.1 4-2.1 3.7 0 5.7 3.8 4 7.2C19.5 15.8 12 21 12 21z" fill="none" stroke="' + gold + '" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path></g>';
       } else {
         var cap = brand === "yosoy" ? "YO SOY" : "ESCUELA DE";
         var capFs = Math.min(bh * 0.26, bw * 0.05);
