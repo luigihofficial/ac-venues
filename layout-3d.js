@@ -61,7 +61,7 @@
     var focus = null;
     specs.forEach(function (s) {
       if (focus) return;
-      if (s.type === "SCREEN" || s.type === "SCREEN_NAME" || s.type === "LED_WALL" || s.type === "TV_MONITOR" || s.type === "STAGE" || s.type === "PODIUM") focus = s;
+      if (s.type === "SCREEN" || s.type === "SCREEN_NAME" || s.type === "SCREEN_YOSOY" || s.type === "LED_WALL" || s.type === "TV_MONITOR" || s.type === "STAGE" || s.type === "PODIUM") focus = s;
     });
     if (focus) return { x: focus.x, y: Math.max(4, (focus.h || 6) * 0.7), z: focus.z };
     return { x: 0, y: 5, z: -rm.L / 2 + 1 };  // front-center wall
@@ -102,7 +102,7 @@
       if (s === seatSpec || s.role === "floor" || s.role === "wall") return;
       if (s.id && seatSpec.id && s.id === seatSpec.id) return;
       // skip the focus target itself
-      if (s.type === "SCREEN" || s.type === "SCREEN_NAME" || s.type === "LED_WALL" || s.type === "STAGE" || s.type === "PODIUM" || s.type === "TV_MONITOR") return;
+      if (s.type === "SCREEN" || s.type === "SCREEN_NAME" || s.type === "SCREEN_YOSOY" || s.type === "LED_WALL" || s.type === "STAGE" || s.type === "PODIUM" || s.type === "TV_MONITOR") return;
       // a blocker must rise above the sightline near its location to matter
       var box = specBox(s);
       // ignore very short items (tables/low) unless taller than seated eye near the path
@@ -169,10 +169,11 @@
     x.lineWidth = 6; x.strokeStyle = "rgba(201,162,74,.75)"; x.strokeRect(88, 88, 1024 - 176, 1024 - 176);
     var tex = new THREE.Texture(c); tex.needsUpdate = true;
     if (THREE.SRGBColorSpace && "colorSpace" in tex) { try { tex.colorSpace = THREE.SRGBColorSpace; } catch (e) {} }
-    if (brand === "name") {
+    if (brand === "name" || brand === "yosoy") {
+      var topLine = brand === "yosoy" ? "YO SOY" : "ESCUELA DE";
       x.textAlign = "center";
       x.fillStyle = "#d8bd82"; x.font = "600 68px Georgia, 'Times New Roman', serif";
-      x.fillText("ESCUELA DE", 512, 436);
+      x.fillText(topLine, 512, 436);
       // Ajusta el tamaño para que el nombre quepa dentro del marco dorado.
       var maxW = 820, fsz = 148;
       x.fillStyle = "#f3ece0";
@@ -338,8 +339,8 @@
       var steps = 2; for (var i = 0; i < steps; i++) { var shh = h * (i + 1) / (steps + 1); var st = partBox(THREE, H, Math.min(w * 0.4, 5), shh, 0.9, 0x3b4654, 0.85, 0); st.position.set(0, shh / 2, -l / 2 - 0.5 - i * 0.9); g.add(st); }
       return { obj: g, floorAnchor: true };
     }
-    var sbrand = s.brand || (t === "SCREEN" ? "logo" : (t === "SCREEN_NAME" ? "name" : null));
-    if (sbrand === "logo" || sbrand === "name") {
+    var sbrand = s.brand || (t === "SCREEN" ? "logo" : (t === "SCREEN_NAME" ? "name" : (t === "SCREEN_YOSOY" ? "yosoy" : null)));
+    if (sbrand === "logo" || sbrand === "name" || sbrand === "yosoy") {
       var bsh = h, bsw = w, blift = 1.0;
       var bframe = partBox(THREE, H, bsw + 0.26, bsh + 0.26, 0.1, 0xc9a24a, 0.45, 0.55); bframe.position.set(0, bsh / 2 + blift, -0.05); g.add(bframe);
       var btex = brandBackdropTexture(THREE, sbrand);

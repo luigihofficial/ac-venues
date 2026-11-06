@@ -154,6 +154,7 @@
     // AV
     SCREEN: { category: "equipment", sub: "Projection screen — logo", kind: "rect", w: 8.0, l: 1.0, h: 7.5, clear: 0, label: "Pantalla · Logo", brand: "logo" },
     SCREEN_NAME: { category: "equipment", sub: "Projection screen — school name", kind: "rect", w: 8.0, l: 1.0, h: 7.5, clear: 0, label: "Pantalla · Escuela", brand: "name" },
+    SCREEN_YOSOY: { category: "equipment", sub: "Projection screen — Yo soy", kind: "rect", w: 8.0, l: 1.0, h: 7.5, clear: 0, label: "Pantalla · Yo soy", brand: "yosoy" },
     LED_WALL: { category: "equipment", sub: "LED wall", kind: "rect", w: 10.0, l: 1.5, h: 8.0, clear: 0, label: "LED wall" },
     TV_MONITOR: { category: "equipment", sub: "TV monitor + stand", kind: "rect", w: 5.0, l: 2.0, h: 6.0, clear: 1, label: "TV monitor" },
     PROJECTOR: { category: "equipment", sub: "Projector on stand", kind: "rect", w: 2.0, l: 2.0, h: 4.0, clear: 1, label: "Projector" },
@@ -180,7 +181,7 @@
     { group: "Tables — round", items: ["RND_30", "RND_36", "RND_48", "RND_54", "RND_60", "RND_66", "RND_72", "HIGHTOP"] },
     { group: "Chairs", items: ["CHAIR", "CHAIR_FOLD", "CHAIR_EXEC", "BARSTOOL", "LOUNGE", "WHEELCHAIR"] },
     { group: "Stage & platforms", items: ["STAGE", "RISER", "PODIUM", "STAGE_STAIRS"] },
-    { group: "AV", items: ["SCREEN", "SCREEN_NAME", "LED_WALL", "TV_MONITOR", "PROJECTOR", "SPEAKER", "MIC_STAND", "CAMERA", "AV_BOOTH", "LIGHT"] },
+    { group: "AV", items: ["SCREEN", "SCREEN_NAME", "SCREEN_YOSOY", "LED_WALL", "TV_MONITOR", "PROJECTOR", "SPEAKER", "MIC_STAND", "CAMERA", "AV_BOOTH", "LIGHT"] },
     { group: "Catering & other", items: ["REG_TABLE", "BUFFET", "COFFEE", "WATER", "BAR", "CATERING", "DRAPE", "PARTITION", "SIGNAGE", "BOOTH"] }
   ];
   function makeObj(type, x, y, r, over) {
@@ -402,7 +403,7 @@
     var selected=p.furniture && p.furniture.backdropType || "AUTO";
     if(selected==="NONE") {
       // Explicitly disable any front screen/backdrop, regardless of screen toggle.
-    } else if(selected==="LED_WALL" || selected==="DRAPE" || selected==="SCREEN" || selected==="SCREEN_NAME") {
+    } else if(selected==="LED_WALL" || selected==="DRAPE" || selected==="SCREEN" || selected==="SCREEN_NAME" || selected==="SCREEN_YOSOY") {
       var item=makeObj(selected,cx,g+0.6,0,{isReserved:true});
       if(selected==="DRAPE")item.label="Pipe & drape backdrop";
       objs.push(item);

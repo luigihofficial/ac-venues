@@ -186,7 +186,7 @@
             '<div style="border-top:1px solid var(--line,#e6ddca);margin:12px 0 8px;padding-top:10px"><b>Furniture &amp; Presentation Setup</b></div>' +
             '<label class="lay-f">Chair type</label><select id="layChairType"><option value="CHAIR">Banquet upholstered (1.6 ft)</option><option value="CHAIR_FOLD">Folding (1.5 ft)</option><option value="CHAIR_EXEC">Executive / conference (2 ft)</option></select>' +
             '<label class="lay-f">Table type</label><select id="layTableType"><option value="AUTO">Layout default</option><option value="TBL_6FT">Banquet rectangular 6 ft</option><option value="CLASSROOM_TBL">Classroom narrow 6 ft</option><option value="RND_60">Round banquet 60 in</option><option value="RND_72">Round banquet 72 in</option></select>' +
-            '<label class="lay-f">Backdrop / screen</label><select id="layBackdropType"><option value="AUTO">Layout default</option><option value="NONE">None</option><option value="SCREEN">Amor Consciente — logo</option><option value="SCREEN_NAME">Amor Consciente — nombre</option><option value="LED_WALL">LED wall</option><option value="DRAPE">Pipe &amp; drape backdrop</option></select>' +
+            '<label class="lay-f">Backdrop / screen</label><select id="layBackdropType"><option value="AUTO">Layout default</option><option value="NONE">None</option><option value="SCREEN">Amor Consciente — logo</option><option value="SCREEN_NAME">Amor Consciente — Escuela de</option><option value="SCREEN_YOSOY">Amor Consciente — Yo soy</option><option value="LED_WALL">LED wall</option><option value="DRAPE">Pipe &amp; drape backdrop</option></select>' +
             '<div class="lay-note" id="layFurnitureHint" style="margin-top:7px">Selections apply when generating. Larger furniture may reduce capacity.</div>' +
           "</div>" +
           '<div class="lay-panel" style="margin-top:12px">' +
@@ -668,8 +668,8 @@
     var t = o.type || "", id = o.id, rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
     var x = o.x - o.w / 2, y = o.y - o.l / 2;
     // Pantallas de marca Amor Consciente: fondo azul, marco dorado y logo o nombre al centro.
-    var brand = o.brand || (t === "SCREEN" ? "logo" : (t === "SCREEN_NAME" ? "name" : null));
-    if (brand === "logo" || brand === "name") {
+    var brand = o.brand || (t === "SCREEN" ? "logo" : (t === "SCREEN_NAME" ? "name" : (t === "SCREEN_YOSOY" ? "yosoy" : null)));
+    if (brand === "logo" || brand === "name" || brand === "yosoy") {
       var bh = Math.max(o.l, 0.6), bx = x, by = o.y - bh / 2, bw = o.w;
       var navy = "#16263c", gold = "#c9a24a", ins = Math.min(bw, bh) * 0.14;
       var out = '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "") + '" x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + bh + '" rx="0.12" fill="' + navy + '" stroke="' + gold + '" stroke-width="0.16" vector-effect="non-scaling-stroke"></rect>';
@@ -679,8 +679,11 @@
         if (url) out += '<image pointer-events="none" href="' + url + '" x="' + (o.x - ls / 2) + '" y="' + (o.y - ls / 2) + '" width="' + ls + '" height="' + ls + '" preserveAspectRatio="xMidYMid meet"></image>';
         else out += '<text pointer-events="none" x="' + o.x + '" y="' + (o.y + bh * 0.16) + '" font-size="' + (bh * 0.5) + '" text-anchor="middle" fill="' + gold + '">&#9829;</text>';
       } else {
-        var fs = Math.min(bh * 0.46, bw * 0.11);
-        out += '<text pointer-events="none" x="' + o.x + '" y="' + (o.y + fs * 0.34) + '" font-size="' + fs + '" text-anchor="middle" fill="#f3ece0" font-weight="700" font-family="Georgia, \'Times New Roman\', serif" font-style="italic">Amor Consciente</text>';
+        var cap = brand === "yosoy" ? "YO SOY" : "ESCUELA DE";
+        var capFs = Math.min(bh * 0.26, bw * 0.05);
+        var wmFs = Math.min(bh * 0.42, bw * 0.1);
+        out += '<text pointer-events="none" x="' + o.x + '" y="' + (o.y - bh * 0.14) + '" font-size="' + capFs + '" text-anchor="middle" fill="#d8bd82" font-weight="700" font-family="Georgia, \'Times New Roman\', serif" letter-spacing="0.06">' + cap + '</text>';
+        out += '<text pointer-events="none" x="' + o.x + '" y="' + (o.y + bh * 0.26) + '" font-size="' + wmFs + '" text-anchor="middle" fill="#f3ece0" font-weight="700" font-family="Georgia, \'Times New Roman\', serif" font-style="italic">Amor Consciente</text>';
       }
       return out + '</g>';
     }
