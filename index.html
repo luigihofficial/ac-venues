@@ -2014,6 +2014,8 @@ function coGeneratePdf(){
   const sel=new Set(coPdfSelectedIds());
   const by=coByCat();
   const name=coCompanyName();
+  // Logo real de la app (data URI guardado en la variable CSS --logo)
+  let logoUrl=''; try{ const v=getComputedStyle(document.documentElement).getPropertyValue('--logo')||''; logoUrl=(v.match(/url\(["']?([^"')]+)["']?\)/)||[])[1]||''; }catch(e){}
   const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   const section=(title,rowsHtml)=> rowsHtml?`<h2>${title}</h2><table class="kv">${rowsHtml}</table>`:'';
   // Programas de lealtad seleccionados
@@ -2027,7 +2029,8 @@ function coGeneratePdf(){
     body{ font-family:'Helvetica Neue',Arial,sans-serif; color:#1b2a3f; margin:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .page{ padding:54px 60px 48px; }
     .brand{ display:flex; align-items:center; gap:14px; border-bottom:3px solid #c7a24a; padding-bottom:16px; margin-bottom:6px; }
-    .mark{ width:46px;height:46px;border-radius:50%;background:#14263f;color:#c7a24a;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 auto; }
+    .mark{ width:58px;height:58px;object-fit:contain;flex:0 0 auto; }
+    .markfb{ width:46px;height:46px;border-radius:50%;background:#14263f;color:#c7a24a;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 auto; }
     .brand h1{ font-size:21px; margin:0; color:#14263f; letter-spacing:.3px; }
     .brand .sub{ font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#8a6d22; margin-top:3px; font-weight:700; }
     .doctitle{ font-size:13px; color:#5b6a7d; margin:14px 0 2px; }
@@ -2043,7 +2046,7 @@ function coGeneratePdf(){
   </style></head>
   <body><div class="page">
     <div class="brand">
-      <div class="mark">&#9829;</div>
+      ${logoUrl?`<img class="mark" src="${logoUrl}" alt="">`:'<div class="markfb">&#9829;</div>'}
       <div><div class="sub">Sourcing &amp; Events</div><h1>${esc(name)}</h1></div>
     </div>
     <div class="doctitle"><b>Company Information Sheet</b></div>
