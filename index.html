@@ -965,8 +965,10 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--navy);margin-top:4px;cursor:pointer">
         <input type="checkbox" id="coPdfNone" style="width:auto"> No incluir ningún programa de lealtad
       </label>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <div id="coPdfMsg" class="muted" style="font-size:12.5px;min-height:16px;margin-top:10px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;flex-wrap:wrap">
         <button class="btn sm ghost" id="coPdfCancel">Cancelar</button>
+        <button class="btn sm ghost" id="coPdfCopy">📋 Copiar (para pegar en un email)</button>
         <button class="btn sm gold" id="coPdfGo">Generar PDF</button>
       </div>
     </div>
@@ -1993,6 +1995,7 @@ function openCoPdf(){
   const box=$('coPdfProgs'); const none=$('coPdfNone'); if(!box) return;
   const progs=(coByCat().programa||[]).filter(r=>(r.label||'').trim()||(r.value||'').trim());
   if(none) none.checked=false;
+  coCopyMsg('');
   box.innerHTML = progs.length ? progs.map(r=>`
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer">
       <input type="checkbox" class="coPdfProg" data-coid="${esc(r.id)}" checked style="width:auto">
@@ -2009,6 +2012,69 @@ function coRowsHtml(cat){
   const list=(coByCat()[cat]||[]).filter(r=>(r.value||'').trim());
   if(!list.length) return '';
   return list.map(r=>`<tr><th>${esc(coEnLabel(r.label))||'&nbsp;'}</th><td>${esc(r.value)}</td></tr>`).join('');
+}
+// ---- Copiar la hoja directo al portapapeles (para pegar en un email, sin descargar) ----
+function coRowsInline(cat){
+  const list=(coByCat()[cat]||[]).filter(r=>(r.value||'').trim());
+  if(!list.length) return '';
+  return list.map(r=>`<tr><td style="padding:5px 12px 5px 0;font-size:13px;color:#53627a;font-weight:bold;vertical-align:top;width:210px">${esc(coEnLabel(r.label))}</td><td style="padding:5px 0;font-size:13px;color:#1b2a3f">${esc(r.value)}</td></tr>`).join('');
+}
+function coSecInline(title, rowsHtml){ return rowsHtml?`<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#c7a24a;font-weight:bold;border-bottom:1px solid #e5e2d8;padding-bottom:4px;margin:16px 0 6px">${title}</div><table style="width:100%;border-collapse:collapse">${rowsHtml}</table>`:''; }
+function coTextLines(cat){
+  const list=(coByCat()[cat]||[]).filter(r=>(r.value||'').trim());
+  return list.map(r=>'  '+coEnLabel(r.label)+': '+(r.value||''));
+}
+function coBuildClipboard(sel){
+  const name=coCompanyName();
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  let logoUrl=''; try{ const v=getComputedStyle(document.documentElement).getPropertyValue('--logo')||''; logoUrl=(v.match(/url\(["']?([^"')]+)["']?\)/)||[])[1]||''; }catch(e){}
+  const progInline=(coByCat().programa||[]).filter(r=>sel.has(r.id)&&(r.value||'').trim())
+    .map(r=>`<tr><td style="padding:5px 12px 5px 0;font-size:13px;color:#53627a;font-weight:bold;vertical-align:top;width:210px">${esc((r.label||'Program').toString().trim())}</td><td style="padding:5px 0;font-size:13px;color:#1b2a3f">${esc(r.value)}</td></tr>`).join('');
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#1b2a3f;max-width:640px">
+    <div style="border-bottom:3px solid #c7a24a;padding-bottom:10px;margin-bottom:8px">
+      ${logoUrl?`<img src="${logoUrl}" alt="" style="height:46px;vertical-align:middle;margin-right:10px">`:''}<span style="display:inline-block;vertical-align:middle"><span style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#8a6d22;font-weight:bold">Sourcing &amp; Events</span><span style="display:block;font-size:19px;font-weight:bold;color:#14263f">${esc(name)}</span></span>
+    </div>
+    <div style="font-size:14px;font-weight:bold;color:#14263f">Company Information Sheet</div>
+    <div style="font-size:11px;color:#8793a3;margin-bottom:12px">Prepared for venue partners &middot; ${esc(today)}</div>
+    ${coSecInline('Company Details', coRowsInline('general'))}
+    ${coSecInline('Contacts', coRowsInline('persona'))}
+    ${coSecInline('Email Addresses', coRowsInline('email'))}
+    ${coSecInline('Phone Numbers', coRowsInline('telefono'))}
+    ${sel.size?coSecInline('Loyalty / Rewards Programs', progInline):''}
+    <div style="margin-top:14px;font-size:11.5px;color:#5b6a7d">Please direct all proposals, contracts and invoices to the contacts listed above. We appreciate the opportunity to work with your property.</div>
+  </div>`;
+  const tl=[];
+  tl.push(name.toUpperCase()); tl.push('SOURCING & EVENTS');
+  tl.push('Company Information Sheet — Prepared for venue partners · '+today); tl.push('');
+  const addSec=(title,cat)=>{ const ls=coTextLines(cat); if(ls.length){ tl.push(title.toUpperCase()); ls.forEach(l=>tl.push(l)); tl.push(''); } };
+  addSec('Company Details','general'); addSec('Contacts','persona'); addSec('Email Addresses','email'); addSec('Phone Numbers','telefono');
+  if(sel.size){ const pls=(coByCat().programa||[]).filter(r=>sel.has(r.id)&&(r.value||'').trim()).map(r=>'  '+((r.label||'Program').toString().trim())+': '+r.value); if(pls.length){ tl.push('LOYALTY / REWARDS PROGRAMS'); pls.forEach(l=>tl.push(l)); tl.push(''); } }
+  tl.push('Please direct all proposals, contracts and invoices to the contacts listed above.');
+  return { html, text: tl.join('\n') };
+}
+function coCopyMsg(txt, ok){ const m=$('coPdfMsg'); if(m){ m.textContent=txt; m.style.color = ok===false?'#b23b3b':(ok?'#1c7a3a':''); } }
+async function coCopySheet(){
+  const sel=new Set(coPdfSelectedIds());
+  const { html, text } = coBuildClipboard(sel);
+  try{
+    if(navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([ new ClipboardItem({ 'text/html': new Blob([html],{type:'text/html'}), 'text/plain': new Blob([text],{type:'text/plain'}) }) ]);
+      coCopyMsg('✓ Copiado. Pégalo en tu email (Ctrl/Cmd+V) y envíalo al vendor.', true);
+    } else { throw new Error('sin ClipboardItem'); }
+  }catch(e){
+    // Fallback: selección + execCommand('copy') desde un div oculto
+    try{
+      const d=document.createElement('div'); d.contentEditable='true';
+      d.style.position='fixed'; d.style.left='-9999px'; d.style.top='0'; d.innerHTML=html;
+      document.body.appendChild(d);
+      const r=document.createRange(); r.selectNodeContents(d);
+      const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      const okc=document.execCommand('copy'); s.removeAllRanges(); d.remove();
+      if(okc) coCopyMsg('✓ Copiado. Pégalo en tu email (Ctrl/Cmd+V) y envíalo al vendor.', true);
+      else coCopyMsg('No se pudo copiar automáticamente. Usa “Generar PDF”.', false);
+    }catch(e2){ coCopyMsg('No se pudo copiar: '+(e2.message||e2), false); }
+  }
+  try{ logChange('empresa', coCompanyName(), 'copió los datos para vendors'); }catch(e){}
 }
 function coGeneratePdf(){
   const sel=new Set(coPdfSelectedIds());
@@ -4493,6 +4559,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // PDF de datos de la empresa para vendors
   const cpb=$('coPdfBtn'); if(cpb) cpb.addEventListener('click', openCoPdf);
   const cpc=$('coPdfCancel'); if(cpc) cpc.addEventListener('click', closeCoPdf);
+  const cpy=$('coPdfCopy'); if(cpy) cpy.addEventListener('click', coCopySheet);
   const cpg=$('coPdfGo'); if(cpg) cpg.addEventListener('click', coGeneratePdf);
   const cpn=$('coPdfNone'); if(cpn) cpn.addEventListener('change', ()=>{ document.querySelectorAll('.coPdfProg').forEach(c=>{ if(cpn.checked){ c.checked=false; } c.disabled=cpn.checked; }); });
   const cpd=document.getElementById('coPdfProgs'); if(cpd) cpd.addEventListener('change', (e)=>{ if(e.target&&e.target.classList&&e.target.classList.contains('coPdfProg')&&e.target.checked){ const n=$('coPdfNone'); if(n) n.checked=false; } });
