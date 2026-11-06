@@ -644,6 +644,10 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <!-- EMPRESA (dinámico) -->
   <section id="empresa">
     <div class="sec-head"><div class="num">★</div><div><h2>Datos de la empresa</h2><p>Núcleo de decisión y acción. Editable: cambia valores o agrega más personas, emails, teléfonos y programas. Se guarda para todo el equipo.</p></div></div>
+    <div style="margin:0 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn sm gold" id="coPdfBtn">📄 PDF para vendors (inglés)</button>
+      <span class="muted" style="font-size:12.5px">Hoja de datos de la empresa en inglés para enviar a los hoteles que la pidan.</span>
+    </div>
     <div class="card" style="padding:16px 18px"><div id="companyBox"></div></div>
   </section>
 
@@ -948,6 +952,22 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button class="btn sm ghost" id="rapCancel">Cancelar</button>
         <button class="btn sm gold" id="rapSend">Enviar aprobación</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: elegir programas de lealtad para el PDF de vendors -->
+  <div id="coPdf" class="hidden pw-overlay">
+    <div class="pw-box cbox">
+      <h3>PDF para vendors (inglés)</h3>
+      <p class="muted" style="font-size:13px;margin:0 0 12px">Elige qué <b>programas de lealtad</b> incluir en la hoja de datos. Puedes marcar los que quieras o ninguno.</p>
+      <div id="coPdfProgs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--navy);margin-top:4px;cursor:pointer">
+        <input type="checkbox" id="coPdfNone" style="width:auto"> No incluir ningún programa de lealtad
+      </label>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn sm ghost" id="coPdfCancel">Cancelar</button>
+        <button class="btn sm gold" id="coPdfGo">Generar PDF</button>
       </div>
     </div>
   </div>
@@ -1947,6 +1967,106 @@ function renderCompany(){
       ${rows}
     </div>`;
   }).join('');
+}
+
+/* ============ PDF de datos de la empresa (inglés) para vendors ============ */
+// Traducción de etiquetas comunes (ES -> EN). Si no está en el mapa, se usa la etiqueta tal cual.
+const CO_EN_LABELS={
+  'nombre':'Company name','razon social':'Legal name','razón social':'Legal name',
+  'direccion':'Address','dirección':'Address','domicilio':'Address',
+  'ciudad':'City','estado':'State','pais':'Country','país':'Country','codigo postal':'ZIP code','código postal':'ZIP code',
+  'rfc':'Tax ID','ein':'Federal Tax ID (EIN)','tax id':'Tax ID','sitio web':'Website','web':'Website',
+  'contacto principal':'Primary contact','contacto':'Contact','persona':'Contact',
+  'global':'General','principal':'Main','oficina':'Office','movil':'Mobile','móvil':'Mobile','celular':'Mobile',
+  'email':'Email','correo':'Email','telefono':'Phone','teléfono':'Phone'
+};
+function coStrip(s){ return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function coEnLabel(lbl){ const k=coStrip(lbl); return CO_EN_LABELS[k] || (lbl||'').toString().trim(); }
+function coByCat(){ const b={}; (state.company||[]).forEach(r=>{ (b[r.category]=b[r.category]||[]).push(r); }); Object.keys(b).forEach(k=>b[k].sort((a,b2)=>(a.sort||0)-(b2.sort||0))); return b; }
+function coCompanyName(){
+  const g=(coByCat().general||[]);
+  const hit=g.find(r=>/nombre|name|razon|razón/i.test(r.label)) || g[0];
+  return (hit&&hit.value)||'Amor Consciente, LLC';
+}
+// Abre el modal; pregunta cuáles programas de lealtad incluir (o ninguno) antes de generar.
+function openCoPdf(){
+  const box=$('coPdfProgs'); const none=$('coPdfNone'); if(!box) return;
+  const progs=(coByCat().programa||[]).filter(r=>(r.label||'').trim()||(r.value||'').trim());
+  if(none) none.checked=false;
+  box.innerHTML = progs.length ? progs.map(r=>`
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer">
+      <input type="checkbox" class="coPdfProg" data-coid="${esc(r.id)}" checked style="width:auto">
+      <span><b>${esc(r.label||'Programa')}</b>${r.value?(' — '+esc(r.value)):''}</span>
+    </label>`).join('') : '<div class="muted" style="font-size:12.5px">No hay programas de lealtad guardados.</div>';
+  const m=$('coPdf'); if(m) m.classList.remove('hidden');
+}
+function closeCoPdf(){ const m=$('coPdf'); if(m) m.classList.add('hidden'); }
+function coPdfSelectedIds(){
+  if($('coPdfNone')&&$('coPdfNone').checked) return [];
+  return Array.from(document.querySelectorAll('.coPdfProg')).filter(c=>c.checked).map(c=>c.dataset.coid);
+}
+function coRowsHtml(cat){
+  const list=(coByCat()[cat]||[]).filter(r=>(r.value||'').trim());
+  if(!list.length) return '';
+  return list.map(r=>`<tr><th>${esc(coEnLabel(r.label))||'&nbsp;'}</th><td>${esc(r.value)}</td></tr>`).join('');
+}
+function coGeneratePdf(){
+  const sel=new Set(coPdfSelectedIds());
+  const by=coByCat();
+  const name=coCompanyName();
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const section=(title,rowsHtml)=> rowsHtml?`<h2>${title}</h2><table class="kv">${rowsHtml}</table>`:'';
+  // Programas de lealtad seleccionados
+  const progRows=(by.programa||[]).filter(r=>sel.has(r.id)&&(r.value||'').trim())
+    .map(r=>`<tr><th>${esc((r.label||'Program').toString().trim())}</th><td>${esc(r.value)}</td></tr>`).join('');
+  const progSection = sel.size ? section('Loyalty / Rewards Programs', progRows) : '';
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(name)} — Company Information</title>
+  <style>
+    @page{ size:letter; margin:0; }
+    *{ box-sizing:border-box; }
+    body{ font-family:'Helvetica Neue',Arial,sans-serif; color:#1b2a3f; margin:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .page{ padding:54px 60px 48px; }
+    .brand{ display:flex; align-items:center; gap:14px; border-bottom:3px solid #c7a24a; padding-bottom:16px; margin-bottom:6px; }
+    .mark{ width:46px;height:46px;border-radius:50%;background:#14263f;color:#c7a24a;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 auto; }
+    .brand h1{ font-size:21px; margin:0; color:#14263f; letter-spacing:.3px; }
+    .brand .sub{ font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#8a6d22; margin-top:3px; font-weight:700; }
+    .doctitle{ font-size:13px; color:#5b6a7d; margin:14px 0 2px; }
+    .doctitle b{ color:#14263f; font-size:15px; }
+    .meta{ font-size:11px; color:#8793a3; margin-bottom:22px; }
+    h2{ font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:#c7a24a; border-bottom:1px solid #e5e2d8; padding-bottom:5px; margin:24px 0 8px; }
+    table.kv{ width:100%; border-collapse:collapse; margin-bottom:4px; }
+    table.kv th{ text-align:left; width:38%; vertical-align:top; padding:6px 10px 6px 0; font-size:13px; color:#53627a; font-weight:600; }
+    table.kv td{ padding:6px 0; font-size:13px; color:#1b2a3f; }
+    table.kv tr{ border-bottom:1px solid #f0eee6; }
+    .foot{ margin-top:40px; border-top:1px solid #e5e2d8; padding-top:12px; font-size:10.5px; color:#9aa4b2; text-align:center; }
+    .note{ margin-top:14px; font-size:11.5px; color:#5b6a7d; background:#faf7ef; border:1px solid #efe9d8; border-radius:8px; padding:10px 12px; }
+  </style></head>
+  <body><div class="page">
+    <div class="brand">
+      <div class="mark">&#9829;</div>
+      <div><div class="sub">Sourcing &amp; Events</div><h1>${esc(name)}</h1></div>
+    </div>
+    <div class="doctitle"><b>Company Information Sheet</b></div>
+    <div class="meta">Prepared for venue partners &middot; ${esc(today)}</div>
+    ${section('Company Details', coRowsHtml('general'))}
+    ${section('Contacts', coRowsHtml('persona'))}
+    ${section('Email Addresses', coRowsHtml('email'))}
+    ${section('Phone Numbers', coRowsHtml('telefono'))}
+    ${progSection}
+    <div class="note">Please direct all proposals, contracts and invoices to the contacts listed above. We appreciate the opportunity to work with your property.</div>
+    <div class="foot">${esc(name)} &middot; This document was shared at your request for the purpose of event sourcing.</div>
+  </div></body></html>`;
+  // Imprime vía iframe oculto -> el navegador ofrece "Guardar como PDF" (sin librerías ni bloqueo de pop-ups)
+  const old=document.getElementById('coPdfFrame'); if(old) old.remove();
+  const f=document.createElement('iframe');
+  f.id='coPdfFrame'; f.style.position='fixed'; f.style.right='0'; f.style.bottom='0';
+  f.style.width='0'; f.style.height='0'; f.style.border='0'; f.setAttribute('aria-hidden','true');
+  document.body.appendChild(f);
+  const doc=f.contentWindow.document; doc.open(); doc.write(html); doc.close();
+  const go=()=>{ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ alert('No se pudo abrir el diálogo de impresión: '+(e.message||e)); } };
+  if(f.contentWindow.document.readyState==='complete') setTimeout(go,120); else f.onload=()=>setTimeout(go,120);
+  try{ logChange('empresa', name, 'generó PDF de datos para vendors'); }catch(e){}
+  closeCoPdf();
 }
 
 // Parseo de fecha de inicio desde el label (ej. "Despertar · 2–6 sep", "30 sep–4 oct", "28 oct–1 nov")
@@ -4367,6 +4487,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const rcc=$('rapCancel'); if(rcc) rcc.addEventListener('click', closeRfpApprove);
   const rcs=$('rapSend'); if(rcs) rcs.addEventListener('click', rapDoSend);
   const rov=$('rfpApprove'); if(rov) rov.addEventListener('click',(e)=>{ if(e.target===rov) closeRfpApprove(); });
+  // PDF de datos de la empresa para vendors
+  const cpb=$('coPdfBtn'); if(cpb) cpb.addEventListener('click', openCoPdf);
+  const cpc=$('coPdfCancel'); if(cpc) cpc.addEventListener('click', closeCoPdf);
+  const cpg=$('coPdfGo'); if(cpg) cpg.addEventListener('click', coGeneratePdf);
+  const cpn=$('coPdfNone'); if(cpn) cpn.addEventListener('change', ()=>{ document.querySelectorAll('.coPdfProg').forEach(c=>{ if(cpn.checked){ c.checked=false; } c.disabled=cpn.checked; }); });
+  const cpd=document.getElementById('coPdfProgs'); if(cpd) cpd.addEventListener('change', (e)=>{ if(e.target&&e.target.classList&&e.target.classList.contains('coPdfProg')&&e.target.checked){ const n=$('coPdfNone'); if(n) n.checked=false; } });
+  const cpo=$('coPdf'); if(cpo) cpo.addEventListener('click',(e)=>{ if(e.target===cpo) closeCoPdf(); });
 });
 
 /* ============================================================
