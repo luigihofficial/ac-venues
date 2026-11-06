@@ -152,7 +152,8 @@
     PODIUM: { category: "equipment", sub: "Podium / lectern", kind: "rect", w: 2.5, l: 2.0, h: 3.8, clear: 1.5, label: "Podium" },
     STAGE_STAIRS: { category: "equipment", sub: "Stage stairs / ramp", kind: "rect", w: 4.0, l: 3.0, h: 1.5, clear: 1.5, label: "Stage stairs" },
     // AV
-    SCREEN: { category: "equipment", sub: "Projection screen", kind: "rect", w: 8.0, l: 1.0, h: 7.5, clear: 0, label: "Screen" },
+    SCREEN: { category: "equipment", sub: "Projection screen — logo", kind: "rect", w: 8.0, l: 1.0, h: 7.5, clear: 0, label: "Pantalla · Logo", brand: "logo" },
+    SCREEN_NAME: { category: "equipment", sub: "Projection screen — school name", kind: "rect", w: 8.0, l: 1.0, h: 7.5, clear: 0, label: "Pantalla · Escuela", brand: "name" },
     LED_WALL: { category: "equipment", sub: "LED wall", kind: "rect", w: 10.0, l: 1.5, h: 8.0, clear: 0, label: "LED wall" },
     TV_MONITOR: { category: "equipment", sub: "TV monitor + stand", kind: "rect", w: 5.0, l: 2.0, h: 6.0, clear: 1, label: "TV monitor" },
     PROJECTOR: { category: "equipment", sub: "Projector on stand", kind: "rect", w: 2.0, l: 2.0, h: 4.0, clear: 1, label: "Projector" },
@@ -179,7 +180,7 @@
     { group: "Tables — round", items: ["RND_30", "RND_36", "RND_48", "RND_54", "RND_60", "RND_66", "RND_72", "HIGHTOP"] },
     { group: "Chairs", items: ["CHAIR", "CHAIR_FOLD", "CHAIR_EXEC", "BARSTOOL", "LOUNGE", "WHEELCHAIR"] },
     { group: "Stage & platforms", items: ["STAGE", "RISER", "PODIUM", "STAGE_STAIRS"] },
-    { group: "AV", items: ["SCREEN", "LED_WALL", "TV_MONITOR", "PROJECTOR", "SPEAKER", "MIC_STAND", "CAMERA", "AV_BOOTH", "LIGHT"] },
+    { group: "AV", items: ["SCREEN", "SCREEN_NAME", "LED_WALL", "TV_MONITOR", "PROJECTOR", "SPEAKER", "MIC_STAND", "CAMERA", "AV_BOOTH", "LIGHT"] },
     { group: "Catering & other", items: ["REG_TABLE", "BUFFET", "COFFEE", "WATER", "BAR", "CATERING", "DRAPE", "PARTITION", "SIGNAGE", "BOOTH"] }
   ];
   function makeObj(type, x, y, r, over) {
@@ -187,7 +188,7 @@
     var o = { id: uid(), type: type, category: base.category, sub: base.sub || base.label, kind: base.kind,
       x: x, y: y, r: r || 0,
       h: base.h != null ? base.h : 2.5, clear: base.clear != null ? base.clear : 0, share: !!base.share,
-      src: "STANDARD", locked: false, label: base.label };
+      src: "STANDARD", locked: false, label: base.label, brand: base.brand != null ? base.brand : null };
     if (base.kind === "circle") { o.d = base.d; o.seats = base.seats; }
     else { o.w = base.w; o.l = base.l; }
     if (over) for (var k in over) o[k] = over[k];
@@ -401,9 +402,8 @@
     var selected=p.furniture && p.furniture.backdropType || "AUTO";
     if(selected==="NONE") {
       // Explicitly disable any front screen/backdrop, regardless of screen toggle.
-    } else if(selected==="LED_WALL" || selected==="DRAPE" || selected==="SCREEN") {
+    } else if(selected==="LED_WALL" || selected==="DRAPE" || selected==="SCREEN" || selected==="SCREEN_NAME") {
       var item=makeObj(selected,cx,g+0.6,0,{isReserved:true});
-      if(selected==="SCREEN")item.label="Portable projection screen";
       if(selected==="DRAPE")item.label="Pipe & drape backdrop";
       objs.push(item);
     } else if(p.screen) objs.push(makeObj("SCREEN", cx, g + 0.6, 0, { isReserved: true }));

@@ -37,7 +37,7 @@
     (objects || []).forEach(function (o) {
       var h = o.h != null ? o.h : 2.5;
       var color = o.category === "chair" ? 0x6f94c4 : o.category === "equipment" ? 0xb9a7e0 : 0xd8c79a;
-      var base = { id: o.id, x: o.x - cx, z: o.y - cz, h: h, color: color, role: o.category,
+      var base = { id: o.id, x: o.x - cx, z: o.y - cz, h: h, color: color, role: o.category, brand: o.brand || null,
         type: o.type, label: o.label || o.type, rot: (o.category === "chair" && o.visualRotation != null ? o.visualRotation : (o.r || 0)) };
       if (o.kind === "circle") {
         base.kind = "cyl"; base.d = o.d; base.y = h / 2;
@@ -61,7 +61,7 @@
     var focus = null;
     specs.forEach(function (s) {
       if (focus) return;
-      if (s.type === "SCREEN" || s.type === "LED_WALL" || s.type === "TV_MONITOR" || s.type === "STAGE" || s.type === "PODIUM") focus = s;
+      if (s.type === "SCREEN" || s.type === "SCREEN_NAME" || s.type === "LED_WALL" || s.type === "TV_MONITOR" || s.type === "STAGE" || s.type === "PODIUM") focus = s;
     });
     if (focus) return { x: focus.x, y: Math.max(4, (focus.h || 6) * 0.7), z: focus.z };
     return { x: 0, y: 5, z: -rm.L / 2 + 1 };  // front-center wall
@@ -102,7 +102,7 @@
       if (s === seatSpec || s.role === "floor" || s.role === "wall") return;
       if (s.id && seatSpec.id && s.id === seatSpec.id) return;
       // skip the focus target itself
-      if (s.type === "SCREEN" || s.type === "LED_WALL" || s.type === "STAGE" || s.type === "PODIUM" || s.type === "TV_MONITOR") return;
+      if (s.type === "SCREEN" || s.type === "SCREEN_NAME" || s.type === "LED_WALL" || s.type === "STAGE" || s.type === "PODIUM" || s.type === "TV_MONITOR") return;
       // a blocker must rise above the sightline near its location to matter
       var box = specBox(s);
       // ignore very short items (tables/low) unless taller than seated eye near the path
@@ -158,6 +158,34 @@
   function partBox(THREE, H, w, h, l, color, rough, metal, emis) {
     var m = new THREE.Mesh(H.boxGeo(w, h, l), H.mat(color, rough, metal, emis));
     m.castShadow = true; m.receiveShadow = true; return m;
+  }
+  // Logo real de la app (data URI en la variable CSS --logo).
+  function brandLogoUrl(){ try{ var v=getComputedStyle(document.documentElement).getPropertyValue('--logo')||''; return (v.match(/url\(["']?([^"')]+)["']?\)/)||[])[1]||''; }catch(e){ return ''; } }
+  // Backdrop de marca Amor Consciente: fondo azul, marco dorado y logo o nombre al centro.
+  function brandBackdropTexture(THREE, brand) {
+    var c = document.createElement("canvas"); c.width = 1024; c.height = 1024; var x = c.getContext("2d");
+    x.fillStyle = "#16263c"; x.fillRect(0, 0, 1024, 1024);
+    x.strokeStyle = "#c9a24a"; x.lineWidth = 20; x.strokeRect(46, 46, 1024 - 92, 1024 - 92);
+    x.lineWidth = 6; x.strokeStyle = "rgba(201,162,74,.75)"; x.strokeRect(88, 88, 1024 - 176, 1024 - 176);
+    var tex = new THREE.Texture(c); tex.needsUpdate = true;
+    if (THREE.SRGBColorSpace && "colorSpace" in tex) { try { tex.colorSpace = THREE.SRGBColorSpace; } catch (e) {} }
+    if (brand === "name") {
+      x.textAlign = "center";
+      x.fillStyle = "#d8bd82"; x.font = "600 68px Georgia, 'Times New Roman', serif";
+      x.fillText("ESCUELA DE", 512, 436);
+      // Ajusta el tamaño para que el nombre quepa dentro del marco dorado.
+      var maxW = 820, fsz = 148;
+      x.fillStyle = "#f3ece0";
+      do { x.font = "italic 600 " + fsz + "px Georgia, 'Times New Roman', serif"; if (x.measureText("Amor Consciente").width <= maxW) break; fsz -= 6; } while (fsz > 60);
+      x.fillText("Amor Consciente", 512, 588);
+      var hw = Math.min(x.measureText("Amor Consciente").width * 0.42, 190);
+      x.strokeStyle = "#c9a24a"; x.lineWidth = 5; x.beginPath(); x.moveTo(512 - hw, 650); x.lineTo(512 + hw, 650); x.stroke();
+      tex.needsUpdate = true;
+    } else {
+      var url = brandLogoUrl();
+      if (url) { var img = new Image(); img.onload = function () { try { var s = 580; x.drawImage(img, 512 - s / 2, 512 - s / 2, s, s); tex.needsUpdate = true; } catch (e) {} }; img.src = url; }
+    }
+    return tex;
   }
   function partCyl(THREE, H, rt, rb, h, color, rough, metal, seg) {
     var m = new THREE.Mesh(H.cylGeo(rt, rb, h, seg), H.mat(color, rough, metal));
@@ -308,6 +336,17 @@
       var deck = partBox(THREE, H, w, h, l, 0x3b4654, 0.85, 0); deck.position.y = h / 2; g.add(deck);
       var topc = partBox(THREE, H, w - 0.2, 0.08, l - 0.2, 0x59677a, 0.8, 0); topc.position.y = h + 0.01; g.add(topc);
       var steps = 2; for (var i = 0; i < steps; i++) { var shh = h * (i + 1) / (steps + 1); var st = partBox(THREE, H, Math.min(w * 0.4, 5), shh, 0.9, 0x3b4654, 0.85, 0); st.position.set(0, shh / 2, -l / 2 - 0.5 - i * 0.9); g.add(st); }
+      return { obj: g, floorAnchor: true };
+    }
+    var sbrand = s.brand || (t === "SCREEN" ? "logo" : (t === "SCREEN_NAME" ? "name" : null));
+    if (sbrand === "logo" || sbrand === "name") {
+      var bsh = h, bsw = w, blift = 1.0;
+      var bframe = partBox(THREE, H, bsw + 0.26, bsh + 0.26, 0.1, 0xc9a24a, 0.45, 0.55); bframe.position.set(0, bsh / 2 + blift, -0.05); g.add(bframe);
+      var btex = brandBackdropTexture(THREE, sbrand);
+      var bmat = new THREE.MeshStandardMaterial({ map: btex, roughness: 0.6, metalness: 0.08, emissive: 0x0b1626, emissiveIntensity: 0.28 });
+      var bsurf = new THREE.Mesh(H.boxGeo(bsw, bsh, 0.1), bmat); bsurf.castShadow = true; bsurf.receiveShadow = true;
+      bsurf.position.set(0, bsh / 2 + blift, 0.06); g.add(bsurf);
+      [-bsw * 0.35, bsw * 0.35].forEach(function (xx) { var lg = partBox(THREE, H, 0.1, blift, 0.1, 0x22262b, 0.4, 0.4); lg.position.set(xx, blift / 2, 0); g.add(lg); });
       return { obj: g, floorAnchor: true };
     }
     if (t === "SCREEN") {

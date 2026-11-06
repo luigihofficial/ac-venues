@@ -186,7 +186,7 @@
             '<div style="border-top:1px solid var(--line,#e6ddca);margin:12px 0 8px;padding-top:10px"><b>Furniture &amp; Presentation Setup</b></div>' +
             '<label class="lay-f">Chair type</label><select id="layChairType"><option value="CHAIR">Banquet upholstered (1.6 ft)</option><option value="CHAIR_FOLD">Folding (1.5 ft)</option><option value="CHAIR_EXEC">Executive / conference (2 ft)</option></select>' +
             '<label class="lay-f">Table type</label><select id="layTableType"><option value="AUTO">Layout default</option><option value="TBL_6FT">Banquet rectangular 6 ft</option><option value="CLASSROOM_TBL">Classroom narrow 6 ft</option><option value="RND_60">Round banquet 60 in</option><option value="RND_72">Round banquet 72 in</option></select>' +
-            '<label class="lay-f">Backdrop / screen</label><select id="layBackdropType"><option value="AUTO">Layout default</option><option value="NONE">None</option><option value="SCREEN">Portable projection screen</option><option value="LED_WALL">LED wall</option><option value="DRAPE">Pipe &amp; drape backdrop</option></select>' +
+            '<label class="lay-f">Backdrop / screen</label><select id="layBackdropType"><option value="AUTO">Layout default</option><option value="NONE">None</option><option value="SCREEN">Amor Consciente — logo</option><option value="SCREEN_NAME">Amor Consciente — nombre</option><option value="LED_WALL">LED wall</option><option value="DRAPE">Pipe &amp; drape backdrop</option></select>' +
             '<div class="lay-note" id="layFurnitureHint" style="margin-top:7px">Selections apply when generating. Larger furniture may reduce capacity.</div>' +
           "</div>" +
           '<div class="lay-panel" style="margin-top:12px">' +
@@ -662,9 +662,28 @@
     return '<g data-id="' + id + '">' + "<g" + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-tbl") + '" x="' + (o.x - o.w / 2) + '" y="' + (o.y - o.l / 2) + '" width="' + o.w + '" height="' + o.l + '" rx="0.25"></rect></g>' + num + "</g>";
   }
   function tnumFs(o) { var s = o.kind === "circle" ? (o.d || 4) : Math.min(o.w || 4, o.l || 2.5); return Math.max(0.85, Math.min(s * 0.26, 1.4)); }
+  // Logo real de Amor Consciente (data URI guardado en la variable CSS --logo de la app).
+  function brandLogoUrl(){ try{ var v=getComputedStyle(document.documentElement).getPropertyValue('--logo')||''; return (v.match(/url\(["']?([^"')]+)["']?\)/)||[])[1]||''; }catch(e){ return ''; } }
   function equipSym(o) {
     var t = o.type || "", id = o.id, rot = o.r ? ' transform="rotate(' + o.r + ' ' + o.x + ' ' + o.y + ')"' : "";
     var x = o.x - o.w / 2, y = o.y - o.l / 2;
+    // Pantallas de marca Amor Consciente: fondo azul, marco dorado y logo o nombre al centro.
+    var brand = o.brand || (t === "SCREEN" ? "logo" : (t === "SCREEN_NAME" ? "name" : null));
+    if (brand === "logo" || brand === "name") {
+      var bh = Math.max(o.l, 0.6), bx = x, by = o.y - bh / 2, bw = o.w;
+      var navy = "#16263c", gold = "#c9a24a", ins = Math.min(bw, bh) * 0.14;
+      var out = '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "") + '" x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + bh + '" rx="0.12" fill="' + navy + '" stroke="' + gold + '" stroke-width="0.16" vector-effect="non-scaling-stroke"></rect>';
+      out += '<rect pointer-events="none" x="' + (bx + ins) + '" y="' + (by + ins) + '" width="' + (bw - 2 * ins) + '" height="' + (bh - 2 * ins) + '" rx="0.08" fill="none" stroke="' + gold + '" stroke-width="0.07" opacity="0.92" vector-effect="non-scaling-stroke"></rect>';
+      if (brand === "logo") {
+        var url = brandLogoUrl(), ls = Math.min(bh * 0.66, bw * 0.4);
+        if (url) out += '<image pointer-events="none" href="' + url + '" x="' + (o.x - ls / 2) + '" y="' + (o.y - ls / 2) + '" width="' + ls + '" height="' + ls + '" preserveAspectRatio="xMidYMid meet"></image>';
+        else out += '<text pointer-events="none" x="' + o.x + '" y="' + (o.y + bh * 0.16) + '" font-size="' + (bh * 0.5) + '" text-anchor="middle" fill="' + gold + '">&#9829;</text>';
+      } else {
+        var fs = Math.min(bh * 0.46, bw * 0.11);
+        out += '<text pointer-events="none" x="' + o.x + '" y="' + (o.y + fs * 0.34) + '" font-size="' + fs + '" text-anchor="middle" fill="#f3ece0" font-weight="700" font-family="Georgia, \'Times New Roman\', serif" font-style="italic">Amor Consciente</text>';
+      }
+      return out + '</g>';
+    }
     if (t === "STAGE" || t === "RISER" || t === "STAGE_STAIRS") {
       var fs = Math.max(1, Math.min(o.w, o.l) * 0.45);
       return '<g' + rot + '><rect data-id="' + id + '" class="' + stateCls(o, "lay-stage") + '" x="' + x + '" y="' + y + '" width="' + o.w + '" height="' + o.l + '" rx="0.3"></rect>' +
