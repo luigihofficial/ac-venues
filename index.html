@@ -1841,6 +1841,16 @@ async function handleSession(session){
 }
 
 // ---------- Carga de datos ----------
+// Firma del último estado dibujado. Si una recarga trae exactamente los mismos
+// datos, NO se vuelve a dibujar: así la app se actualiza solo cuando algo cambia
+// (tipo push) y no "parpadea" cada rato, sobre todo en el teléfono.
+let _stateSig=null;
+function renderWithScroll(){
+  var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+  renderAll();
+  // Conserva la posición de scroll para que el refresco no dé saltos en móvil.
+  try{ requestAnimationFrame(function(){ window.scrollTo(0, y); }); }catch(e){ renderAll(); }
+}
 async function loadAll(){
   const [ed,dp,dm,ct,nt,dl,gt]=await Promise.all([
     sb.from('event_dates').select('*').order('sort',{ascending:true}),
@@ -1902,7 +1912,11 @@ async function loadAll(){
   try{ const ri=await sb.from('rfp_invites').select('*'); state.rfpInvites=ri.data||[]; }catch(e){ state.rfpInvites=[]; }
   try{ const ro=await sb.from('rfp_offers').select('*').order('updated_at',{ascending:false}); state.rfpOffers=ro.data||[]; }catch(e){ state.rfpOffers=[]; }
   try{ const pe=await sb.from('ac_people').select('*').order('name',{ascending:true}); state.people=pe.data||[]; }catch(e){ state.people=[]; }
-  renderAll();
+  // Solo re-dibuja si los datos cambiaron (evita parpadeo/saltos innecesarios).
+  var sig; try{ sig = JSON.stringify(state)+'|'+JSON.stringify(CITIES_EXTRA); }catch(e){ sig=null; }
+  if(sig!==null && sig===_stateSig) return;   // nada nuevo: no tocar el DOM
+  _stateSig=sig;
+  renderWithScroll();
 }
 // ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
 function isEditing(){ const el=document.activeElement; return !!(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !el.readOnly && !el.disabled); }
@@ -1950,13 +1964,17 @@ function ensureRealtime(){
   const st=RT_CH && RT_CH.state;
   if(!RT_CH || (st && st!=='joined')){ _rtRetry=0; if(_rtTimer){ clearTimeout(_rtTimer); _rtTimer=null; } subscribeRealtime(); }
 }
-// Red de seguridad: aunque el realtime falle en silencio, refresca cada 60s
-// mientras la pestaña esté visible y no se esté escribiendo.
+// Red de seguridad SOLO si el push (realtime) está caído. Con la conexión en vivo
+// sana no se refresca en segundo plano: la app se actualiza únicamente cuando el
+// equipo cambia algo (tipo push). Y como loadAll solo redibuja si hay cambios,
+// este respaldo tampoco causa parpadeo.
 function startSafetyPoll(){
   if(_pollTimer) return;
   _pollTimer=setInterval(()=>{
-    if(sb&&USER && document.visibilityState==='visible' && !isEditing()) loadAll();
-  }, 60000);
+    if(!(sb&&USER) || document.visibilityState!=='visible' || isEditing()) return;
+    var joined = RT_CH && RT_CH.state==='joined';
+    if(!joined) loadAll();   // el push está caído → usamos el respaldo
+  }, 120000);
 }
 function refreshNow(){ if(sb&&USER && !isEditing()) loadAll(); }
 // Al volver a la pestaña / recuperar conexión: reconecta y refresca al instante.
