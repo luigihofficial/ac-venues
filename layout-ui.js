@@ -979,6 +979,10 @@
     var fit=E.assessFit(L.params.layout,L.room,L.params.target,L.params);
     var counts={};
     L.objects.forEach(function(o){var k=o.label||o.type;counts[k]=(counts[k]||0)+1;});
+    // Tipo de silla y mesa elegidos (para la descripción del reporte).
+    var CHAIR_NAMES={CHAIR:"Banquet",CHAIR_FOLD:"Folding",CHAIR_EXEC:"Executive"};
+    var TABLE_NAMES={AUTO:"Layout default",TBL_6FT:"Rect 6 ft",CLASSROOM_TBL:"Classroom 6 ft",RND_60:"Round 60 in",RND_72:"Round 72 in"};
+    var fp=L.params.furniture||{};
     var seats=L.objects.filter(function(o){return o.category==="chair";}).length;
     var countGood=(typeof countNonViolatingChairs==="function")?countNonViolatingChairs(v):seats;
     return {
@@ -988,6 +992,7 @@
       dimensions:{width:L.room.width,length:L.room.length,ceiling:L.room.ceilingHeight||null,area:L.room.width*L.room.length},
       capacities:{published:L.published,estimated:est,validated:reception?null:(v.feasible?seats:countGood),requested:L.params.target,fit:fit.status,fitReason:fit.reason},
       counts:Object.keys(counts).sort().map(function(k){return {name:k,qty:counts[k]};}),
+      furniture:{chair:CHAIR_NAMES[fp.chairType||"CHAIR"]||fp.chairType||"—", table:TABLE_NAMES[fp.tableType||"AUTO"]||fp.tableType||"—"},
       checks:{feasible:v.feasible,violations:(v.violations||[]).map(function(x){return x.msg||"Collision or fit conflict";}),
       clearance:(v.clearance||[]).map(function(x){return x.msg||"Operational-clearance warning";})},
       assumptions:"Planning tool only. Nominal dimensions unless HOTEL-CONFIRMED or MANUFACTURER-VERIFIED. This is not an official fire, occupancy, or accessibility approval.",

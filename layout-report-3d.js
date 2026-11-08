@@ -51,7 +51,8 @@ function prepSheet(report,photo,plan,onePage){
  textBlock(g,title,M,101,W-2*M,54);
  g.font="26px Arial,sans-serif";g.fillStyle="#60718a";
  var dim=report.dimensions||{};
- g.fillText(value(report.layout)+"  |  "+value(dim.width)+" x "+value(dim.length)+" ft  |  "+value(dim.area)+" ft²  |  ceiling "+value(dim.ceiling)+" ft",M,169);
+ var fur=report.furniture||{};
+ g.fillText(value(report.layout)+"  |  "+value(dim.width)+" x "+value(dim.length)+" ft  |  "+value(dim.area)+" ft²  |  ceiling "+value(dim.ceiling)+" ft  |  Chairs: "+value(fur.chair)+"  |  Tables: "+value(fur.table),M,169);
  g.fillText("AC VENUES  •  ROOM PLANNING REPORT  •  "+value(report.generatedAt),M,215);
  if(report.event&&report.event.label){
   g.fillStyle="#172b49";g.font="bold 21px Arial";
