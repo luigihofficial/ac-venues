@@ -499,7 +499,9 @@
 
     var W = wrap.clientWidth, H = wrap.clientHeight;
     var cam = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
-    var renderer = new THREE.WebGLRenderer({ antialias: true });
+    // preserveDrawingBuffer: necesario para que toDataURL() capture la imagen 3D
+    // al exportar el PDF (si no, el frame se limpia y la 3D sale en blanco).
+    var renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) { try { renderer.outputColorSpace = THREE.SRGBColorSpace; } catch (e) {} }
@@ -615,16 +617,22 @@
   // A full-room, three-quarter perspective, independent of user's active seat or walk.
   function captureReportPhoto(){
     if(!V || !enablePhotoHD())throw new Error("Photo HD renderer is not ready.");
-    var previousCamera=V.cam,previousMode=V.mode,rm=V.rm,THREE=V.THREE;
-    var shot=new THREE.PerspectiveCamera(58,previousCamera.aspect,0.1,Math.max(1200,Math.max(rm.W,rm.L)*15));
-    var span=Math.max(rm.W,rm.L);
-    shot.position.set(span*0.92,Math.max(rm.ceil*1.6,span*0.85),span*1.05);
-    shot.lookAt(0,Math.min(4,rm.ceil*.36),0);
+    // Guarda la vista y calidad actuales para restaurarlas después.
+    var prevMode=V.mode;
+    var o=V.orbit, prevOrbit={az:o.az,pol:o.pol,rad:o.rad,tx:o.tx,ty:o.ty,tz:o.tz};
     try{
-      V.cam=shot;V.mode="orbit";updateWalls();
-      return V.photo.exportPNG({cam:shot,updateCamera:function(){},updateWalls:updateWalls},true);
+      // Toma la imagen con la modalidad "Photo HD Preview" y el ángulo "Photo angle".
+      V.photo.qualityMode("photo");
+      V.photo.preset({setMode:setMode,orbit:V.orbit,rm:V.rm},"photo");
+      setMode("orbit");
+      return V.photo.exportPNG({cam:V.cam,updateCamera:updateCamera,updateWalls:updateWalls},true);
     }finally{
-      V.cam=previousCamera;V.mode=previousMode;updateWalls();
+      // Restaura materiales estándar y la vista previa del usuario.
+      try{ V.photo.qualityMode("standard"); }catch(e){}
+      V.orbit.az=prevOrbit.az;V.orbit.pol=prevOrbit.pol;V.orbit.rad=prevOrbit.rad;
+      V.orbit.tx=prevOrbit.tx;V.orbit.ty=prevOrbit.ty;V.orbit.tz=prevOrbit.tz;
+      setMode(prevMode||"orbit");
+      updateCamera();updateWalls();
     }
   }
   function export3DReport(kind){
