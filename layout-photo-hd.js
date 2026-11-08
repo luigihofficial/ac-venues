@@ -111,14 +111,29 @@ function init(ctx){
   var w=2560,h=Math.round(w*old.y/Math.max(old.x,1));
   var max=Math.min(R.capabilities.maxTextureSize||4096,4096),f=Math.min(1,max/w,max/h);
   w=Math.round(w*f);h=Math.round(h*f);
+  // Captura leyendo los píxeles de un render target propio (readRenderTargetPixels).
+  // Esto es independiente del navegador/GPU: no depende de que el lienzo WebGL
+  // conserve el frame, que es la causa de que la 3D saliera en blanco en el PDF.
+  var rt=null;
   try{
-   R.setPixelRatio(1);R.setSize(w,h,false);s.cam.aspect=w/h;s.cam.updateProjectionMatrix();
-   s.updateCamera();s.updateWalls();R.render(scene,s.cam);
-   var data=R.domElement.toDataURL("image/png");
+   s.cam.aspect=w/h;s.cam.updateProjectionMatrix();s.updateCamera();s.updateWalls();
+   rt=new THREE.WebGLRenderTarget(w,h,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat,type:THREE.UnsignedByteType});
+   R.setRenderTarget(rt);
+   R.render(scene,s.cam);
+   var buf=new Uint8Array(w*h*4);
+   R.readRenderTargetPixels(rt,0,0,w,h,buf);
+   R.setRenderTarget(null);
+   var cnv=document.createElement("canvas");cnv.width=w;cnv.height=h;
+   var cx=cnv.getContext("2d");var img=cx.createImageData(w,h);var rb=w*4;
+   for(var y=0;y<h;y++){ img.data.set(buf.subarray((h-1-y)*rb,(h-1-y)*rb+rb), y*rb); } // voltea Y
+   cx.putImageData(img,0,0);
+   var data=cnv.toDataURL("image/png");
    if(!data||data.length<1000)throw Error("The browser did not capture the render.");
    if(returnData)return data;
    var link=document.createElement("a");link.href=data;link.download="ac-venues-photo-hd.png";document.body.appendChild(link);link.click();link.remove();
   }finally{
+   if(rt){try{rt.dispose();}catch(e){}}
+   R.setRenderTarget(null);
    R.setPixelRatio(pixel);R.setSize(old.x,old.y,false);s.cam.aspect=aspect;s.cam.updateProjectionMatrix();
    s.updateCamera();s.updateWalls();R.render(scene,s.cam);
   }

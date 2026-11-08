@@ -447,7 +447,7 @@
       if (!ok || !root.THREE) { fallback("Couldn’t load the 3D library (offline or blocked). The 2D planner remains fully usable."); return; }
       // Optional Photo HD must never prevent opening the standard 3D scene.
       if(!root.ACVPhotoHD&&!document.getElementById("l3d-photo-js")){
-        var addon=document.createElement("script");addon.id="l3d-photo-js";addon.src="layout-photo-hd.js?v=20261108";
+        var addon=document.createElement("script");addon.id="l3d-photo-js";addon.src="layout-photo-hd.js?v=20261108b";
         addon.onload=function(){if(V&&!V.photo)enablePhotoHD();};
         addon.onerror=function(){if(V)showPhotoStatus("Photo HD failed to load; Standard is available.");};
         document.head.appendChild(addon);
@@ -595,7 +595,7 @@
     if(root.ACVShare){cb();return;}
     var script=document.getElementById("l3d-share-js");
     if(script){script.addEventListener("load",cb,{once:true});script.addEventListener("error",function(){showPhotoStatus("Could not load share module.");},{once:true});return;}
-    script=document.createElement("script");script.id="l3d-share-js";script.src="layout-share.js?v=20261108";
+    script=document.createElement("script");script.id="l3d-share-js";script.src="layout-share.js?v=20261108b";
     script.onload=cb;script.onerror=function(){showPhotoStatus("Could not load share module.");};
     document.head.appendChild(script);
   }
@@ -610,7 +610,7 @@
     if(root.ACVReport3D){cb();return;}
     var script=document.getElementById("l3d-report-js");
     if(script){script.addEventListener("load",cb,{once:true});script.addEventListener("error",function(){showPhotoStatus("Could not load report module.");},{once:true});return;}
-    script=document.createElement("script");script.id="l3d-report-js";script.src="layout-report-3d.js?v=20261108";
+    script=document.createElement("script");script.id="l3d-report-js";script.src="layout-report-3d.js?v=20261108b";
     script.onload=cb;script.onerror=function(){showPhotoStatus("Could not load report module.");};
     document.head.appendChild(script);
   }
