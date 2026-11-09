@@ -1854,8 +1854,8 @@ function renderWithScroll(){
 async function loadAll(){
   const [ed,dp,dm,ct,nt,dl,gt]=await Promise.all([
     sb.from('event_dates').select('*').order('sort',{ascending:true}),
-    sb.from('date_progress').select('*'),
-    sb.from('date_meta').select('*'),
+    sb.from('date_progress').select('*').order('date_id',{ascending:true}).order('step_index',{ascending:true}),
+    sb.from('date_meta').select('*').order('date_id',{ascending:true}),
     sb.from('contacts').select('*').order('created_at',{ascending:false}),
     sb.from('status_notes').select('*').order('created_at',{ascending:false}),
     sb.from('deadlines').select('*').order('sort',{ascending:true}),
@@ -1881,19 +1881,19 @@ async function loadAll(){
   try{ const rc=await sb.from('event_recipients').select('*').order('created_at',{ascending:true});
        state.recipients={}; (rc.data||[]).forEach(r=>{ (state.recipients[r.date_id]=state.recipients[r.date_id]||[]).push(r); }); }
   catch(e){ state.recipients={}; }
-  try{ const dvs=await sb.from('date_venue_status').select('*');
+  try{ const dvs=await sb.from('date_venue_status').select('*').order('date_id',{ascending:true}).order('venue_key',{ascending:true});
        state.venueStatus={}; (dvs.data||[]).forEach(r=>{ (state.venueStatus[r.date_id]=state.venueStatus[r.date_id]||{})[r.venue_key]=r; }); }
   catch(e){ state.venueStatus={}; }
   try{ const tk=await sb.from('survey_tokens').select('*').order('created_at',{ascending:true});
        state.tokens={}; (tk.data||[]).forEach(r=>{ (state.tokens[r.date_id]=state.tokens[r.date_id]||[]).push(r); }); }
   catch(e){ state.tokens={}; }
-  try{ const sh=await sb.from('event_sheet').select('*');
+  try{ const sh=await sb.from('event_sheet').select('*').order('date_id',{ascending:true});
        state.sheets={}; (sh.data||[]).forEach(r=>{ state.sheets[r.date_id]=r; }); }
   catch(e){ state.sheets={}; }
   try{ const fl=await sb.from('event_files').select('*').order('created_at',{ascending:true});
        state.files={}; (fl.data||[]).forEach(r=>{ (state.files[r.date_id]=state.files[r.date_id]||[]).push(r); }); }
   catch(e){ state.files={}; }
-  try{ const pay=await sb.from('event_payments').select('*');
+  try{ const pay=await sb.from('event_payments').select('*').order('date_id',{ascending:true});
        state.payments={}; (pay.data||[]).forEach(r=>{ state.payments[r.date_id]=r; }); }
   catch(e){ state.payments={}; }
   try{ const of=await sb.from('event_offers').select('*').order('created_at',{ascending:true});
@@ -1908,9 +1908,9 @@ async function loadAll(){
   try{ const cc=await sb.from('custom_cities').select('*').order('created_at',{ascending:true});
        CITIES_EXTRA=(cc.data||[]).map(r=>({slug:r.slug, name:r.name, leads:[], search:[]})); }
   catch(e){ CITIES_EXTRA=[]; }
-  try{ const rq=await sb.from('rfp_requests').select('*'); state.rfpReq={}; (rq.data||[]).forEach(r=>{ state.rfpReq[r.id]=r; }); }catch(e){ state.rfpReq={}; }
-  try{ const ri=await sb.from('rfp_invites').select('*'); state.rfpInvites=ri.data||[]; }catch(e){ state.rfpInvites=[]; }
-  try{ const ro=await sb.from('rfp_offers').select('*').order('updated_at',{ascending:false}); state.rfpOffers=ro.data||[]; }catch(e){ state.rfpOffers=[]; }
+  try{ const rq=await sb.from('rfp_requests').select('*').order('id',{ascending:true}); state.rfpReq={}; (rq.data||[]).forEach(r=>{ state.rfpReq[r.id]=r; }); }catch(e){ state.rfpReq={}; }
+  try{ const ri=await sb.from('rfp_invites').select('*').order('id',{ascending:true}); state.rfpInvites=ri.data||[]; }catch(e){ state.rfpInvites=[]; }
+  try{ const ro=await sb.from('rfp_offers').select('*').order('updated_at',{ascending:false}).order('id',{ascending:true}); state.rfpOffers=ro.data||[]; }catch(e){ state.rfpOffers=[]; }
   try{ const pe=await sb.from('ac_people').select('*').order('name',{ascending:true}); state.people=pe.data||[]; }catch(e){ state.people=[]; }
   // Solo re-dibuja si los datos cambiaron (evita parpadeo/saltos innecesarios).
   var sig; try{ sig = JSON.stringify(state)+'|'+JSON.stringify(CITIES_EXTRA); }catch(e){ sig=null; }
@@ -4326,17 +4326,28 @@ function updateRfpBadges(){
   if(hb){ if(n>0){ hb.classList.remove('hidden'); const t=$('rfpAlertTxt'); if(t) t.textContent = (n===1?'Tienes 1 respuesta de RFP sin ver':('Tienes '+n+' respuestas de RFP sin ver')); } else hb.classList.add('hidden'); }
   try{ const base=document.title.replace(/^\(\d+\)\s*/,''); document.title=(n>0?('('+n+') '):'')+base; }catch(e){}
 }
+// Pinta el desplegable de eventos, marcando en rojo los que tienen RFP nuevo sin ver.
+function rcPaintDropdown(){
+  const sel=$('rcEvent'); if(!sel) return;
+  const opts=rcEventOptions();
+  sel.innerHTML = opts.length ? opts.map(o=>{ const nw=rcEventHasNew(o.id); return `<option value="${esc(o.id)}"${o.id===_rcEvent?' selected':''}${nw?' style="color:#c62828;font-weight:600"':''}>${nw?'● ':''}${esc(o.label)}${nw?'  — RFP nuevo':''}</option>`; }).join('') : '<option value="">(aún no hay RFP enviados)</option>';
+}
 function renderRfpCompare(){
   const sel=$('rcEvent'); if(!sel){ updateRfpBadges(); return; }
   const opts=rcEventOptions();
   if(!_rcEvent && opts.length) _rcEvent=opts[0].id;
   if(_rcEvent && !opts.some(o=>o.id===_rcEvent)) _rcEvent = opts.length?opts[0].id:'';
-  sel.innerHTML = opts.length ? opts.map(o=>{ const nw=rcEventHasNew(o.id); return `<option value="${esc(o.id)}"${o.id===_rcEvent?' selected':''}${nw?' style="color:#c62828;font-weight:600"':''}>${nw?'● ':''}${esc(o.label)}${nw?'  — RFP nuevo':''}</option>`; }).join('') : '<option value="">(aún no hay RFP enviados)</option>';
-  rcRenderMatrix();   // marca como visto solo el evento mirado (dentro de rcRenderMatrix)
+  rcPaintDropdown();
+  rcRenderMatrix();   // marca como visto el evento mirado y repinta el desplegable
   updateRfpBadges();
 }
 function rcRenderMatrix(){
   const wrap=$('rcMatrix'); const sum=$('rcSummary'); if(!wrap) return;
+  // Al ver este evento se marcan TODAS sus novedades (ofertas Y rechazos) como vistas.
+  // Se hace al SALIR (no al entrar) para que las badges "NUEVA" sí se vean esta vez,
+  // y SIEMPRE se ejecuta —incluso cuando solo hay rechazos y no hay ofertas aún—.
+  const viewing = _rcEvent && (location.hash||'').replace(/^#/,'')==='rfpcompare';
+  const markSeen = ()=>{ if(viewing){ rfpMarkSeenForEvent(_rcEvent); rcPaintDropdown(); updateRfpBadges(); } };
   if(!_rcEvent){ wrap.innerHTML='<div class="muted" style="padding:16px">Envía un RFP desde “Enviar RFP” para empezar a comparar respuestas aquí.</div>'; if(sum) sum.textContent=''; return; }
   const invites=(state.rfpInvites||[]).filter(i=>i.date_id===_rcEvent);
   const offers=(state.rfpOffers||[]).filter(o=>o.date_id===_rcEvent);
@@ -4349,7 +4360,7 @@ function rcRenderMatrix(){
   const isNew=(o)=> !!(o && o.id && _seen[o.id]!==o.updated_at);
   if(sum) sum.textContent = `${invites.length} invitado(s) · ${cols.length} respondieron${declined.length?(' · '+declined.length+' rechazaron'):''} · ${pending.length} pendiente(s)`;
   const declinedHtml = declined.length ? `<div class="muted" style="font-size:12.5px;margin-top:10px">🚫 Rechazaron la invitación: ${declined.map(i=>esc(i.venue||i.to_email)+(i.decline_notes?(' — “'+esc(i.decline_notes)+'”'):'')).join('; ')}</div>` : '';
-  if(!cols.length){ wrap.innerHTML=`<div class="muted" style="padding:16px">Aún no hay respuestas. ${invites.length?('Invitados que faltan por responder: '+(pending.length?pending.map(i=>esc(i.venue||i.to_email)).join(', '):'—')):'No hay invitaciones para este evento.'}</div>`+declinedHtml; return; }
+  if(!cols.length){ wrap.innerHTML=`<div class="muted" style="padding:16px">Aún no hay respuestas. ${invites.length?('Invitados que faltan por responder: '+(pending.length?pending.map(i=>esc(i.venue||i.to_email)).join(', '):'—')):'No hay invitaciones para este evento.'}</div>`+declinedHtml; markSeen(); return; }
   const conc=rcConcLabels(_rcEvent);
   const n=v=> (v==null||v==='')?null:Number(v);
   const bestOf=(key)=>{ const vals=cols.map(c=>n(c.off[key])).filter(v=>v!=null&&!isNaN(v)); return vals.length?Math.min(...vals):null; };
@@ -4389,8 +4400,7 @@ function rcRenderMatrix(){
   wrap.innerHTML = `<table><thead><tr><th>Criterio</th>${headcells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table>`
     + (pending.length?`<div class="muted" style="font-size:12.5px;margin-top:10px">⏳ Pendientes por responder: ${pending.map(i=>esc(i.venue||i.to_email)).join(', ')}</div>`:'')
     + declinedHtml;
-  // ya se mostró la(s) oferta(s) NUEVA(s) de este evento → márcalas como vistas
-  if((location.hash||'').replace(/^#/,'')==='rfpcompare') rfpMarkSeenForEvent(_rcEvent);
+  markSeen();   // ya se mostraron las novedades de este evento → márcalas vistas
 }
 
 /* ---- Correo de aprobación del ganador ---- */
