@@ -113,6 +113,10 @@ nav.tabs a.active{color:var(--navy);border-bottom-color:var(--gold)}
 .up-row:last-child{border-bottom:none}
 .up-row:hover{background:var(--cream);text-decoration:none}
 .up-row{cursor:pointer}
+.up-more{display:block;width:100%;border:none;background:transparent;color:var(--navy);font-weight:700;font-size:13px;padding:11px 16px;cursor:pointer;text-align:center;border-top:1px solid var(--line)}
+.up-more:hover{background:var(--cream)}
+.dateblk.ev-flash{animation:evflash 2.2s ease-out}
+@keyframes evflash{0%{box-shadow:0 0 0 3px var(--gold);background:#fff7e6}60%{box-shadow:0 0 0 3px var(--gold)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0);background:#fffdf8}}
 .ebox{max-width:640px;max-height:88vh;overflow:auto}
 .emsec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);font-weight:800;margin:16px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
 .emfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
@@ -1482,6 +1486,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.addEventListener('click', (e)=>{ if(!e.target.closest('.navgroup')) closeNavMenus(); });
 });
 // --- Dashboard de Inicio ---
+let _homeShowAll=false;   // "Ver todos los próximos" en la tarjeta de Inicio
 function renderHome(){
   const rows=allDates(); const total=rows.length; let closed=0,sum=0;
   rows.forEach(({d})=>{ const p=datePct(d.id); sum+=p; if(p===100)closed++; });
@@ -1493,20 +1498,39 @@ function renderHome(){
   const box=$('homeUpcoming'); if(!box) return;
   const today=new Date().toISOString().slice(0,10);
   const withDate=rows.filter(r=>r.d.start_date).sort((a,b)=>a.d.start_date<b.d.start_date?-1:1);
-  let up=withDate.filter(r=>r.d.start_date>=today);
+  let up=withDate.filter(r=>r.d.start_date>=today);   // futuros, del más próximo al más lejano
   if(!up.length) up=withDate.slice(-6);
-  up=up.slice(0,6);
   if(!up.length){ box.innerHTML='<div class="muted" style="padding:16px">Aún no hay fechas con día asignado. Agrégalas en Ciudades / Eventos.</div>'; return; }
-  box.innerHTML=up.map(({city,d})=>{
+  const rowHtml=({city,d})=>{
     const pct=datePct(d.id); const meta=state.dmeta[d.id]||{}; const venue=meta.chosen_venue||'';
-    return `<div class="up-row" data-openevent="${d.id}" role="button" tabindex="0" title="Actualizar este evento">
+    return `<div class="up-row" data-openevent="${d.id}" role="button" tabindex="0" title="Ir a este evento →">
       <div class="up-main">
         <div class="up-city">${esc(city.name.split(',')[0])} · ${esc(fmtDay(d.start_date))}</div>
         <div class="up-sub">${esc(d.label||'Fecha')}${venue?(' · '+esc(venue)):''}</div>
       </div>
       <div class="up-pct">${pct}%</div>
     </div>`;
-  }).join('');
+  };
+  const shown = _homeShowAll ? up : up.slice(0,6);
+  box.innerHTML = shown.map(rowHtml).join('')
+    + (up.length>6 ? `<button type="button" class="up-more" data-homeall>${_homeShowAll?'▴ Ver menos':('▾ Ver todos los próximos ('+up.length+')')}</button>` : '');
+}
+// Navega EXACTAMENTE al evento dentro de Ciudades: lo abre, lo centra y lo resalta.
+function goToEvent(dateId){
+  if(!dateId) return;
+  if((location.hash||'').replace(/^#/,'')!=='ciudades') location.hash='#ciudades';
+  var tries=0;
+  var iv=setInterval(function(){
+    tries++;
+    var el=document.getElementById('ev-'+dateId);
+    if(el){
+      el.classList.add('open');   // expande el bloque del evento
+      var p=el.parentElement; while(p){ if(p.tagName==='DETAILS') p.open=true; p=p.parentElement; }
+      try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ el.scrollIntoView(); }
+      el.classList.add('ev-flash'); setTimeout(function(){ el.classList.remove('ev-flash'); }, 2400);
+      clearInterval(iv);
+    } else if(tries>25){ clearInterval(iv); }
+  }, 70);
 }
 
 // --- Modal para actualizar un evento desde el resumen ---
@@ -2515,7 +2539,7 @@ function dateBlock(d, citySlug){
       <label class="fshare" title="Incluir en la ficha para líderes/speakers"><input type="checkbox" data-sharefile="${f.id}" ${f.share?'checked':''}> compartir</label>
       <button class="btn sm ghost cox" data-delfile="${f.id}" title="Eliminar">✕</button>
     </div>`).join('') || `<div class="muted" style="font-size:12.5px;padding:2px 0 4px">Sin archivos aún. Sube contratos, blueprints, layouts, etc. 👇</div>`;
-  return `<div class="dateblk">
+  return `<div class="dateblk" id="ev-${d.id}">
     <div class="datehead" data-dtoggle="1">
       <span class="dcaret">▸</span>
       <input class="cell dlabel" data-dlabel="${d.id}" value="${esc(d.label||'')}" placeholder="Fecha / evento" onclick="event.stopPropagation()">
@@ -3203,9 +3227,11 @@ document.addEventListener('click', async (e)=>{
       else downloadLayoutImage(svg, fname, imgBtn); }
     return;
   }
+  const homeAll = t.closest ? t.closest('[data-homeall]') : null;
+  if(homeAll){ _homeShowAll=!_homeShowAll; renderHome(); return; }
   if(!sb||!USER) return;
   const orow = t.closest ? t.closest('[data-openevent]') : null;
-  if(orow){ openEventModal(orow.dataset.openevent); return; }
+  if(orow){ goToEvent(orow.dataset.openevent); return; }
   if(t.dataset.openpay){ openPaymentsModal(t.dataset.openpay); return; }
   const delp = t.closest ? t.closest('[data-delprow]') : null;
   if(delp){ const pr=delp.closest('.prow'); if(pr){ pr.remove(); pmRecalc(); } return; }
