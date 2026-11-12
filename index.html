@@ -62,6 +62,9 @@ header.hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#f
 .who a{color:#fff;text-decoration:underline;cursor:pointer}
 .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#bfe6d2}
 .live .dot{width:8px;height:8px;border-radius:50%;background:#37d09a;box-shadow:0 0 0 0 rgba(55,208,154,.6);animation:pulse 2s infinite}
+.refreshbtn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:8px;font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.refreshbtn:hover{background:rgba(255,255,255,.22)}
+.refreshbtn:disabled{opacity:.6;cursor:default}
 .live.off{color:#f0d49a}
 .live.off .dot{background:#e0a23c;box-shadow:none;animation:none}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(55,208,154,.5)}70%{box-shadow:0 0 0 7px rgba(55,208,154,0)}100%{box-shadow:0 0 0 0 rgba(55,208,154,0)}}
@@ -545,6 +548,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
     <div class="brand-wrap"><span class="hero-logo brandimg" role="img" aria-label="Amor Consciente"></span><div class="brand"><small>Sourcing de Venues · Panel del equipo</small><h1 id="appTitle">Amor Consciente — Venues</h1></div></div>
     <div class="right">
       <span class="live" id="liveBadge"><span class="dot"></span> <span id="liveTxt">En vivo</span></span>
+      <button id="refreshBtn" class="refreshbtn" title="Actualizar ahora">↻ Actualizar</button>
       <div class="kpi"><div class="n" id="kpiConf">0/0</div><div class="l">Fechas cerradas</div></div>
       <div class="kpi"><div class="n" id="kpiProg">0%</div><div class="l">Avance promedio</div></div>
       <div class="who">Conectado: <span id="whoEmail">—</span><br><a id="pwBtn">Cambiar contraseña</a> · <a id="logoutBtn">Salir</a></div>
@@ -1824,6 +1828,13 @@ function wireAuthUI(){
   $('gateEmail').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
   $('gatePass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
   $('logoutBtn').addEventListener('click', async()=>{await sb.auth.signOut();location.reload();});
+  const rb=$('refreshBtn'); if(rb) rb.addEventListener('click', async()=>{
+    if(!(sb&&USER)) return;
+    rb.disabled=true; const o=rb.textContent; rb.textContent='↻ Actualizando…';
+    _stateSig=null;               // fuerza re-dibujo aunque los datos no hayan cambiado
+    try{ await loadAll(); }catch(e){}
+    rb.textContent='✓ Actualizado'; setTimeout(()=>{ rb.textContent=o; rb.disabled=false; }, 900);
+  });
   const fb=$('forgotBtn'); if(fb) fb.addEventListener('click', doForgot);
   const prBtn=$('prBtn'); if(prBtn) prBtn.addEventListener('click', savePwReset);
   const pr2=$('prPass2'); if(pr2) pr2.addEventListener('keydown',e=>{if(e.key==='Enter')savePwReset();});
@@ -1876,136 +1887,96 @@ function renderWithScroll(){
   // Conserva la posición de scroll para que el refresco no dé saltos en móvil.
   try{ requestAnimationFrame(function(){ window.scrollTo(0, y); }); }catch(e){ renderAll(); }
 }
-async function loadAll(){
-  const [ed,dp,dm,ct,nt,dl,gt]=await Promise.all([
-    sb.from('event_dates').select('*').order('sort',{ascending:true}),
-    sb.from('date_progress').select('*').order('date_id',{ascending:true}).order('step_index',{ascending:true}),
-    sb.from('date_meta').select('*').order('date_id',{ascending:true}),
-    sb.from('contacts').select('*').order('created_at',{ascending:false}),
-    sb.from('status_notes').select('*').order('created_at',{ascending:false}),
-    sb.from('deadlines').select('*').order('sort',{ascending:true}),
-    sb.from('global_tasks').select('*').order('sort',{ascending:true})
-  ]);
-  state.dates={}; (ed.data||[]).forEach(r=>{ (state.dates[r.city_slug]=state.dates[r.city_slug]||[]).push(r); });
-  state.dprogress={}; (dp.data||[]).forEach(r=>{ state.dprogress[r.date_id+':'+r.step_index]=r.done; });
-  state.dmeta={}; (dm.data||[]).forEach(r=>{ state.dmeta[r.date_id]=r; });
-  state.contacts=ct.data||[]; state.notes=nt.data||[]; state.deadlines=dl.data||[]; state.gtasks=gt.data||[];
-  try{ const dc=await sb.from('documents').select('*').order('created_at',{ascending:false}); state.documents=dc.data||[]; }catch(e){ state.documents=[]; }
-  try{ const ve=await sb.from('venue_evals').select('*').order('created_at',{ascending:true});
-       state.evals={}; (ve.data||[]).forEach(r=>{ (state.evals[r.date_id]=state.evals[r.date_id]||[]).push(r); }); }
-  catch(e){ state.evals={}; }
-  try{ const co=await sb.from('company_info').select('*').order('category',{ascending:true}).order('sort',{ascending:true});
-       state.company=co.data||[]; }
-  catch(e){ state.company=[]; }
-  try{ const al=await sb.from('audit_log').select('*').order('created_at',{ascending:false}).limit(200);
-       state.audit=al.data||[]; }
-  catch(e){ state.audit=[]; }
-  try{ const vn=await sb.from('venues').select('*').order('sort',{ascending:true});
-       state.venues={}; (vn.data||[]).forEach(r=>{ (state.venues[r.city_slug]=state.venues[r.city_slug]||[]).push(r); }); }
-  catch(e){ state.venues={}; }
-  try{ const rc=await sb.from('event_recipients').select('*').order('created_at',{ascending:true});
-       state.recipients={}; (rc.data||[]).forEach(r=>{ (state.recipients[r.date_id]=state.recipients[r.date_id]||[]).push(r); }); }
-  catch(e){ state.recipients={}; }
-  try{ const dvs=await sb.from('date_venue_status').select('*').order('date_id',{ascending:true}).order('venue_key',{ascending:true});
-       state.venueStatus={}; (dvs.data||[]).forEach(r=>{ (state.venueStatus[r.date_id]=state.venueStatus[r.date_id]||{})[r.venue_key]=r; }); }
-  catch(e){ state.venueStatus={}; }
-  try{ const tk=await sb.from('survey_tokens').select('*').order('created_at',{ascending:true});
-       state.tokens={}; (tk.data||[]).forEach(r=>{ (state.tokens[r.date_id]=state.tokens[r.date_id]||[]).push(r); }); }
-  catch(e){ state.tokens={}; }
-  try{ const sh=await sb.from('event_sheet').select('*').order('date_id',{ascending:true});
-       state.sheets={}; (sh.data||[]).forEach(r=>{ state.sheets[r.date_id]=r; }); }
-  catch(e){ state.sheets={}; }
-  try{ const fl=await sb.from('event_files').select('*').order('created_at',{ascending:true});
-       state.files={}; (fl.data||[]).forEach(r=>{ (state.files[r.date_id]=state.files[r.date_id]||[]).push(r); }); }
-  catch(e){ state.files={}; }
-  try{ const pay=await sb.from('event_payments').select('*').order('date_id',{ascending:true});
-       state.payments={}; (pay.data||[]).forEach(r=>{ state.payments[r.date_id]=r; }); }
-  catch(e){ state.payments={}; }
-  try{ const of=await sb.from('event_offers').select('*').order('created_at',{ascending:true});
-       state.offers={}; (of.data||[]).forEach(r=>{ (state.offers[r.date_id]=state.offers[r.date_id]||[]).push(r); }); }
-  catch(e){ state.offers={}; }
-  try{ const cal=await sb.from('calendar_items').select('*').order('starts_at',{ascending:true});
-       state.calendar=cal.data||[]; }
-  catch(e){ state.calendar=[]; }
-  try{ const rl=await sb.from('rfp_log').select('*').order('sent_at',{ascending:false});
-       state.rfplog=rl.data||[]; }
-  catch(e){ state.rfplog=[]; }
-  try{ const cc=await sb.from('custom_cities').select('*').order('created_at',{ascending:true});
-       CITIES_EXTRA=(cc.data||[]).map(r=>({slug:r.slug, name:r.name, leads:[], search:[]})); }
-  catch(e){ CITIES_EXTRA=[]; }
-  try{ const rq=await sb.from('rfp_requests').select('*').order('id',{ascending:true}); state.rfpReq={}; (rq.data||[]).forEach(r=>{ state.rfpReq[r.id]=r; }); }catch(e){ state.rfpReq={}; }
-  try{ const ri=await sb.from('rfp_invites').select('*').order('id',{ascending:true}); state.rfpInvites=ri.data||[]; }catch(e){ state.rfpInvites=[]; }
-  try{ const ro=await sb.from('rfp_offers').select('*').order('updated_at',{ascending:false}).order('id',{ascending:true}); state.rfpOffers=ro.data||[]; }catch(e){ state.rfpOffers=[]; }
-  try{ const pe=await sb.from('ac_people').select('*').order('name',{ascending:true}); state.people=pe.data||[]; }catch(e){ state.people=[]; }
-  // Solo re-dibuja si los datos cambiaron (evita parpadeo/saltos innecesarios).
+// Cargadores por tabla (columnas mínimas en vez de select('*')).
+// loadAll() corre todos (inicial / manual / respaldo). Realtime refresca SOLO
+// la tabla que cambió llamando a su cargador — nunca recarga las ~26 tablas.
+const LOADERS = {
+  event_dates: async()=>{ const r=await sb.from('event_dates').select('id,city_slug,sort,label,start_date,end_date,survey_sent_at').order('sort',{ascending:true}); state.dates={}; (r.data||[]).forEach(x=>{ (state.dates[x.city_slug]=state.dates[x.city_slug]||[]).push(x); }); },
+  date_progress: async()=>{ const r=await sb.from('date_progress').select('date_id,step_index,done').order('date_id',{ascending:true}).order('step_index',{ascending:true}); state.dprogress={}; (r.data||[]).forEach(x=>{ state.dprogress[x.date_id+':'+x.step_index]=x.done; }); },
+  date_meta: async()=>{ const r=await sb.from('date_meta').select('date_id,chosen_venue,notes,updated_at').order('date_id',{ascending:true}); state.dmeta={}; (r.data||[]).forEach(x=>{ state.dmeta[x.date_id]=x; }); },
+  contacts: async()=>{ const r=await sb.from('contacts').select('id,city,name,email,phone,role,notes,created_at,address,last_call,venue,extra_contacts').order('created_at',{ascending:false}); state.contacts=r.data||[]; },
+  status_notes: async()=>{ const r=await sb.from('status_notes').select('id,body,author,created_at').order('created_at',{ascending:false}); state.notes=r.data||[]; },
+  deadlines: async()=>{ const r=await sb.from('deadlines').select('id,sort,phase,due,descr,done').order('sort',{ascending:true}); state.deadlines=r.data||[]; },
+  global_tasks: async()=>{ const r=await sb.from('global_tasks').select('id,sort,label,done').order('sort',{ascending:true}); state.gtasks=r.data||[]; },
+  documents: async()=>{ const r=await sb.from('documents').select('id,filename,storage_path,doc_type,title,vendor,city,doc_date,total,currency,pending,credit,summary,uploaded_by,created_at').order('created_at',{ascending:false}); state.documents=r.data||[]; },
+  venue_evals: async()=>{ const r=await sb.from('venue_evals').select('id,date_id,city_slug,venue_name,scores,notes,created_at,updated_at,respondent_name,respondent_email,source,survey_token').order('created_at',{ascending:true}); state.evals={}; (r.data||[]).forEach(x=>{ (state.evals[x.date_id]=state.evals[x.date_id]||[]).push(x); }); },
+  company_info: async()=>{ const r=await sb.from('company_info').select('id,category,label,value,sort').order('category',{ascending:true}).order('sort',{ascending:true}); state.company=r.data||[]; },
+  audit_log: async()=>{ const r=await sb.from('audit_log').select('id,actor,action,target,detail,created_at').order('created_at',{ascending:false}).limit(50); state.audit=r.data||[]; },
+  venues: async()=>{ const r=await sb.from('venues').select('id,city_slug,name,area,url,notes,sort').order('sort',{ascending:true}); state.venues={}; (r.data||[]).forEach(x=>{ (state.venues[x.city_slug]=state.venues[x.city_slug]||[]).push(x); }); },
+  event_recipients: async()=>{ const r=await sb.from('event_recipients').select('id,date_id,name,email,role,created_at').order('created_at',{ascending:true}); state.recipients={}; (r.data||[]).forEach(x=>{ (state.recipients[x.date_id]=state.recipients[x.date_id]||[]).push(x); }); },
+  date_venue_status: async()=>{ const r=await sb.from('date_venue_status').select('id,date_id,venue_key,venue_name,status,note,updated_by,updated_at').order('date_id',{ascending:true}).order('venue_key',{ascending:true}); state.venueStatus={}; (r.data||[]).forEach(x=>{ (state.venueStatus[x.date_id]=state.venueStatus[x.date_id]||{})[x.venue_key]=x; }); },
+  survey_tokens: async()=>{ const r=await sb.from('survey_tokens').select('token,date_id,city_slug,event_label,venue_name,recipient_name,recipient_email,sent_at,responded_at,created_at').order('created_at',{ascending:true}); state.tokens={}; (r.data||[]).forEach(x=>{ (state.tokens[x.date_id]=state.tokens[x.date_id]||[]).push(x); }); },
+  event_sheet: async()=>{ const r=await sb.from('event_sheet').select('date_id,hotel_name,address,map_url,room_name,contact_name,contact_phone,parking_cost,parking_reentry,wifi_included,setup_time,greenroom_included,contract_url,notes,sheet_sent_at,updated_at,sheet_token').order('date_id',{ascending:true}); state.sheets={}; (r.data||[]).forEach(x=>{ state.sheets[x.date_id]=x; }); },
+  event_files: async()=>{ const r=await sb.from('event_files').select('id,date_id,name,path,url,mime,size,share,uploaded_by,created_at').order('created_at',{ascending:true}); state.files={}; (r.data||[]).forEach(x=>{ (state.files[x.date_id]=state.files[x.date_id]||[]).push(x); }); },
+  event_payments: async()=>{ const r=await sb.from('event_payments').select('date_id,total_amount,currency,entries,notes,updated_at').order('date_id',{ascending:true}); state.payments={}; (r.data||[]).forEach(x=>{ state.payments[x.date_id]=x; }); },
+  event_offers: async()=>{ const r=await sb.from('event_offers').select('id,date_id,venue,total_amount,deposit,room_name,address,map_url,contact_name,contact_phone,parking_cost,parking_reentry,wifi_included,greenroom_included,setup_time,notes,is_winner,created_at').order('created_at',{ascending:true}); state.offers={}; (r.data||[]).forEach(x=>{ (state.offers[x.date_id]=state.offers[x.date_id]||[]).push(x); }); },
+  calendar_items: async()=>{ const r=await sb.from('calendar_items').select('id,title,kind,starts_at,ends_at,all_day,location,notes,date_id,contact_id,done,created_by,created_at,updated_at').order('starts_at',{ascending:true}); state.calendar=r.data||[]; },
+  rfp_log: async()=>{ const r=await sb.from('rfp_log').select('id,date_id,city_slug,to_email,to_name,venue,subject,lang,sent_by,sent_at').order('sent_at',{ascending:false}); state.rfplog=r.data||[]; },
+  custom_cities: async()=>{ const r=await sb.from('custom_cities').select('slug,name,created_at').order('created_at',{ascending:true}); CITIES_EXTRA=(r.data||[]).map(x=>({slug:x.slug, name:x.name, leads:[], search:[]})); },
+  rfp_requests: async()=>{ const r=await sb.from('rfp_requests').select('id,date_id,city_slug,lang,requirements,concessions,created_by,created_at').order('id',{ascending:true}); state.rfpReq={}; (r.data||[]).forEach(x=>{ state.rfpReq[x.id]=x; }); },
+  rfp_invites: async()=>{ const r=await sb.from('rfp_invites').select('id,request_id,date_id,token,to_email,to_name,venue,status,created_at,decline_notes').order('id',{ascending:true}); state.rfpInvites=r.data||[]; },
+  rfp_offers: async()=>{ const r=await sb.from('rfp_offers').select('id,invite_id,request_id,date_id,venue,contact_name,contact_email,contact_phone,available,room_name,capacity,room_rental,fb_minimum,deposit,total_estimate,concessions,files,notes,submitted_at,updated_at,valid_until').order('updated_at',{ascending:false}).order('id',{ascending:true}); state.rfpOffers=r.data||[]; },
+  ac_people: async()=>{ const r=await sb.from('ac_people').select('id,name,email,role,phone,notes,active,created_by').order('name',{ascending:true}); state.people=r.data||[]; }
+};
+function applyRenderIfChanged(){
   var sig; try{ sig = JSON.stringify(state)+'|'+JSON.stringify(CITIES_EXTRA); }catch(e){ sig=null; }
-  if(sig!==null && sig===_stateSig) return;   // nada nuevo: no tocar el DOM
-  _stateSig=sig;
-  renderWithScroll();
+  if(sig!==null && sig===_stateSig) return false;
+  _stateSig=sig; renderWithScroll(); return true;
+}
+async function loadAll(){
+  await Promise.all(Object.keys(LOADERS).map(k=>LOADERS[k]().catch(()=>{})));
+  applyRenderIfChanged();
 }
 // ¿el usuario está escribiendo/editando un campo? (evita re-render que roba el foco)
 function isEditing(){ const el=document.activeElement; return !!(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !el.readOnly && !el.disabled); }
-let _pendingReload=false;
-// Realtime: si el equipo (u otra pestaña) cambia algo mientras escribes, NO re-renderiza
-// hasta que sueltes el campo — así no te saca del espacio donde escribes.
-const reload = debounce(()=>{
+// Realtime: cuando el equipo cambia algo, llega un evento con la tabla afectada y
+// se refresca SOLO esa tabla. Nada en segundo plano cuando la app está inactiva.
+const _dirty=new Set(); let _rtPending=false;
+const flushRealtime = debounce(async ()=>{
   if(!(sb&&USER)) return;
-  if(isEditing()){ _pendingReload=true; return; }
-  loadAll();
-}, 250);
-document.addEventListener('focusout', ()=>{
-  if(!_pendingReload) return;
-  // esperar más que el guardado por campo (700ms) para no perder lo recién escrito
-  setTimeout(()=>{ if(_pendingReload && !isEditing()){ _pendingReload=false; loadAll(); } }, 1000);
-});
-let RT_CH=null, _rtRetry=0, _rtTimer=null, _pollTimer=null, _rtEver=false;
-function setLive(ok){
-  const b=$('liveBadge'), t=$('liveTxt');
-  if(b) b.classList.toggle('off', !ok);
-  if(t) t.textContent = ok ? 'En vivo' : 'Reconectando…';
-}
-// Suscripción en tiempo real con reconexión automática. Si el socket se cae
-// (dormir el equipo, cambio de red, segundo plano en el móvil) se vuelve a
-// conectar solo y recarga los datos, para que todos los dispositivos queden iguales.
+  if(isEditing()){ _rtPending=true; return; }   // no re-dibujar mientras escribes
+  _rtPending=false;
+  const ts=[..._dirty]; _dirty.clear();
+  for(const t of ts){ const f=LOADERS[t]; if(f){ try{ await f(); }catch(e){} } }
+  applyRenderIfChanged();
+}, 300);
+function onRealtime(payload){ if(payload && payload.table && LOADERS[payload.table]) _dirty.add(payload.table); flushRealtime(); }
+document.addEventListener('focusout', ()=>{ if(!_rtPending) return; setTimeout(()=>{ if(_rtPending && !isEditing()) flushRealtime(); }, 1000); });
+let RT_CH=null, _rtRetry=0, _rtTimer=null, _pollTimer=null;
+function setLive(ok){ const b=$('liveBadge'), t=$('liveTxt'); if(b) b.classList.toggle('off', !ok); if(t) t.textContent = ok ? 'En vivo' : 'Reconectando…'; }
 function subscribeRealtime(){
   if(!(sb&&USER)) return;
   if(RT_CH){ try{ sb.removeChannel(RT_CH); }catch(e){} RT_CH=null; }
   RT_CH = sb.channel('ac-venues-live')
-    .on('postgres_changes',{event:'*',schema:'public'},reload)
+    .on('postgres_changes',{event:'*',schema:'public'}, onRealtime)
     .subscribe((status)=>{
-      if(status==='SUBSCRIBED'){ _rtRetry=0; setLive(true); if(_rtEver && !isEditing()) loadAll(); _rtEver=true; }
+      if(status==='SUBSCRIBED'){ _rtRetry=0; setLive(true); }   // NO recarga todo al (re)conectar
       else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT' || status==='CLOSED'){ setLive(false); scheduleReconnect(); }
     });
   startSafetyPoll();
 }
-function scheduleReconnect(){
-  if(_rtTimer) return;
-  const delay=Math.min(1000*Math.pow(2,_rtRetry), 15000); _rtRetry++;
-  _rtTimer=setTimeout(()=>{ _rtTimer=null; subscribeRealtime(); }, delay);
-}
-// Si el canal no está conectado (p.ej. al volver de segundo plano), reconecta.
-function ensureRealtime(){
-  if(!(sb&&USER)) return;
-  const st=RT_CH && RT_CH.state;
-  if(!RT_CH || (st && st!=='joined')){ _rtRetry=0; if(_rtTimer){ clearTimeout(_rtTimer); _rtTimer=null; } subscribeRealtime(); }
-}
-// Red de seguridad SOLO si el push (realtime) está caído. Con la conexión en vivo
-// sana no se refresca en segundo plano: la app se actualiza únicamente cuando el
-// equipo cambia algo (tipo push). Y como loadAll solo redibuja si hay cambios,
-// este respaldo tampoco causa parpadeo.
+function scheduleReconnect(){ if(_rtTimer) return; const delay=Math.min(1000*Math.pow(2,_rtRetry),30000); _rtRetry++; _rtTimer=setTimeout(()=>{ _rtTimer=null; subscribeRealtime(); }, delay); }
+function ensureRealtime(){ if(!(sb&&USER)) return; const st=RT_CH&&RT_CH.state; if(!RT_CH||(st&&st!=='joined')){ _rtRetry=0; if(_rtTimer){ clearTimeout(_rtTimer); _rtTimer=null; } subscribeRealtime(); } }
+// Respaldo SOLO si el realtime está caído: a lo más cada 60s y EN PAUSA si la pestaña
+// está oculta. Con el realtime sano NO se hace ninguna petición en segundo plano.
 function startSafetyPoll(){
   if(_pollTimer) return;
   _pollTimer=setInterval(()=>{
     if(!(sb&&USER) || document.visibilityState!=='visible' || isEditing()) return;
-    var joined = RT_CH && RT_CH.state==='joined';
-    if(!joined) loadAll();   // el push está caído → usamos el respaldo
-  }, 120000);
+    const joined = RT_CH && RT_CH.state==='joined';
+    if(!joined) loadAll();
+  }, 60000);
 }
-function refreshNow(){ if(sb&&USER && !isEditing()) loadAll(); }
-// Al volver a la pestaña / recuperar conexión: reconecta y refresca al instante.
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ ensureRealtime(); refreshNow(); } });
-window.addEventListener('online', ()=>{ setLive(false); ensureRealtime(); refreshNow(); });
-window.addEventListener('focus', refreshNow);
+// Al volver a la pestaña o recuperar la red: reconecta el socket y hace UNA sola
+// puesta al día — solo si el realtime se había caído (si siguió conectado, no refetch).
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState!=='visible') return;
+  const wasJoined = RT_CH && RT_CH.state==='joined';
+  ensureRealtime();
+  if(!wasJoined && sb && USER && !isEditing()) loadAll();
+});
+window.addEventListener('online', ()=>{ setLive(false); ensureRealtime(); if(sb && USER && !isEditing()) loadAll(); });
+function refreshNow(){ if(sb && USER && !isEditing()) return loadAll(); }
 
 // ---------- Render ----------
 function renderAll(){ renderCompany(); renderCities(); renderTimeline(); renderGlobalTasks(); renderMatrix(); renderContacts(); if(typeof renderSpeakers==='function') renderSpeakers(); renderStatus(); renderKPIs(); renderAudit(); renderHome(); renderOffers(); if(typeof renderAgenda==='function') renderAgenda(); if(typeof renderRfp==='function') renderRfp(); if(typeof renderRfpCompare==='function') renderRfpCompare(); }
