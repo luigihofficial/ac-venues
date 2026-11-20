@@ -73,7 +73,7 @@ window.ACVShare.decode(location.hash).then(function(data){
  s=data;
  document.getElementById("title").textContent=(s.room.venue||"Venue")+" · "+(s.room.name||"Room");
  document.getElementById("stats").textContent="";
- [["Room",norm(s.room.width)+" × "+norm(s.room.length)+" ft"],["Area",norm(s.room.width*s.room.length)+" ft²"],["Chairs",s.objects.filter(function(o){return o.category==="chair";}).length],["Tables",s.objects.filter(function(o){return o.category==="table";}).length]].forEach(function(p){
+ [["Room",norm(s.room.width)+" × "+norm(s.room.length)+" ft"],["Height",(s.room.ceilingHeight!=null?norm(s.room.ceilingHeight)+" ft":"—")],["Area",norm(s.room.width*s.room.length)+" ft²"],["Chairs",s.objects.filter(function(o){return o.category==="chair";}).length],["Tables",s.objects.filter(function(o){return o.category==="table";}).length]].forEach(function(p){
   var el=document.createElement("span");el.className="pill";el.textContent=p[0]+": "+p[1];document.getElementById("stats").appendChild(el);
  });
  draw();
