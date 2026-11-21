@@ -43,6 +43,10 @@ h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
 #gate p,#pwReset p{color:var(--muted);font-size:14px;margin:0 0 18px}
 #gate input,#pwReset input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:15px;margin-bottom:12px}
 #gate .msg,#pwReset .msg{font-size:13px;margin-top:12px;min-height:18px}
+#splash{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy2));display:grid;place-items:center;z-index:120}
+#splash .sp-wrap{text-align:center}
+#splash .sp-dot{margin:16px auto 0;width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:var(--gold-soft);animation:spspin .8s linear infinite}
+@keyframes spspin{to{transform:rotate(360deg)}}
 .btn{background:var(--navy);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-weight:600;font-size:14px;cursor:pointer;width:100%}
 .btn:hover{background:var(--navy2)}
 .btn.sm{width:auto;padding:8px 13px;font-size:12.5px;border-radius:8px}
@@ -512,8 +516,11 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
 </head>
 <body>
 
+<!-- ===== SPLASH: evita el parpadeo del login al abrir (se oculta cuando ya se sabe si hay sesión) ===== -->
+<div id="splash"><div class="sp-wrap"><span class="gate-logo brandimg" role="img" aria-label="Amor Consciente"></span><div class="sp-dot"></div></div></div>
+
 <!-- ===== LOGIN GATE ===== -->
-<div id="gate">
+<div id="gate" class="hidden">
   <div class="box">
     <span class="gate-logo brandimg" role="img" aria-label="Amor Consciente"></span>
     <small>Amor Consciente</small>
@@ -547,7 +554,7 @@ select.cell.shsel{background:#fffdf8;font-size:13px;padding:6px 8px}
   <div class="wrap">
     <div class="brand-wrap"><span class="hero-logo brandimg" role="img" aria-label="Amor Consciente"></span><div class="brand"><small>Sourcing de Venues · Panel del equipo</small><h1 id="appTitle">Amor Consciente — Venues</h1></div></div>
     <div class="right">
-      <span class="live" id="liveBadge"><span class="dot"></span> <span id="liveTxt">En vivo</span></span>
+      <!-- indicador "En vivo / Reconectando" retirado a pedido (parpadeo molesto) -->
       <button id="refreshBtn" class="refreshbtn" title="Actualizar ahora">↻ Actualizar</button>
       <div class="kpi"><div class="n" id="kpiConf">0/0</div><div class="l">Fechas cerradas</div></div>
       <div class="kpi"><div class="n" id="kpiProg">0%</div><div class="l">Avance promedio</div></div>
@@ -1758,6 +1765,8 @@ function configured(){
     !c.SUPABASE_URL.includes("TU-PROYECTO") && !c.SUPABASE_ANON_KEY.includes("TU-ANON");
 }
 function init(){
+  // Seguridad anti-"splash pegado": pase lo que pase, a los 3.5s dejamos ver el login si aún no entró.
+  setTimeout(()=>{ const sp=$('splash'); if(sp && !sp.classList.contains('hidden')){ sp.classList.add('hidden'); if(!_recovering){ const a=$('app'), pr=$('pwReset'); const appOn=a && !a.classList.contains('hidden'); const prOn=pr && !pr.classList.contains('hidden'); if(!appOn && !prOn){ const g=$('gate'); if(g) g.classList.remove('hidden'); } } } }, 3500);
   // Contenido estático que no depende de la base de datos
   $('mailEN').textContent=MAIL_EN; $('mailES').textContent=MAIL_ES; $('mailFU').textContent=MAIL_FU;
   document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>{
@@ -1768,6 +1777,7 @@ function init(){
 
   if(!configured()){
     // Modo vista previa (sin base de datos configurada)
+    { const sp=$('splash'); if(sp) sp.classList.add('hidden'); }
     $('gate').classList.add('hidden'); $('app').classList.remove('hidden');
     const b=$('configBanner'); b.classList.remove('hidden');
     b.innerHTML='⚙️ <b>App en modo vista previa.</b> Falta conectar Supabase: edita <span class="tag">config.js</span> con tu <b>SUPABASE_URL</b> y <b>anon key</b> (ver README-DEPLOY.md). Mientras tanto, las especificaciones y la plantilla de correo funcionan; los datos compartidos se activan al configurar.';
@@ -1775,6 +1785,12 @@ function init(){
     return;
   }
 
+  if(!window.supabase || !window.supabase.createClient){
+    const sp=$('splash'); if(sp) sp.classList.add('hidden');
+    $('gate').classList.remove('hidden');
+    const gm=$('gateMsg'); if(gm){ gm.style.color='#b23b3b'; gm.textContent='No se pudo cargar el servicio. Revisa tu conexión y recarga la página.'; }
+    return;
+  }
   sb = window.supabase.createClient(window.AC_CONFIG.SUPABASE_URL, window.AC_CONFIG.SUPABASE_ANON_KEY, {
     auth: {
       persistSession: true,      // guarda la sesión en el dispositivo
@@ -1800,6 +1816,7 @@ function init(){
 let _recovering=false;
 function showResetPassword(){
   _recovering=true;
+  { const sp=$('splash'); if(sp) sp.classList.add('hidden'); }
   const g=$('gate'); if(g) g.classList.add('hidden');
   const a=$('app'); if(a) a.classList.add('hidden');
   const pr=$('pwReset'); if(pr) pr.classList.remove('hidden');
@@ -1863,6 +1880,7 @@ async function doForgot(){
   }catch(e){ msg.style.color='#b23b3b'; msg.textContent='No se pudo enviar: '+(e.message||e); }
 }
 async function handleSession(session){
+  { const sp=$('splash'); if(sp) sp.classList.add('hidden'); }   // ya sabemos si hay sesión: quitar el splash
   if(!session){$('app').classList.add('hidden');$('gate').classList.remove('hidden');return;}
   const email=(session.user.email||'').toLowerCase();
   const allow=(window.AC_CONFIG.ALLOWED_EMAILS||[]).map(x=>x.toLowerCase());
@@ -1943,7 +1961,7 @@ const flushRealtime = debounce(async ()=>{
 function onRealtime(payload){ if(payload && payload.table && LOADERS[payload.table]) _dirty.add(payload.table); flushRealtime(); }
 document.addEventListener('focusout', ()=>{ if(!_rtPending) return; setTimeout(()=>{ if(_rtPending && !isEditing()) flushRealtime(); }, 1000); });
 let RT_CH=null, _rtRetry=0, _rtTimer=null, _pollTimer=null;
-function setLive(ok){ const b=$('liveBadge'), t=$('liveTxt'); if(b) b.classList.toggle('off', !ok); if(t) t.textContent = ok ? 'En vivo' : 'Reconectando…'; }
+function setLive(ok){ /* indicador en vivo oculto a propósito: no mostrar En vivo/Reconectando */ }
 function subscribeRealtime(){
   if(!(sb&&USER)) return;
   if(RT_CH){ try{ sb.removeChannel(RT_CH); }catch(e){} RT_CH=null; }
@@ -1955,7 +1973,7 @@ function subscribeRealtime(){
     });
   startSafetyPoll();
 }
-function scheduleReconnect(){ if(_rtTimer) return; const delay=Math.min(1000*Math.pow(2,_rtRetry),30000); _rtRetry++; _rtTimer=setTimeout(()=>{ _rtTimer=null; subscribeRealtime(); }, delay); }
+function scheduleReconnect(){ if(_rtTimer) return; const delay=Math.min(5000*Math.pow(2,_rtRetry),30000); _rtRetry++; _rtTimer=setTimeout(()=>{ _rtTimer=null; subscribeRealtime(); }, delay); }
 function ensureRealtime(){ if(!(sb&&USER)) return; const st=RT_CH&&RT_CH.state; if(!RT_CH||(st&&st!=='joined')){ _rtRetry=0; if(_rtTimer){ clearTimeout(_rtTimer); _rtTimer=null; } subscribeRealtime(); } }
 // Respaldo SOLO si el realtime está caído: a lo más cada 60s y EN PAUSA si la pestaña
 // está oculta. Con el realtime sano NO se hace ninguna petición en segundo plano.
