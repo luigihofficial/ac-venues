@@ -1934,7 +1934,17 @@ const LOADERS = {
   rfp_requests: async()=>{ const r=await sb.from('rfp_requests').select('id,date_id,city_slug,lang,requirements,concessions,created_by,created_at').order('id',{ascending:true}); state.rfpReq={}; (r.data||[]).forEach(x=>{ state.rfpReq[x.id]=x; }); },
   rfp_invites: async()=>{ const r=await sb.from('rfp_invites').select('id,request_id,date_id,token,to_email,to_name,venue,status,created_at,decline_notes').order('id',{ascending:true}); state.rfpInvites=r.data||[]; },
   rfp_offers: async()=>{ const r=await sb.from('rfp_offers').select('id,invite_id,request_id,date_id,venue,contact_name,contact_email,contact_phone,available,room_name,capacity,room_rental,fb_minimum,deposit,total_estimate,concessions,files,notes,submitted_at,updated_at,valid_until').order('updated_at',{ascending:false}).order('id',{ascending:true}); state.rfpOffers=r.data||[]; },
-  ac_people: async()=>{ const r=await sb.from('ac_people').select('id,name,email,role,phone,notes,active,created_by').order('name',{ascending:true}); state.people=r.data||[]; }
+  ac_people: async()=>{ const r=await sb.from('ac_people').select('id,name,email,role,phone,notes,active,created_by').order('name',{ascending:true}); state.people=r.data||[]; },
+  rfp_seen: async()=>{
+    const em=((USER&&USER.email)||'').toLowerCase();
+    let seen={};
+    try{ const r=await sb.from('rfp_seen').select('seen').eq('email',em).maybeSingle(); seen=(r&&r.data&&r.data.seen)||{}; }catch(e){ seen={}; }
+    // Migración única desde el guardado viejo por-dispositivo (localStorage) → BD.
+    if(!seen || !Object.keys(seen).length){
+      try{ const old=JSON.parse(localStorage.getItem('ac_rfp_seen_'+((USER&&USER.email)||'anon'))||'{}'); if(old && Object.keys(old).length){ seen=old; if(sb&&em) sb.from('rfp_seen').upsert({email:em,seen:seen,updated_at:new Date().toISOString()},{onConflict:'email'}).then(()=>{},()=>{}); } }catch(e){}
+    }
+    state.rfpSeen=seen; _rfpSeenSig=JSON.stringify(seen);
+  }
 };
 function applyRenderIfChanged(){
   var sig; try{ sig = JSON.stringify(state)+'|'+JSON.stringify(CITIES_EXTRA); }catch(e){ sig=null; }
@@ -4310,9 +4320,23 @@ function rcConcLabels(dateId){
   return list.map(c=>({key:c.key||'', label:c.label||''}));
 }
 /* --- Aviso de respuestas de RFP no vistas (punto rojo, por dispositivo) --- */
+let _rfpSeenSig='{}';
 function rfpSeenKey(){ return 'ac_rfp_seen_'+((USER&&USER.email)||'anon'); }
-function rfpSeenMap(){ try{ return JSON.parse(localStorage.getItem(rfpSeenKey())||'{}')||{}; }catch(e){ return {}; } }
-function rfpSaveSeen(m){ try{ localStorage.setItem(rfpSeenKey(), JSON.stringify(m)); }catch(e){} }
+// El estado "visto" ahora vive en la base de datos (tabla rfp_seen), por USUARIO,
+// para que se sincronice entre dispositivos (Mac ↔ teléfono). RLS: cada quien solo
+// su propia fila, así la actualización de uno NO toca el estado de otros usuarios.
+function rfpSeenMap(){ return (state.rfpSeen)||{}; }
+function rfpSaveSeen(m){
+  state.rfpSeen = m || {};
+  const sig = JSON.stringify(state.rfpSeen);
+  if(sig===_rfpSeenSig) return;                    // sin cambios reales: no escribir (evita consumo)
+  _rfpSeenSig = sig;
+  try{ localStorage.setItem(rfpSeenKey(), sig); }catch(e){}   // respaldo local
+  try{
+    const em=((USER&&USER.email)||'').toLowerCase();
+    if(sb && em) sb.from('rfp_seen').upsert({ email:em, seen:state.rfpSeen, updated_at:new Date().toISOString() }, { onConflict:'email' }).then(()=>{},()=>{});
+  }catch(e){}
+}
 function rfpUnseenCount(){
   const seen=rfpSeenMap();
   let n=(state.rfpOffers||[]).filter(o=>o&&o.id&&seen[o.id]!==o.updated_at).length;
