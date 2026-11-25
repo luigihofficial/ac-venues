@@ -16,5 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Governance docs present (KISS/SINR)
+        run: for f in AGENTS.md CLAUDE.md governance/KISS_PROTOCOL.md governance/SINR_PROTOCOL.md governance/PROJECT_IDENTITY.md; do test -s "$f" || { echo "::error::missing $f"; exit 1; }; done
       - name: Verify critical venue app features and JavaScript syntax
         run: node scripts/verify-critical-features.cjs
